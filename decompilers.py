@@ -271,60 +271,94 @@ def decompile_function(r2, function_name, decompiler_type=None):
         if decompiler_type is None:
             decompiler_type = CONFIG["decompiler"]["type"]
         
+        # Get decompiler options
+        decompiler_options = CONFIG["decompiler"].get("options", {})
+        max_retries = decompiler_options.get("max_retries", 3)
+        ignore_unknown_branches = decompiler_options.get("ignore_unknown_branches", True)
+        fallback_to_asm = decompiler_options.get("fallback_to_asm", True)
+        clean_error_messages = decompiler_options.get("clean_error_messages", True)
+        use_alternative_decompiler = decompiler_options.get("use_alternative_decompiler", True)
+        
         # If r2ai is requested, change to default since r2ai is not a decompiler
         if decompiler_type == "r2ai":
             print("[!] r2ai is not a decompiler. Changing to default decompiler.")
             decompiler_type = "default"
         
+        def clean_decompiled_output(decompiled_text):
+            """Clean decompiled output by removing error messages and warnings."""
+            if not decompiled_text:
+                return decompiled_text
+                
+            lines = decompiled_text.split("\n")
+            cleaned_lines = []
+            
+            for line in lines:
+                # Skip error messages and warnings
+                if any(x in line.lower() for x in ["error:", "warn:", "warning:", "unknown branch"]):
+                    continue
+                # Skip empty lines after cleaning
+                if line.strip():
+                    cleaned_lines.append(line)
+            
+            return "\n".join(cleaned_lines)
+        
+        def try_decompile_with_command(r2, command, function_name):
+            """Try to decompile with a specific command and handle errors."""
+            try:
+                r2.cmd(f"s {function_name}")
+                decompiled = r2.cmd(command)
+                
+                if clean_error_messages:
+                    decompiled = clean_decompiled_output(decompiled)
+                
+                if decompiled and len(decompiled.strip()) > 10:
+                    return decompiled
+                return None
+            except Exception:
+                return None
+        
         # Decompile according to the selected decompiler type
         if decompiler_type == "r2ghidra":
             # Try to decompile with r2ghidra (pdg)
-            r2.cmd(f"s {function_name}")
-            decompiled = r2.cmd("pdg")
-            # Check if decompilation was successful
-            if decompiled and "Error" not in decompiled and len(decompiled) > 10:
+            decompiled = try_decompile_with_command(r2, "pdg", function_name)
+            
+            if decompiled:
                 return decompiled
-            else:
-                # Try with pdd as an alternative in case of error
-                return r2.cmd("pdd")
+            elif use_alternative_decompiler:
+                # Try with pdd as an alternative
+                return try_decompile_with_command(r2, "pdd", function_name)
                 
         elif decompiler_type == "r2dec":
             # Try to decompile with r2dec (pdd)
-            r2.cmd(f"s {function_name}")
-            decompiled = r2.cmd("pdd")
-            # Check if decompilation was successful
-            if decompiled and "Error" not in decompiled and len(decompiled) > 10:
+            decompiled = try_decompile_with_command(r2, "pdd", function_name)
+            
+            if decompiled:
                 return decompiled
-            else:
-                # Try with pdg as an alternative in case of error
-                return r2.cmd("pdg")
+            elif use_alternative_decompiler:
+                # Try with pdg as an alternative
+                return try_decompile_with_command(r2, "pdg", function_name)
                 
         elif decompiler_type == "decai":
             return decompile_with_decai(r2, function_name)
                 
         elif decompiler_type == "default":
-            # Try first with r2ghidra, then with r2dec, and finally with pdc as a last resort
-            r2.cmd(f"s {function_name}")
+            # Try decompilers in order of preference
+            decompilers_to_try = [
+                ("r2ghidra", "pdg"),
+                ("r2dec", "pdd"),
+                ("default", "pdc")
+            ]
             
-            # Try with r2ghidra if available (without messages)
-            if check_decompiler_available("r2ghidra", print_message=False):
-                decompiled = r2.cmd("pdg")
-                if decompiled and "Error" not in decompiled and len(decompiled) > 10:
-                    return decompiled
+            for decomp_name, command in decompilers_to_try:
+                if decomp_name == "default" or check_decompiler_available(decomp_name, print_message=False):
+                    decompiled = try_decompile_with_command(r2, command, function_name)
+                    if decompiled:
+                        return decompiled
             
-            # Try with r2dec if available (without messages)
-            if check_decompiler_available("r2dec", print_message=False):
-                decompiled = r2.cmd("pdd")
-                if decompiled and "Error" not in decompiled and len(decompiled) > 10:
-                    return decompiled
-            
-            # Last resort: Use pdc (pseudo C from r2)
-            decompiled = r2.cmd("pdc")
-            if decompiled and len(decompiled) > 10:
-                return decompiled
-                
-            # If all else fails, try with disassembly
-            return r2.cmd("pdf")
+            # If all else fails and fallback_to_asm is enabled, return disassembly
+            if fallback_to_asm:
+                return r2.cmd("pdf")
+            return "Error: Could not decompile function"
         else:
             # Unknown decompiler, use default decompiler
             print(f"[!] Unknown decompiler: {decompiler_type}. Using default decompiler.")

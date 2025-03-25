@@ -20,7 +20,22 @@ DEFAULT_CONFIG = {
             "r2ghidra": {
                 "enabled": True,
                 "command": "pdg",
-                "description": "r2ghidra decompiler"
+                "description": "r2ghidra decompiler",
+                "error_handling": {
+                    "ignore_unknown_branches": True,
+                    "clean_error_messages": True,
+                    "fallback_to_asm": True
+                }
+            },
+            "r2dec": {
+                "enabled": True,
+                "command": "pdd",
+                "description": "r2dec decompiler",
+                "error_handling": {
+                    "ignore_unknown_branches": True,
+                    "clean_error_messages": True,
+                    "fallback_to_asm": True
+                }
             },
             "r2ai": {
                 "enabled": True,
@@ -55,7 +70,13 @@ DEFAULT_CONFIG = {
                     "max_tokens": 4096,
                     "system_prompt": "You are a reverse engineering assistant focused on decompiling assembly code into clean, human-readable C code."
                 }
-            }
+            },
+            "ignore_unknown_branches": True,
+            "max_retries": 3,
+            "fallback_to_asm": True,
+            "error_threshold": 0.1,  # Maximum allowed error rate before falling back to simpler analysis
+            "clean_error_messages": True,  # Remove error messages from output
+            "use_alternative_decompiler": True  # Try alternative decompiler on error
         }
     },
     "output": {
