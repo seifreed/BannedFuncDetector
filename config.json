@@ -2,71 +2,87 @@
     "decompiler": {
         "type": "default",
         "options": {
-            "r2ghidra": {
-                "enabled": true,
-                "command": "pdg",
-                "description": "Ghidra-based decompiler, offers good quality C code"
-            },
             "default": {
                 "enabled": true,
                 "command": "pdc",
-                "description": "Default radare2 decompiler, fast but with more basic results"
+                "description": "Default radare2 decompiler"
             },
-            "decai": {
+            "r2ghidra": {
                 "enabled": true,
-                "command": "decai",
-                "description": "AI-based decompiler with support for local LLM models through Ollama"
+                "command": "pdg",
+                "description": "r2ghidra decompiler",
+                "error_handling": {
+                    "ignore_unknown_branches": true,
+                    "clean_error_messages": true,
+                    "fallback_to_asm": true
+                }
             },
             "r2dec": {
                 "enabled": true,
                 "command": "pdd",
-                "description": "Alternative radare2 decompiler, specialized in specific architectures"
-            }
+                "description": "r2dec decompiler",
+                "error_handling": {
+                    "ignore_unknown_branches": true,
+                    "clean_error_messages": true,
+                    "fallback_to_asm": true
+                }
+            },
+            "r2ai": {
+                "enabled": true,
+                "command": "pdai",
+                "model": "hhao/qwen2.5-coder-tools:32b",
+                "description": "AI-based decompiler (r2ai)",
+                "advanced_options": {
+                    "temperature": 0.7,
+                    "context": 8192,
+                    "max_tokens": 4096,
+                    "system_prompt": "You are a reverse engineering assistant focused on decompiling assembly code into clean, human-readable C code."
+                }
+            },
+            "decai": {
+                "enabled": true,
+                "command": "decai -d",
+                "description": "AI-based decompiler (decai)",
+                "api": "ollama",
+                "model": "qwen2:5b-coder",
+                "prompt": "Rewrite this function and respond ONLY with code, NO explanations, NO markdown, Change 'goto' into if/else/for/while, Simplify as much as possible, use better variable names, take function arguments and strings from comments like 'string:'",
+                "host": "http://localhost",
+                "port": 11434
+            },
+            "r2ai-server": {
+                "enabled": true,
+                "command": "pdai",
+                "server_url": "http://localhost:8080",
+                "model": "mistral-7b-instruct-v0.2.Q2_K",
+                "description": "AI-based decompiler (r2ai-server)",
+                "advanced_options": {
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "system_prompt": "You are a reverse engineering assistant focused on decompiling assembly code into clean, human-readable C code."
+                }
+            },
+            "ignore_unknown_branches": true,
+            "max_retries": 3,
+            "fallback_to_asm": true,
+            "error_threshold": 0.1,
+            "clean_error_messages": true,
+            "use_alternative_decompiler": true
         }
     },
-    "output_dir": "output",
-    "max_workers": 1,
+    "output": {
+        "directory": "output",
+        "format": "json",
+        "open_results": false,
+        "verbose": false
+    },
+    "analysis": {
+        "parallel": true,
+        "max_workers": 4,
+        "timeout": 600,
+        "worker_limit": null
+    },
+    "max_workers": 10,
     "skip_small_functions": true,
     "small_function_threshold": 10,
-    "models": {
-        "qwen2.5-coder": {
-            "name": "ollama/hhao/qwen2.5-coder-tools:32b",
-            "description": "Code specialized model, offers best decompilation quality",
-            "recommended_workers": 1,
-            "advanced_options": {
-                "temperature": 0.1,
-                "context": "full",
-                "max_tokens": 4096,
-                "system_prompt": "You are an expert in code decompilation. Your task is to analyze the assembly code and produce high-quality equivalent C code, maintaining the original functionality."
-            }
-        },
-        "llama3": {
-            "name": "ollama/llama3",
-            "description": "General purpose model, good balance between speed and quality",
-            "recommended_workers": 2,
-            "advanced_options": {
-                "temperature": 0.2,
-                "context": "full",
-                "max_tokens": 2048,
-                "system_prompt": "Decompile the assembly code to C code."
-            }
-        },
-        "codellama": {
-            "name": "ollama/codellama",
-            "description": "Code specialized model, good quality decompilation",
-            "recommended_workers": 2,
-            "advanced_options": {
-                "temperature": 0.2,
-                "context": "full",
-                "max_tokens": 2048,
-                "system_prompt": "Decompile the assembly code to C code."
-            }
-        }
-    },
-    "comments": {
-        "usage": "To change the decompiler, modify the 'type' value to 'default', 'r2ghidra', 'r2dec', or 'decai'",
-        "model": "To change the AI model, modify the value of 'model' in the corresponding section",
-        "available_models": "In the 'models' section you will find predefined configurations for different models",
-        "example_model_change": "To use llama3, change the 'model' value to 'ollama/llama3' and adjust max_workers according to the recommendation"
-    }
+    "r2pipe_threads": 10
 }

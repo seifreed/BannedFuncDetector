@@ -6,7 +6,8 @@ Author: Marc Rivero | @seifreed
 """
 
 import sys
-from main import main
+
+from bannedfuncdetector.bannedfunc import main
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

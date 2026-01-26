@@ -1,0 +1,9 @@
+exclude_dirs:
+  - venv
+  - tests
+  - __pycache__
+  - output
+  - saved
+  - .git
+
+# Keep default tests; suppress known safe findings with inline # nosec where needed.
