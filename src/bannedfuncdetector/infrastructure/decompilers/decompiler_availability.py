@@ -3,15 +3,24 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
 
 from .decompiler_types import DecompilerType
 
 logger = logging.getLogger(__name__)
+
+
+def _is_http_ok(response: Any) -> bool:
+    """Return ``True`` when the response object reports HTTP 200."""
+    try:
+        status_code = cast(int, response.status_code)
+        return status_code == 200
+    except (AttributeError, TypeError):
+        return False
 
 DECOMPILER_CONFIG: dict[str, dict[str, Any]] = {
     "r2ghidra": {"check_cmd": "Lc", "expected": "r2ghidra"},
@@ -83,7 +92,7 @@ def _check_decai_service_available(url: str) -> bool:
             return False
 
         response = requests.get(f"{url}/api/tags", timeout=1)
-        return response.status_code == 200
+        return _is_http_ok(response)
     except requests.RequestException:
         logger.warning("decai plugin is available but cannot connect to Ollama")
         return False

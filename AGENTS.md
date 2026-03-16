@@ -24,7 +24,7 @@ Use these commands from the repo root:
 - Dependency audit: `pip-audit -r requirements.txt` and `pip-audit -r requirements-dev.txt`
 
 ## Coding Style & Naming Conventions
-Code is Python 3.12+ with explicit typing enforced by `mypy` configuration.
+Code is Python 3.13+ with explicit typing enforced by `mypy` configuration.
 - Use 4-space indentation, `snake_case` for functions/variables, and `PascalCase` for classes.
 - Keep modules focused (domain/app/infrastructure boundaries).
 - Prefer small, typed helper functions and `Result`-style flow for failures where currently used.

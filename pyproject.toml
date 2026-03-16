@@ -8,7 +8,7 @@ version = "2.0.0"
 description = "Detects banned/insecure functions in binary files using radare2 decompilers."
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 authors = [
     {name = "Marc Rivero López", email = "mriverolopez@gmail.com"}
 ]
@@ -34,8 +34,8 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Security",
     "Topic :: Software Development :: Disassemblers",
     "Typing :: Typed"
@@ -62,7 +62,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 ignore_missing_imports = true
 exclude = "^(build|dist|venv|tests|__pycache__|output|saved)/"
 disallow_untyped_defs = true

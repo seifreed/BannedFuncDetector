@@ -154,7 +154,7 @@ print(results)
 
 ## Requirements
 
-- Python 3.12+
+- Python 3.13+ (tested on 3.13 y 3.14)
 - radare2 (required)
 - r2ghidra/r2dec (optional decompilers)
 - Ollama + decai plugin (optional for AI-assisted decompilation)

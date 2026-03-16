@@ -20,13 +20,22 @@ import time
 import os
 import asyncio
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, cast
 from dataclasses import dataclass
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 # Configure module logger
 logger = logging.getLogger(__name__)
+
+
+def _is_http_ok(response: Any) -> bool:
+    """Return ``True`` when a response object reports HTTP 200."""
+    try:
+        status_code = cast(int, response.status_code)
+        return status_code == 200
+    except (AttributeError, TypeError):
+        return False
 
 
 # =============================================================================
@@ -54,7 +63,7 @@ def _is_affirmative(response: str) -> bool:
 def _ping_server(server_url: str, timeout: int) -> bool:
     """Return True if the server responds with HTTP 200."""
     response = requests.get(f"{server_url}/ping", timeout=timeout)
-    return response.status_code == 200
+    return _is_http_ok(response)
 
 
 def _wait_for_server(server_url: str, attempts: int = 10, timeout: int = 1) -> bool:
@@ -243,7 +252,7 @@ def get_r2ai_models(server_url: str = "http://localhost:8080", timeout: int = 2)
     """
     try:
         response = requests.get(f"{server_url}/models", timeout=timeout)
-        if response.status_code == 200:
+        if _is_http_ok(response):
             models_data = response.json()
             models: list[Any] = models_data.get("models", [])
             return models
