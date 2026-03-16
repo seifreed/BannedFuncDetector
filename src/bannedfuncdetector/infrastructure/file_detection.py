@@ -14,10 +14,18 @@ Author: Marc Rivero | @seifreed
 
 import logging
 import os
-
-import magic
+from typing import Any
 
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
+
+
+def _load_magic_module() -> Any | None:
+    """Load ``python-magic`` lazily to avoid hard failures when libmagic is absent."""
+    try:
+        import magic
+        return magic
+    except (ImportError, OSError):
+        return None
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -73,10 +81,11 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
     Returns:
         True if executable detected, False if not detected, None if magic failed.
     """
-    if magic is None:
+    magic_module = _load_magic_module()
+    if magic_module is None:
         return None
 
-    detected_type = magic.from_file(file_path)
+    detected_type = magic_module.from_file(file_path)
 
     if file_type == "any":
         for exec_type, markers in TYPE_MARKERS.items():
@@ -292,5 +301,3 @@ def _find_executables(
 
     logger.info("Found %d %s in %s", len(executable_files), summary_label, directory)
     return executable_files
-
-
