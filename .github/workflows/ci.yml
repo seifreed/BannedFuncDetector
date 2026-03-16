@@ -65,4 +65,4 @@ jobs:
           pip-audit -r requirements-dev.txt
 
       - name: Test
-        run: PYTHONPATH=. pytest -q
+        run: python -m pytest -q
