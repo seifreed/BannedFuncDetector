@@ -19,13 +19,17 @@ from typing import Any
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
 
 
+try:
+    import magic as _magic
+except (ImportError, OSError):
+    _magic = None
+
+magic = _magic
+
+
 def _load_magic_module() -> Any | None:
     """Load ``python-magic`` lazily to avoid hard failures when libmagic is absent."""
-    try:
-        import magic
-        return magic
-    except (ImportError, OSError):
-        return None
+    return magic
 
 # Configure module logger
 logger = logging.getLogger(__name__)

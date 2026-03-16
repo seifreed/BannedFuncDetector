@@ -19,6 +19,7 @@ import shutil
 import time
 import os
 import asyncio
+import subprocess
 from collections.abc import Callable, Sequence
 from typing import Any, cast
 from dataclasses import dataclass
@@ -27,6 +28,21 @@ import requests
 
 # Configure module logger
 logger = logging.getLogger(__name__)
+
+
+def _run_subprocess_detached(
+    args: Sequence[str],
+    *,
+    stdout: int | None = subprocess.DEVNULL,
+    stderr: int | None = subprocess.DEVNULL,
+    **_: Any,
+) -> subprocess.Popen[Any]:
+    """Run a process without waiting for it to finish."""
+    return subprocess.Popen(
+        args,
+        stdout=stdout,
+        stderr=stderr,
+    )
 
 
 def _is_http_ok(response: Any) -> bool:
@@ -366,13 +382,15 @@ def _build_server_command(model: str) -> list[str]:
 def _launch_server_process(
     cmd: list[str],
     *,
-    popen: Callable[..., Any] = _spawn_subprocess_sync,
+    popen: Callable[..., Any] = _run_subprocess_detached,
 ) -> bool:
     """Launch the r2ai-server process in the background."""
     resolved_cmd = _resolve_command(cmd)
     _validate_executable(resolved_cmd)
     popen(
         resolved_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     logger.info("r2ai-server started in the background")
     return True
@@ -391,7 +409,7 @@ def _start_r2ai_server(
     server_url: str,
     prompt_callback: Callable[[str], str] | None = None,
     *,
-    popen: Callable[..., Any] = _spawn_subprocess_sync,
+    popen: Callable[..., Any] = _run_subprocess_detached,
 ) -> bool:
     """
     Start r2ai-server with user-selected model.
