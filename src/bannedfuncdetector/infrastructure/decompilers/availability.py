@@ -158,7 +158,10 @@ def get_available_decompiler(
         if check_decompiler_available(alt, print_message=False):
             return alt
 
-    return DecompilerType.DEFAULT.value
+    # "default" is always in the alternatives list and always available,
+    # so the loop above always returns. This line exists only as a type-system
+    # guarantee that the function always returns str.
+    return DecompilerType.DEFAULT.value  # pragma: no cover
 
 
 # =============================================================================

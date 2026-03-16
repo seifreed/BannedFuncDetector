@@ -11,7 +11,6 @@ Author: Marc Rivero | @seifreed
 """
 
 import pytest
-from unittest.mock import patch
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilerType,
     check_decompiler_plugin_available,
@@ -29,7 +28,6 @@ from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     _check_decai_service_available as _check_decai_available,
 )
-from conftest import FakeR2
 
 
 class TestDecAIAvailability:
@@ -44,11 +42,7 @@ class TestDecAIAvailability:
 
     def test_check_decai_available_ollama_unreachable(self, fake_r2_factory):
         """Test decai availability when Ollama service is unreachable."""
-        import requests
-
-        fake = fake_r2_factory(
-            cmd_map={"decai -h": "Usage: decai"}
-        )
+        fake_r2_factory(cmd_map={"decai -h": "Usage: decai"})
 
         # Try to check with non-existent Ollama service
         result = _check_decai_available("http://localhost:99999")

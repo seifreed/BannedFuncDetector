@@ -11,7 +11,6 @@ Author: Marc Rivero | @seifreed
 """
 
 from dataclasses import dataclass
-
 # Categories considered critical from a security perspective
 # These involve memory corruption, code execution, or direct system access
 CRITICAL_CATEGORIES: frozenset[str] = frozenset([
@@ -24,6 +23,8 @@ CRITICAL_CATEGORIES: frozenset[str] = frozenset([
 ])
 
 # Risk weights by category (higher = more dangerous)
+STRING_TOKEN_RISK_WEIGHT = 4
+
 CATEGORY_RISK_WEIGHTS: dict[str, int] = {
     "string_copy": 8,
     "string_concat": 7,
@@ -33,7 +34,7 @@ CATEGORY_RISK_WEIGHTS: dict[str, int] = {
     "process": 9,
     "scanf": 7,
     "path_manipulation": 5,
-    "string_token": 4,
+    "string_token": STRING_TOKEN_RISK_WEIGHT,
     "string_search": 3,
     "number_conversion": 3,
     "file": 4,
@@ -51,9 +52,18 @@ CATEGORY_RISK_WEIGHTS: dict[str, int] = {
 DETECTION_METHOD_WEIGHTS: dict[str, int] = {
     "decompilation": 10,
     "import": 8,
-    "name_match": 6,
+    "name": 6,
+    "name+decompilation": 10,
     "string": 4,
 }
+
+
+@dataclass(frozen=True)
+class FunctionDescriptor:
+    """Represents a discovered function within a binary."""
+    name: str
+    address: int
+    size: int = 0
 
 
 @dataclass(frozen=True)
@@ -63,7 +73,7 @@ class BannedFunction:
     address: int
     size: int
     banned_calls: tuple[str, ...]  # tuple for immutability (frozen dataclass requires hashable fields)
-    detection_method: str  # 'name_match', 'import', 'string', 'decompilation'
+    detection_method: str  # 'name', 'import', 'string', 'decompilation', 'name+decompilation'
     category: str | None = None
 
     @property
@@ -116,12 +126,30 @@ class AnalysisResult:
         return any(f.is_critical for f in self.detected_functions)
 
 
+@dataclass(frozen=True)
+class DirectoryAnalysisSummary:
+    """Represents the result of analyzing a directory of binaries."""
+    directory: str
+    analyzed_results: tuple[AnalysisResult, ...]
+    total_files: int
+
+    @property
+    def analyzed_files(self) -> int:
+        return len(self.analyzed_results)
+
+    @property
+    def total_findings(self) -> int:
+        return sum(result.insecure_count for result in self.analyzed_results)
+
+
 __all__ = [
     # Constants
     "CRITICAL_CATEGORIES",
     "CATEGORY_RISK_WEIGHTS",
     "DETECTION_METHOD_WEIGHTS",
     # Domain entities
+    "FunctionDescriptor",
     "BannedFunction",
     "AnalysisResult",
+    "DirectoryAnalysisSummary",
 ]

@@ -78,7 +78,6 @@ from .orchestrator import (
     decompile_with_selected_decompiler,
     DecompilerOrchestrator,
     create_decompiler_orchestrator,
-    get_default_decompiler_orchestrator,
 )
 
 __all__ = [
@@ -127,6 +126,4 @@ __all__ = [
     # Protocol implementation
     "DecompilerOrchestrator",
     "create_decompiler_orchestrator",
-    # Deprecated (use create_decompiler_orchestrator instead)
-    "get_default_decompiler_orchestrator",
 ]

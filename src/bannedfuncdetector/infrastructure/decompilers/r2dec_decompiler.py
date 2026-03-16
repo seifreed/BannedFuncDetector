@@ -13,9 +13,9 @@ from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     BaseR2Decompiler,
     DecompilerType,
-    _try_decompile_pair,
     check_decompiler_plugin_available,
 )
+from bannedfuncdetector.infrastructure.decompilers.decompiler_support import _try_decompile_pair
 
 
 class R2DecDecompiler(BaseR2Decompiler):

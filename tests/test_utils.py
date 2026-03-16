@@ -1,9 +1,8 @@
-import io
 import os
 import subprocess
 import sys
 
-from bannedfuncdetector.file_detection import is_executable_file, find_pe_files
+from bannedfuncdetector.infrastructure.file_detection import is_executable_file, find_pe_files
 from bannedfuncdetector.infrastructure.adapters.r2ai_server import check_r2ai_server_available
 from conftest import start_test_server
 
@@ -216,36 +215,23 @@ def test_check_r2ai_server_available_start_server_with_model(r2ai_server_single_
         os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_start_server_error(monkeypatch, r2ai_server_shim, stdin_stream):
-    import bannedfuncdetector.infrastructure.adapters.r2ai_server as r2ai_server
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}:{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\n\n")
+def test_launch_server_process_popen_error():
+    """Test _launch_server_process handles Popen failure gracefully."""
+    from bannedfuncdetector.infrastructure.adapters.r2ai_server import _launch_server_process
 
     def raise_error(*_args, **_kwargs):
-        # Use OSError which is a realistic exception for subprocess.Popen failures
-        # (e.g., command not found)
         raise OSError("boom")
 
-    class DummyResult:
-        def __init__(self, returncode=0, stdout="model-a\n"):
-            self.returncode = returncode
-            self.stdout = stdout
-            self.stderr = ""
-
-    def fake_run(command, *args, **kwargs):
-        if isinstance(command, list) and "-m" in command:
-            return DummyResult(stdout="model-a\n")
-        return DummyResult(stdout="usage: r2ai-server")
-
-    monkeypatch.setattr(r2ai_server.subprocess, "run", fake_run)
-    monkeypatch.setattr(r2ai_server.subprocess, "Popen", raise_error)
+    # _launch_server_process accepts a popen callable for testability
     try:
-        assert check_r2ai_server_available("http://127.0.0.1:9") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
+        _launch_server_process(
+            ["r2ai-server", "-l", "r2ai"],
+            popen=raise_error,
+        )
+        launched = True
+    except OSError:
+        launched = False
+    assert launched is False
 
 
 def test_check_r2ai_server_available_start_server_timeout(r2ai_server_no_server_shim, stdin_stream, path_with_shim):
@@ -261,28 +247,16 @@ def test_check_r2ai_server_available_start_server_timeout(r2ai_server_no_server_
         os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_install_error(monkeypatch, r2ai_server_fail_shim, stdin_stream):
-    import bannedfuncdetector.infrastructure.adapters.r2ai_server as r2ai_server
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}:{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\n")
+def test_prompt_install_r2ai_server_run_error():
+    """Test _prompt_install_r2ai_server handles install failure gracefully."""
+    from bannedfuncdetector.infrastructure.adapters.r2ai_server import _prompt_install_r2ai_server
 
-    def fake_run(command, *args, **kwargs):
-        # Check if this is an r2pm install command (may have absolute path after _resolve_command)
-        cmd_str = str(command)
-        if "r2pm" in cmd_str and "install" in cmd_str:
-            # Use subprocess.CalledProcessError which is caught by the exception handler
-            raise subprocess.CalledProcessError(1, command, "Install failed")
-        class Dummy:
-            returncode = 1
-            stdout = ""
-            stderr = ""
-        return Dummy()
+    def failing_run(command, *args, **kwargs):
+        raise subprocess.CalledProcessError(1, command, "Install failed")
 
-    monkeypatch.setattr(r2ai_server.subprocess, "run", fake_run)
-    try:
-        assert check_r2ai_server_available("http://127.0.0.1:18084") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
+    result = _prompt_install_r2ai_server(
+        "http://127.0.0.1:9",
+        prompt_callback=lambda _prompt: "y",
+        run=failing_run,
+    )
+    assert result is False

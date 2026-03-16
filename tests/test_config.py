@@ -1,21 +1,9 @@
 import json
-import os
-import tempfile
 
-import pytest
 
 import bannedfuncdetector.infrastructure.config_repository as config_module
 
-
-@pytest.fixture
-def reset_config():
-    """Fixture to save and restore CONFIG state after each test."""
-    original = config_module.CONFIG.to_dict()
-    yield
-    config_module.CONFIG._update_internal(original)
-
-
-def test_load_config_missing_file(tmp_path, reset_config):
+def test_load_config_missing_file(tmp_path):
     missing = tmp_path / "missing.json"
     result = config_module.load_config(str(missing))
     # Should return default config when file is missing
@@ -24,7 +12,7 @@ def test_load_config_missing_file(tmp_path, reset_config):
     assert "output" in result
 
 
-def test_load_config_updates_nested(tmp_path, reset_config):
+def test_load_config_updates_nested(tmp_path):
     cfg = {
         "decompiler": {
             "type": "r2dec",
@@ -42,13 +30,12 @@ def test_load_config_updates_nested(tmp_path, reset_config):
     # Should return the merged config dict
     assert isinstance(result, dict)
     assert result["decompiler"]["type"] == "r2dec"
-    assert config_module.CONFIG["decompiler"]["type"] == "r2dec"
-    assert config_module.CONFIG["decompiler"]["options"]["default"]["enabled"] is False
-    assert config_module.CONFIG["output"]["directory"] == "out"
-    assert config_module.CONFIG["new_key"] == "value"
+    assert result["decompiler"]["options"]["default"]["enabled"] is False
+    assert result["output"]["directory"] == "out"
+    assert result["new_key"] == "value"
 
 
-def test_load_config_adds_new_subkeys(tmp_path, reset_config):
+def test_load_config_adds_new_subkeys(tmp_path):
     cfg = {
         "decompiler": {
             "new_group": {"enabled": True},
@@ -63,12 +50,12 @@ def test_load_config_adds_new_subkeys(tmp_path, reset_config):
     result = config_module.load_config(str(cfg_path))
     # Should return the merged config dict
     assert isinstance(result, dict)
-    assert config_module.CONFIG["decompiler"]["options"]["default"]["new_option"] is True
-    assert config_module.CONFIG["decompiler"]["options"]["new_section"]["enabled"] is True
-    assert config_module.CONFIG["decompiler"]["new_group"]["enabled"] is True
+    assert result["decompiler"]["options"]["default"]["new_option"] is True
+    assert result["decompiler"]["options"]["new_section"]["enabled"] is True
+    assert result["decompiler"]["new_group"]["enabled"] is True
 
 
-def test_load_config_invalid_json(tmp_path, reset_config):
+def test_load_config_invalid_json(tmp_path):
     cfg_path = tmp_path / "config.json"
     cfg_path.write_text("{invalid json")
     result = config_module.load_config(str(cfg_path))

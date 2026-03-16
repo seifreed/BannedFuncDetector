@@ -10,10 +10,8 @@ This test suite validates real code behavior without mocks or stubs.
 Author: Marc Rivero | @seifreed
 """
 
-import pytest
 from bannedfuncdetector.infrastructure.decompilers.registry import (
     DECOMPILER_INSTANCES,
-    DecompilerInstance,
     create_decompiler,
 )
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import DecompilerType
@@ -21,7 +19,6 @@ from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAI
 from bannedfuncdetector.infrastructure.decompilers.default_decompiler import DefaultDecompiler
 from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import R2DecDecompiler
 from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import R2GhidraDecompiler
-from conftest import FakeR2
 
 
 class TestDecompilerRegistry:

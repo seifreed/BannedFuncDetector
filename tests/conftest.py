@@ -1,15 +1,15 @@
+import copy
 import io
 import os
-import shutil
-import socket
 import subprocess
-import tempfile
 import textwrap
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import pytest
+import r2pipe
 
 
 # Type aliases for better readability
@@ -105,39 +105,48 @@ class FakeR2:
             return handler()
         return handler
 
+    def quit(self) -> None:
+        pass
+
+    def __enter__(self) -> "FakeR2":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
 
 # =============================================================================
-# MOCK FACTORIES FOR TESTING
+# FAKE FACTORIES FOR TESTING
 # =============================================================================
 
 
-class MockR2ClientFactory:
+class FakeR2ClientFactory:
     """
-    Mock factory for creating mock R2Client instances in tests.
+    Fake factory for creating fake R2Client instances in tests.
 
     This factory is designed for use in unit tests where you don't want
-    to interact with real binaries. It returns a configurable mock client.
+    to interact with real binaries. It returns a configurable fake client.
 
     Attributes:
-        _mock_client: The mock client to return from create().
+        _fake_client: The fake client to return from create().
 
     Example:
-        >>> mock_client = FakeR2(cmdj_map={"aflj": [{"name": "main"}]})
-        >>> factory = MockR2ClientFactory(mock_client)
+        >>> fake_client = FakeR2(cmdj_map={"aflj": [{"name": "main"}]})
+        >>> factory = FakeR2ClientFactory(fake_client)
         >>> client = factory.create("/any/path")
         >>> functions = client.cmdj("aflj")
         >>> assert functions[0]["name"] == "main"
     """
 
-    def __init__(self, mock_client: Any) -> None:
+    def __init__(self, fake_client: Any) -> None:
         """
-        Initialize the factory with a mock client.
+        Initialize the factory with a fake client.
 
         Args:
-            mock_client: The mock client instance to return from create().
+            fake_client: The fake client instance to return from create().
                         Should implement the IR2Client protocol.
         """
-        self._mock_client = mock_client
+        self._fake_client = fake_client
 
     def create(
         self,
@@ -145,21 +154,24 @@ class MockR2ClientFactory:
         flags: List[str] | None = None
     ) -> Any:
         """
-        Return the configured mock client.
+        Return the configured fake client.
 
         Args:
-            file_path: Ignored - the mock client is returned regardless.
-            flags: Ignored - the mock client is returned regardless.
+            file_path: Ignored - the fake client is returned regardless.
+            flags: Ignored - the fake client is returned regardless.
 
         Returns:
-            The mock client configured in __init__.
+            The fake client configured in __init__.
         """
-        return self._mock_client
+        return self._fake_client
 
 
-class MockConfigRepository:
+# Backward-compatible alias
+
+
+class FakeConfigRepository:
     """
-    Mock configuration repository for testing.
+    Fake configuration repository for testing.
 
     This class provides a simple implementation of IConfigRepository
     that can be configured with test-specific values.
@@ -168,17 +180,17 @@ class MockConfigRepository:
         _config: Dictionary containing the configuration values.
 
     Example:
-        >>> mock_config = MockConfigRepository({
+        >>> fake_config = FakeConfigRepository({
         ...     "banned_functions": ["strcpy"],
         ...     "output": {"directory": "/tmp/test"}
         ... })
-        >>> assert mock_config.get("banned_functions") == ["strcpy"]
-        >>> assert mock_config.get_output_dir() == "/tmp/test"
+        >>> assert fake_config.get("banned_functions") == ["strcpy"]
+        >>> assert fake_config.get_output_dir() == "/tmp/test"
     """
 
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         """
-        Initialize the mock configuration.
+        Initialize the fake configuration.
 
         Args:
             config: Dictionary containing configuration values.
@@ -215,7 +227,56 @@ class MockConfigRepository:
 
     def to_dict(self) -> Dict[str, Any]:
         """Return the configuration as a dictionary."""
-        return dict(self._config)
+        return copy.deepcopy(self._config)
+
+
+# Backward-compatible alias
+
+
+class FakeDecompilerOrchestrator:
+    """
+    Configurable fake implementation of IDecompilerOrchestrator for testing.
+
+    Supports configurable return values for decompile_function,
+    select_decompiler, and check_decompiler_available.
+
+    Args:
+        decompile_result: Result to return from decompile_function.
+            If callable, it will be called with (r2, function_name, decompiler_type).
+            If an Exception instance, it will be raised.
+            Otherwise returned directly (should be a Result[str, str]).
+        select_result: Value to return from select_decompiler. Defaults to "default".
+        available_result: Value to return from check_decompiler_available. Defaults to True.
+
+    Example:
+        >>> from bannedfuncdetector.domain.result import ok
+        >>> orch = FakeDecompilerOrchestrator(decompile_result=ok("int main() {}"))
+        >>> result = orch.decompile_function(None, "main", "default")
+        >>> assert result.is_ok()
+    """
+
+    def __init__(
+        self,
+        decompile_result: Any = None,
+        select_result: str = "default",
+        available_result: bool = True,
+    ) -> None:
+        self._decompile_result = decompile_result
+        self._select_result = select_result
+        self._available_result = available_result
+
+    def decompile_function(self, r2: Any, function_name: str, decompiler_type: Any = None, **options: Any) -> Any:
+        if isinstance(self._decompile_result, Exception):
+            raise self._decompile_result
+        if callable(self._decompile_result):
+            return self._decompile_result(r2, function_name, decompiler_type)
+        return self._decompile_result
+
+    def select_decompiler(self, requested: Any = None, force: bool = False) -> str:
+        return self._select_result
+
+    def check_decompiler_available(self, decompiler_type: Any) -> bool:
+        return self._available_result
 
 
 @pytest.fixture
@@ -331,8 +392,8 @@ class _TestHTTPHandler(BaseHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
-    def log_message(self, format, *args):  # noqa: N802 - match BaseHTTPRequestHandler
-        return
+    def log_message(self, fmt: str, *args: object) -> None:
+        """Suppress request logging during tests."""
 
 
 def start_test_server(
@@ -419,6 +480,18 @@ def compiled_binary(tmp_path_factory):
         text=True,
     )
     return str(binary_path)
+
+
+def open_r2pipe_with_retry(binary_path: str, *, flags: list[str] | None = None, attempts: int = 3, delay: float = 0.05):
+    last_error = None
+    for _attempt in range(attempts):
+        try:
+            return r2pipe.open(binary_path, flags=flags or ["-2"])
+        except (BrokenPipeError, OSError, RuntimeError) as exc:
+            last_error = exc
+            time.sleep(delay)
+    assert last_error is not None
+    raise last_error
 
 
 @pytest.fixture()
@@ -718,18 +791,18 @@ def path_with_shim(shim_path: Any) -> Callable[[Any], Any]:
 
 
 @pytest.fixture()
-def mock_config() -> MockConfigRepository:
+def fake_config() -> FakeConfigRepository:
     """
-    Fixture providing a MockConfigRepository with default test configuration.
+    Fixture providing a FakeConfigRepository with default test configuration.
 
     Returns:
-        MockConfigRepository: A mock configuration repository with sensible defaults.
+        FakeConfigRepository: A fake configuration repository with sensible defaults.
 
     Example:
-        def test_with_mock_config(mock_config):
-            assert mock_config.get_output_dir() == "output"
+        def test_with_fake_config(fake_config):
+            assert fake_config.get_output_dir() == "output"
     """
-    return MockConfigRepository({
+    return FakeConfigRepository({
         "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
         "output": {"directory": "output", "format": "json"},
         "decompiler": {"type": "default", "options": {}},
@@ -737,20 +810,22 @@ def mock_config() -> MockConfigRepository:
     })
 
 
+
+
 @pytest.fixture()
-def mock_config_factory() -> Callable[..., MockConfigRepository]:
+def fake_config_factory() -> Callable[..., FakeConfigRepository]:
     """
-    Fixture providing a factory function to create configured MockConfigRepository instances.
+    Fixture providing a factory function to create configured FakeConfigRepository instances.
 
     Returns:
-        A factory function that accepts a config dict and returns a MockConfigRepository.
+        A factory function that accepts a config dict and returns a FakeConfigRepository.
 
     Example:
-        def test_with_custom_config(mock_config_factory):
-            config = mock_config_factory({"banned_functions": ["strcpy"]})
+        def test_with_custom_config(fake_config_factory):
+            config = fake_config_factory({"banned_functions": ["strcpy"]})
             assert config.get("banned_functions") == ["strcpy"]
     """
-    def _factory(config: Optional[Dict[str, Any]] = None) -> MockConfigRepository:
+    def _factory(config: Optional[Dict[str, Any]] = None) -> FakeConfigRepository:
         default_config = {
             "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
             "output": {"directory": "output", "format": "json"},
@@ -759,8 +834,10 @@ def mock_config_factory() -> Callable[..., MockConfigRepository]:
         }
         if config:
             default_config.update(config)
-        return MockConfigRepository(default_config)
+        return FakeConfigRepository(default_config)
     return _factory
+
+
 
 
 @pytest.fixture()
@@ -788,26 +865,26 @@ def di_config():
 
 
 @pytest.fixture()
-def mock_r2_factory(fake_r2_factory: Callable[..., "FakeR2"]) -> Callable[..., MockR2ClientFactory]:
+def fake_r2_client_factory(fake_r2_factory: Callable[..., "FakeR2"]) -> Callable[..., FakeR2ClientFactory]:
     """
-    Fixture providing a factory for creating MockR2ClientFactory instances.
+    Fixture providing a factory for creating FakeR2ClientFactory instances.
 
     Args:
         fake_r2_factory: The FakeR2 factory fixture.
 
     Returns:
-        A factory function that creates MockR2ClientFactory with configured FakeR2.
+        A factory function that creates FakeR2ClientFactory with configured FakeR2.
 
     Example:
-        def test_with_mock_r2(mock_r2_factory):
-            factory = mock_r2_factory(cmdj_map={"aflj": [{"name": "main"}]})
+        def test_with_fake_r2(fake_r2_client_factory):
+            factory = fake_r2_client_factory(cmdj_map={"aflj": [{"name": "main"}]})
             client = factory.create("/any/path")
             assert client.cmdj("aflj")[0]["name"] == "main"
     """
     def _factory(
         cmd_map: Optional[CommandMap] = None,
         cmdj_map: Optional[CommandJsonMap] = None
-    ) -> MockR2ClientFactory:
+    ) -> FakeR2ClientFactory:
         fake = fake_r2_factory(cmd_map=cmd_map, cmdj_map=cmdj_map)
-        return MockR2ClientFactory(fake)
+        return FakeR2ClientFactory(fake)
     return _factory

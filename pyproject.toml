@@ -64,7 +64,7 @@ where = ["src"]
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
-exclude = "^(venv|tests|__pycache__|output|saved)/"
+exclude = "^(build|dist|venv|tests|__pycache__|output|saved)/"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true

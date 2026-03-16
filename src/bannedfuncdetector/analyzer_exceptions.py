@@ -29,10 +29,15 @@ class AnalysisError(AnalyzerError):
     """Raised when an error occurs during binary analysis."""
 
 
+class TransientR2Error(AnalyzerError):
+    """Raised when r2/r2pipe fails in a way that is safe to retry."""
+
+
 __all__ = [
     "AnalyzerError",
     "BinaryNotFoundError",
     "DirectoryNotFoundError",
     "DecompilerNotAvailableError",
     "AnalysisError",
+    "TransientR2Error",
 ]

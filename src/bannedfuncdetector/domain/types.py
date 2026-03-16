@@ -1,115 +1,117 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Type aliases for common complex types used throughout the codebase.
-
-This module defines type aliases for complex types to improve readability
-and maintainability of function signatures across the codebase.
+Type aliases and shared domain utilities.
 
 Author: Marc Rivero | @seifreed
 """
-from typing import Any, Callable, TypeAlias, TypedDict
+import re
+from typing import Any, TypeAlias
 
+from .entities import (
+    BannedFunction,
+    FunctionDescriptor,
+)
+from .error_types import ErrorCategory
 from .result import Result
-
-
-# =============================================================================
-# TypedDict definitions for structured data
-# =============================================================================
-
-
-class DetectionResult(TypedDict, total=False):
-    """
-    Detection result for a banned function.
-
-    Required fields:
-        name: Name of the function containing banned calls.
-        address: Memory address of the function (int or hex string).
-        banned_functions: List of banned function names found.
-
-    Optional fields:
-        detection_method: Method used for detection (e.g., "name", "name_match", "decompilation").
-        match_type: Type of match (e.g., "import", "string_reference", "decompilation").
-        decompiler: Which decompiler was used (e.g., "r2ghidra", "r2dec").
-        size: Size of the function in bytes.
-        type: Category of the banned function (e.g., "memory", "string").
-        string: The string reference that was found (for string_reference match_type).
-    """
-
-    name: str
-    address: int | str
-    banned_functions: list[str]
-    detection_method: str
-    match_type: str
-    decompiler: str
-    size: int
-    type: str
-    string: str
-
-
-class FunctionInfo(TypedDict, total=False):
-    """
-    Function information from binary analysis.
-
-    Required fields:
-        name: Name of the function.
-        offset: Memory offset/address of the function.
-
-    Optional fields:
-        size: Size of the function in bytes.
-    """
-
-    name: str
-    offset: int
-    size: int
-
-
-class AnalysisReport(TypedDict, total=False):
-    """
-    Complete analysis report for a binary.
-
-    Required fields:
-        total_functions: Total number of functions found in the binary.
-        unsafe_functions: Number of functions containing banned calls.
-        results: List of detection results for banned functions.
-
-    Optional fields:
-        binary: Path to the analyzed binary file.
-    """
-
-    binary: str
-    total_functions: int
-    unsafe_functions: int
-    results: list[DetectionResult]
-
-# R2 types
-R2JsonOutput: TypeAlias = dict[str, Any] | list[Any] | None
-R2Command: TypeAlias = str
 
 # Decompiler types
 DecompiledCode: TypeAlias = str
-DecompilerConfig: TypeAlias = dict[str, Any]
-
-# Result type aliases
-DetectionResultType: TypeAlias = Result[DetectionResult, str]
-AnalysisResultType: TypeAlias = Result[AnalysisReport, str]
 DecompilationResultType: TypeAlias = Result[DecompiledCode, str]
 
-# Callable types
-FunctionAnalyzer: TypeAlias = Callable[..., DetectionResultType]
-ParallelExecutor: TypeAlias = Callable[..., list[DetectionResult]]
+
+def classify_error(exc: Exception) -> str:
+    """Classify an exception into a standard error category label."""
+    if isinstance(exc, (OSError, IOError)):
+        return ErrorCategory.IO
+    if isinstance(exc, (RuntimeError, ValueError)):
+        return ErrorCategory.RUNTIME
+    if isinstance(exc, (KeyError, AttributeError, TypeError)):
+        return ErrorCategory.DATA
+    return ErrorCategory.ERROR
+
+
+def _compile_call_pattern(func_name: str) -> re.Pattern[str]:
+    """Compile a call-site regex pattern for a function name."""
+    return re.compile(r"\b" + re.escape(func_name) + r"\s*\(", re.IGNORECASE)
+
+
+# Pre-compiled call-site patterns for all canonical banned functions.
+# Built once at module load; used by both application and infrastructure layers.
+_CALL_PATTERN_CACHE: dict[str, re.Pattern[str]] = {}
+
+
+def _ensure_call_pattern_cache() -> dict[str, re.Pattern[str]]:
+    """Lazily build the call-pattern cache on first use (avoids circular import at module load)."""
+    if not _CALL_PATTERN_CACHE:
+        from .banned_functions import BANNED_FUNCTIONS
+        for f in BANNED_FUNCTIONS:
+            _CALL_PATTERN_CACHE[f] = _compile_call_pattern(f)
+    return _CALL_PATTERN_CACHE
+
+
+def search_banned_call_in_text(text: str, func_name: str) -> bool:
+    """Check if a banned function call pattern exists in text.
+
+    Uses pre-compiled patterns from the module-level cache for canonical
+    banned function names; falls back to on-demand compilation for custom names.
+    """
+    cache = _ensure_call_pattern_cache()
+    pattern = cache.get(func_name)
+    if pattern is None:
+        pattern = _compile_call_pattern(func_name)
+    return bool(pattern.search(text))
+
+
+def safe_parse_address(addr: Any) -> int:
+    """Parse an address value safely, returning 0 for unparseable inputs.
+
+    Handles: int, hex string ("0x401000", "4010a0"), None, empty string,
+    and non-hex strings ("main", "sym.main") without raising.
+    """
+    if addr is None:
+        return 0
+    if isinstance(addr, int):
+        return addr
+    if isinstance(addr, str):
+        stripped = addr.strip()
+        if not stripped:
+            return 0
+        try:
+            return int(stripped, 16)
+        except ValueError:
+            return 0
+    return 0
+
+
+def create_detection_result(
+    func_name: str,
+    func_addr: Any,
+    banned_functions: list[str],
+    detection_method: str,
+) -> BannedFunction:
+    """Create a standardized banned-function entity with category assignment."""
+    from .banned_functions import get_highest_risk_category
+
+    parsed_address = safe_parse_address(func_addr)
+    category = get_highest_risk_category(banned_functions) if banned_functions else None
+    return BannedFunction(
+        name=func_name,
+        address=parsed_address,
+        size=0,
+        banned_calls=tuple(banned_functions),
+        detection_method=detection_method,
+        category=category,
+    )
+
 
 __all__ = [
-    "DetectionResult",
-    "FunctionInfo",
-    "AnalysisReport",
-    "R2JsonOutput",
-    "R2Command",
     "DecompiledCode",
-    "DecompilerConfig",
-    "DetectionResultType",
-    "AnalysisResultType",
     "DecompilationResultType",
-    "FunctionAnalyzer",
-    "ParallelExecutor",
+    "FunctionDescriptor",
+    "BannedFunction",
+    "classify_error",
+    "search_banned_call_in_text",
+    "safe_parse_address",
+    "create_detection_result",
 ]

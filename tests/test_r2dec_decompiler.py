@@ -10,13 +10,11 @@ This test suite validates real code behavior without mocks or stubs.
 Author: Marc Rivero | @seifreed
 """
 
-import pytest
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilerType,
     check_decompiler_plugin_available,
 )
 from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import R2DecDecompiler
-from conftest import FakeR2
 
 
 class TestR2DecAvailability:

@@ -146,6 +146,10 @@ class IConfigRepository(Protocol):
         """Get the configured output directory path."""
         ...
 
+    def to_dict(self) -> dict[str, Any]:
+        """Return a deep-copyable dictionary representation of the configuration."""
+        ...
+
 
 @runtime_checkable
 class IDecompilerOrchestrator(Protocol):

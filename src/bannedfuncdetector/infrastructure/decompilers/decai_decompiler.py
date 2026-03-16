@@ -18,11 +18,11 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilationError,
     DecompilerType,
     FunctionNotFoundError,
-    _get_function_offset,
     check_decompiler_plugin_available,
     get_function_info,
     is_valid_result,
 )
+from bannedfuncdetector.infrastructure.decompilers.decompiler_support import _get_function_offset
 
 # Configure logging
 logger = logging.getLogger(__name__)

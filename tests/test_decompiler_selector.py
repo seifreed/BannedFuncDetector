@@ -10,7 +10,6 @@ This test suite validates real code behavior without mocks or stubs.
 Author: Marc Rivero | @seifreed
 """
 
-import pytest
 from bannedfuncdetector.infrastructure.decompilers.availability import (
     check_decompiler_available,
     get_available_decompiler,
@@ -19,7 +18,11 @@ from bannedfuncdetector.infrastructure.decompilers.selector import (
     select_decompiler,
 )
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import DecompilerType
-from bannedfuncdetector.infrastructure.config_repository import CONFIG, get_default_config
+from bannedfuncdetector.factories import create_config_from_dict
+
+
+def make_config():
+    return create_config_from_dict({})
 
 
 class TestCheckDecompilerAvailable:
@@ -129,60 +132,60 @@ class TestSelectDecompiler:
 
     def test_select_decompiler_default_from_config(self):
         """Test selection using config default."""
-        result = select_decompiler()
+        result = select_decompiler(config=make_config())
 
         assert isinstance(result, str)
         assert result in ["r2ghidra", "r2dec", "default", "decai"]
 
     def test_select_decompiler_force_mode(self):
         """Test that force mode bypasses availability check."""
-        result = select_decompiler("r2ghidra", force=True)
+        result = select_decompiler("r2ghidra", force=True, config=make_config())
 
         assert result == "r2ghidra"
 
     def test_select_decompiler_force_mode_unknown(self):
         """Test force mode with unknown decompiler."""
-        result = select_decompiler("unknown", force=True)
+        result = select_decompiler("unknown", force=True, config=make_config())
 
         assert result == "unknown"
 
     def test_select_decompiler_available_requested(self):
         """Test selection when requested decompiler is available."""
         # Default is always available
-        result = select_decompiler("default", verbose=False)
+        result = select_decompiler("default", verbose=False, config=make_config())
 
         assert result == "default"
 
     def test_select_decompiler_fallback_to_alternative(self):
         """Test fallback when requested is unavailable."""
         # Try to request something that might not be available
-        result = select_decompiler("decai", verbose=False)
+        result = select_decompiler("decai", verbose=False, config=make_config())
 
         # Should return a valid decompiler (might be decai or fallback)
         assert result in ["decai", "r2ghidra", "r2dec", "default"]
 
     def test_select_decompiler_with_enum(self):
         """Test selection with DecompilerType enum."""
-        result = select_decompiler(DecompilerType.DEFAULT)
+        result = select_decompiler(DecompilerType.DEFAULT, config=make_config())
 
         assert result == "default"
 
     def test_select_decompiler_verbose_mode(self):
         """Test selection with verbose logging."""
-        result = select_decompiler("default", verbose=True)
+        result = select_decompiler("default", verbose=True, config=make_config())
 
         assert result == "default"
 
     def test_select_decompiler_r2ai_replaced(self):
         """Test that r2ai is replaced with default."""
-        result = select_decompiler("r2ai", verbose=False)
+        result = select_decompiler("r2ai", verbose=False, config=make_config())
 
         # r2ai should be replaced with default
         assert result in ["r2ghidra", "r2dec", "default"]
 
     def test_select_decompiler_none_uses_config(self):
         """Test that None uses config value."""
-        result = select_decompiler(None, verbose=False)
+        result = select_decompiler(None, verbose=False, config=make_config())
 
         # Should use config default
         assert isinstance(result, str)
@@ -206,7 +209,7 @@ class TestDecompilerSelectionIntegration:
         ]
 
         for test_case in test_cases:
-            result = select_decompiler(test_case, verbose=False)
+            result = select_decompiler(test_case, verbose=False, config=make_config())
             assert isinstance(result, str)
             assert len(result) > 0
 
@@ -215,7 +218,7 @@ class TestDecompilerSelectionIntegration:
         test_cases = ["unknown", "custom", "anything"]
 
         for test_case in test_cases:
-            result = select_decompiler(test_case, force=True, verbose=False)
+            result = select_decompiler(test_case, force=True, verbose=False, config=make_config())
             assert result == test_case
 
     def test_get_available_decompiler_consistency(self):

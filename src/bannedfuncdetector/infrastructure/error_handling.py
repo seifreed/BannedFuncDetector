@@ -14,6 +14,7 @@ import functools
 import logging
 from typing import TypeVar, Callable, ParamSpec, overload
 
+from bannedfuncdetector.domain.error_types import ErrorCategory
 from bannedfuncdetector.domain.result import Result, err
 
 # Configure module logger
@@ -22,19 +23,6 @@ logger = logging.getLogger(__name__)
 # Type variables for generic type support
 T = TypeVar('T')
 P = ParamSpec('P')
-
-
-class ErrorCategory:
-    """
-    Enumeration of error categories for classification.
-
-    Each category groups related exception types together for
-    consistent handling and messaging.
-    """
-    DATA = "data"
-    RUNTIME = "runtime"
-    IO = "io"
-    ANALYSIS = "analysis"
 
 
 # Exception groups by category
@@ -54,21 +42,14 @@ def _format_error_message(
     Format a standardized error message.
 
     Args:
-        category: The error category (data, runtime, io).
+        category: The error category label (e.g. "Data error", "I/O error").
         operation_name: Human-readable description of the operation.
         exception: The caught exception.
 
     Returns:
         Formatted error message string.
     """
-    category_labels = {
-        ErrorCategory.DATA: "Data error",
-        ErrorCategory.RUNTIME: "Runtime error",
-        ErrorCategory.IO: "I/O error",
-        ErrorCategory.ANALYSIS: "Analysis error",
-    }
-    label = category_labels.get(category, "Error")
-    return f"{label} {operation_name}: {str(exception)}"
+    return f"{category} {operation_name}: {str(exception)}"
 
 
 def _log_error(
@@ -81,13 +62,13 @@ def _log_error(
     Log an error if logging is enabled for the category.
 
     Args:
-        category: The error category.
+        category: The error category label.
         func_name: Name of the function where error occurred.
         exception: The caught exception.
         should_log: Whether to log this error.
     """
     if should_log:
-        logger.error(f"{category.capitalize()} error in {func_name}: {exception}")
+        logger.error(f"{category} in {func_name}: {exception}")
 
 
 @overload
@@ -155,7 +136,7 @@ def handle_errors(
         For analysis functions:
 
         >>> @handle_errors("processing function", include_analysis_errors=True)
-        ... def process_function(r2, func) -> Result[DetectionResult, str]:
+        ... def process_function(r2, func) -> Result[BannedFunction, str]:
         ...     # Function processing with possible AnalysisError
         ...     return ok(detection)
 

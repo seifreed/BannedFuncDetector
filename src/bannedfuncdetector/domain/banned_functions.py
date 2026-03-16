@@ -16,6 +16,8 @@ Author: Marc Rivero | @seifreed
 
 from typing import Any
 
+from bannedfuncdetector.domain.entities import CATEGORY_RISK_WEIGHTS
+
 # =============================================================================
 # BANNED FUNCTIONS - CATEGORIZED
 # =============================================================================
@@ -96,12 +98,12 @@ BANNED_FUNCTIONS_CATEGORIZED: dict[str, list[str]] = {
 
     # Banned file manipulation functions
     "file": [
-        "fopen", "_wfopen", "fclose", "fread", "fwrite", "fprintf", "fscanf",
+        "fopen", "_wfopen", "fclose", "fread", "fwrite", "fprintf",
         "fgets", "fputs", "fseek", "ftell", "rewind", "fflush", "ferror",
         "feof", "clearerr", "tmpfile", "tmpnam", "freopen", "_wfreopen",
         "fgetpos", "fsetpos", "ungetc", "setvbuf", "setbuf", "perror",
         "remove", "rename", "_wrename", "fputc", "fgetc", "putc", "getc",
-        "putchar", "getchar", "open", "close", "read", "write", "lseek",
+        "getchar", "open", "close", "read", "write", "lseek",
         "unlink",
     ],
 
@@ -208,9 +210,31 @@ BANNED_FUNCTIONS: set[str] = {
 }
 
 
+def _build_lowercase_category_index() -> dict[str, str]:
+    """Build a lowercase function name -> category lookup for case-insensitive matching.
+
+    If a function appears in multiple categories, the one with the higher
+    risk weight (from entities.CATEGORY_RISK_WEIGHTS) wins.
+    """
+    index: dict[str, str] = {}
+    for category, funcs in BANNED_FUNCTIONS_CATEGORIZED.items():
+        cat_weight = CATEGORY_RISK_WEIGHTS.get(category, 5)
+        for func in funcs:
+            key = func.lower()
+            if key in index:
+                existing_weight = CATEGORY_RISK_WEIGHTS.get(index[key], 5)
+                if cat_weight <= existing_weight:
+                    continue  # keep the higher-risk category
+            index[key] = category
+    return index
+
+
+_CATEGORY_INDEX: dict[str, str] = _build_lowercase_category_index()
+
+
 def get_category_for_function(func_name: str) -> str | None:
     """
-    Get the category for a given banned function name.
+    Get the category for a given banned function name (case-insensitive).
 
     Args:
         func_name: The name of the function to look up.
@@ -221,15 +245,41 @@ def get_category_for_function(func_name: str) -> str | None:
     Examples:
         >>> get_category_for_function("strcpy")
         'string_copy'
+        >>> get_category_for_function("STRCPY")
+        'string_copy'
         >>> get_category_for_function("malloc")
         'memory'
         >>> get_category_for_function("unknown_func")
         None
     """
-    for category, funcs in BANNED_FUNCTIONS_CATEGORIZED.items():
-        if func_name in funcs:
-            return category
-    return None
+    return _CATEGORY_INDEX.get(func_name.lower())
+
+
+def get_highest_risk_category(func_names: list[str] | tuple[str, ...]) -> str | None:
+    """Return the category with the highest risk weight among the given functions.
+
+    Args:
+        func_names: Banned function names to evaluate.
+
+    Returns:
+        The category with the highest CATEGORY_RISK_WEIGHTS, or None if none found.
+
+    Examples:
+        >>> get_highest_risk_category(["printf", "strcpy"])
+        'string_copy'
+        >>> get_highest_risk_category(["printf"])
+        'stdio'
+    """
+    best_category: str | None = None
+    best_weight = -1
+    for name in func_names:
+        cat = get_category_for_function(name)
+        if cat is not None:
+            weight = CATEGORY_RISK_WEIGHTS.get(cat, 5)
+            if weight > best_weight:
+                best_weight = weight
+                best_category = cat
+    return best_category
 
 
 def get_banned_functions_set(config: Any = None) -> set[str]:
@@ -254,11 +304,11 @@ def get_banned_functions_set(config: Any = None) -> set[str]:
         True
     """
     if config is None:
-        return BANNED_FUNCTIONS.copy()
+        return BANNED_FUNCTIONS
 
     # Config may provide custom banned functions list
     banned_functions_list = config.get("banned_functions") if hasattr(config, 'get') else None
     if banned_functions_list:
         return set(banned_functions_list)
 
-    return BANNED_FUNCTIONS.copy()
+    return BANNED_FUNCTIONS

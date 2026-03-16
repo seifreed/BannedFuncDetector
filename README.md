@@ -154,7 +154,7 @@ print(results)
 
 ## Requirements
 
-- Python 3.14+
+- Python 3.12+
 - radare2 (required)
 - r2ghidra/r2dec (optional decompilers)
 - Ollama + decai plugin (optional for AI-assisted decompilation)
@@ -186,7 +186,7 @@ If you find BannedFuncDetector useful, consider supporting its development:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL-3.0-or-later license - see the [LICENSE](LICENSE) file for details.
 
 **Attribution Required:**
 - Author: **Marc Rivero** | [@seifreed](https://github.com/seifreed)

@@ -14,8 +14,6 @@ Author: Marc Rivero | @seifreed
 """
 
 import logging
-
-from bannedfuncdetector.infrastructure.config_repository import get_default_config
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilerType,
 )
@@ -35,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def resolve_to_decompiler_type(
     decompiler_type: str | DecompilerType | None,
-    config: IConfigRepository | None = None,
+    config: IConfigRepository,
 ) -> DecompilerType:
     """
     Resolve and normalize a decompiler type to its enum form.
@@ -60,17 +58,7 @@ def resolve_to_decompiler_type(
         >>> resolve_to_decompiler_type(None)
         DecompilerType.DEFAULT
 
-    .. deprecated::
-        Passing None for config is deprecated and will raise an error in v2.0.
     """
-    if config is None:
-        import warnings
-        warnings.warn(
-            "Passing None for config is deprecated. Use create_config_from_file() or create_config_from_dict().",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        config = get_default_config()
     if decompiler_type is None:
         type_str = config["decompiler"]["type"]
         return DecompilerType.from_string(type_str)
@@ -88,7 +76,7 @@ def resolve_to_decompiler_type(
 
 def _resolve_requested_decompiler(
     requested: str | DecompilerType | None,
-    config: IConfigRepository | None = None,
+    config: IConfigRepository,
 ) -> str:
     """
     Resolves the requested decompiler to a valid string value.
@@ -106,16 +94,7 @@ def _resolve_requested_decompiler(
 
     Raises:
         ValueError: If config is None.
-
-    .. deprecated::
-        The config parameter will be required in v2.0. Currently raises
-        ValueError if None.
     """
-    if config is None:
-        raise ValueError(
-            "config parameter is required. Use create_config_from_file() or "
-            "create_config_from_dict() to create a configuration."
-        )
     if requested is None:
         decompiler_config = config["decompiler"]
         decompiler_type: str = decompiler_config["type"]
@@ -224,7 +203,8 @@ def select_decompiler(
     requested: str | DecompilerType | None = None,
     force: bool = False,
     verbose: bool = False,
-    config: IConfigRepository | None = None,
+    *,
+    config: IConfigRepository,
 ) -> str:
     """
     Selects an appropriate decompiler based on availability.
@@ -246,17 +226,7 @@ def select_decompiler(
     Returns:
         Selected decompiler type string.
 
-    .. deprecated::
-        Passing None for config is deprecated and will raise an error in v2.0.
     """
-    if config is None:
-        import warnings
-        warnings.warn(
-            "Passing None for config is deprecated. Use create_config_from_file() or create_config_from_dict().",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        config = get_default_config()
     resolved = _resolve_requested_decompiler(requested, config)
 
     if verbose:

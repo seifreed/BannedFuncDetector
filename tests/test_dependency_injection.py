@@ -4,12 +4,11 @@
 Tests for dependency injection patterns in BannedFuncDetector.
 
 This test module demonstrates how to use the new DI-friendly APIs
-for testing components with mock dependencies.
+for testing components with fake dependencies.
 
 Author: Marc Rivero | @seifreed
 """
 
-import pytest
 
 from bannedfuncdetector.factories import (
     DEFAULT_R2_FLAGS,
@@ -18,10 +17,22 @@ from bannedfuncdetector.factories import (
     create_binary_analyzer,
     create_config_from_dict,
 )
-from conftest import MockR2ClientFactory, MockConfigRepository
+from conftest import FakeR2ClientFactory, FakeConfigRepository
+from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
 from bannedfuncdetector.application.binary_analyzer import R2BinaryAnalyzer, analyze_function, analyze_binary
 from bannedfuncdetector.application.directory_scanner import analyze_directory
+from bannedfuncdetector.application.contracts import BinaryAnalysisRequest, FunctionAnalysisRequest, AnalysisRuntime, DirectoryAnalysisRequest
 from bannedfuncdetector.domain.result import Ok, Err
+from bannedfuncdetector.application.dto_mappers import function_descriptor_from_dto
+from bannedfuncdetector.runtime_factories import _default_binary_opener, _default_r2_closer, _default_file_finder
+from bannedfuncdetector.application.analysis_runtime import DirectoryRuntimeServices
+
+
+def _default_binary_services():
+    return BinaryRuntimeServices(
+        binary_opener=_default_binary_opener,
+        r2_closer=_default_r2_closer,
+    )
 
 
 # =============================================================================
@@ -29,44 +40,44 @@ from bannedfuncdetector.domain.result import Ok, Err
 # =============================================================================
 
 
-class TestMockConfigRepository:
-    """Tests for MockConfigRepository."""
+class TestFakeConfigRepository:
+    """Tests for FakeConfigRepository."""
 
     def test_get_returns_configured_value(self):
         """Test that get() returns configured values."""
-        config = MockConfigRepository({"banned_functions": ["strcpy"]})
+        config = FakeConfigRepository({"banned_functions": ["strcpy"]})
         assert config.get("banned_functions") == ["strcpy"]
 
     def test_get_returns_default_for_missing_key(self):
         """Test that get() returns default for missing keys."""
-        config = MockConfigRepository({})
+        config = FakeConfigRepository({})
         assert config.get("missing", "default") == "default"
 
     def test_getitem_returns_configured_value(self):
         """Test that bracket notation works."""
-        config = MockConfigRepository({"output": {"directory": "/tmp"}})
+        config = FakeConfigRepository({"output": {"directory": "/tmp"}})
         assert config["output"]["directory"] == "/tmp"
 
     def test_get_output_dir_returns_directory(self):
         """Test get_output_dir() returns the configured directory."""
-        config = MockConfigRepository({"output": {"directory": "/custom/output"}})
+        config = FakeConfigRepository({"output": {"directory": "/custom/output"}})
         assert config.get_output_dir() == "/custom/output"
 
     def test_get_output_dir_returns_default(self):
         """Test get_output_dir() returns default when not configured."""
-        config = MockConfigRepository({})
+        config = FakeConfigRepository({})
         assert config.get_output_dir() == "output"
 
     def test_contains_check(self):
         """Test 'in' operator works correctly."""
-        config = MockConfigRepository({"key": "value"})
+        config = FakeConfigRepository({"key": "value"})
         assert "key" in config
         assert "missing" not in config
 
     def test_to_dict_returns_copy(self):
         """Test to_dict() returns the configuration."""
         original = {"key": "value"}
-        config = MockConfigRepository(original)
+        config = FakeConfigRepository(original)
         result = config.to_dict()
         assert result == original
 
@@ -76,13 +87,13 @@ class TestMockConfigRepository:
 # =============================================================================
 
 
-class TestMockR2ClientFactory:
-    """Tests for MockR2ClientFactory."""
+class TestFakeR2ClientFactory:
+    """Tests for FakeR2ClientFactory."""
 
-    def test_create_returns_mock_client(self, fake_r2_factory):
-        """Test that create() returns the configured mock client."""
+    def test_create_returns_fake_client(self, fake_r2_factory):
+        """Test that create() returns the configured fake client."""
         fake = fake_r2_factory(cmdj_map={"aflj": [{"name": "main"}]})
-        factory = MockR2ClientFactory(fake)
+        factory = FakeR2ClientFactory(fake)
 
         client = factory.create("/any/path")
         functions = client.cmdj("aflj")
@@ -93,7 +104,7 @@ class TestMockR2ClientFactory:
     def test_create_ignores_file_path(self, fake_r2_factory):
         """Test that create() ignores the file path argument."""
         fake = fake_r2_factory()
-        factory = MockR2ClientFactory(fake)
+        factory = FakeR2ClientFactory(fake)
 
         client1 = factory.create("/path/one")
         client2 = factory.create("/path/two")
@@ -127,38 +138,38 @@ class TestCreateR2Client:
 class TestCreateBinaryAnalyzer:
     """Tests for create_binary_analyzer factory function."""
 
-    def test_creates_analyzer_with_config(self, mock_config):
+    def test_creates_analyzer_with_config(self, fake_config):
         """Test that factory creates analyzer with provided config."""
-        analyzer = create_binary_analyzer(config=mock_config)
+        analyzer = create_binary_analyzer(config=fake_config)
 
         assert isinstance(analyzer, R2BinaryAnalyzer)
-        assert analyzer._config is mock_config
+        assert analyzer._config is fake_config
 
-    def test_creates_analyzer_with_decompiler_type(self, mock_config):
+    def test_creates_analyzer_with_decompiler_type(self, fake_config):
         """Test that factory passes decompiler type."""
         analyzer = create_binary_analyzer(
-            config=mock_config,
+            config=fake_config,
             decompiler_type="r2ghidra"
         )
 
         assert analyzer.decompiler_type == "r2ghidra"
 
-    def test_creates_analyzer_with_verbose_flag(self, mock_config):
+    def test_creates_analyzer_with_verbose_flag(self, fake_config):
         """Test that factory passes verbose flag."""
         analyzer = create_binary_analyzer(
-            config=mock_config,
+            config=fake_config,
             verbose=True
         )
 
         assert analyzer.verbose is True
 
-    def test_creates_analyzer_with_r2_factory(self, mock_config, fake_r2_factory):
+    def test_creates_analyzer_with_r2_factory(self, fake_config, fake_r2_factory):
         """Test that factory accepts custom R2 factory."""
         fake = fake_r2_factory()
-        r2_factory = MockR2ClientFactory(fake)
+        r2_factory = FakeR2ClientFactory(fake)
 
         analyzer = create_binary_analyzer(
-            config=mock_config,
+            config=fake_config,
             r2_factory=r2_factory
         )
 
@@ -264,15 +275,15 @@ class TestCreateConfigFromDict:
 
 
 class TestAnalyzeBinaryWithDI:
-    """Tests for analyze_binary function with mock dependencies."""
+    """Tests for analyze_binary function with fake dependencies."""
 
-    def test_execute_with_mock_config(self, tmp_path):
-        """Test binary analysis execution with mock configuration."""
+    def test_execute_with_fake_config(self, tmp_path):
+        """Test binary analysis execution with fake configuration."""
         # Create a test file
         test_file = tmp_path / "test.bin"
         test_file.write_bytes(b"test binary data")
 
-        mock_config = MockConfigRepository({
+        fake_config = FakeConfigRepository({
             "banned_functions": ["strcpy"],
             "output": {"directory": str(tmp_path / "output")},
             "decompiler": {"type": "default"}
@@ -280,50 +291,78 @@ class TestAnalyzeBinaryWithDI:
 
         result = analyze_binary(
             binary_path=str(test_file),
-            config=mock_config,
+            request=BinaryAnalysisRequest(
+                runtime=AnalysisRuntime(
+                    config=fake_config,
+                    r2_factory=create_r2_client,
+                    binary=_default_binary_services(),
+                ),
+            ),
         )
 
         # The analysis returns a Result type (Ok or Err)
         # Likely Err since it's not a real binary
         assert isinstance(result, (Ok, Err))
 
-    def test_execute_file_not_found(self, mock_config):
+    def test_execute_file_not_found(self, fake_config):
         """Test analysis handles missing file gracefully."""
         # Add required config keys
-        mock_config._config["decompiler"] = {"type": "default"}
+        fake_config._config["decompiler"] = {"type": "default"}
 
         result = analyze_binary(
             binary_path="/nonexistent/file.bin",
-            config=mock_config,
+            request=BinaryAnalysisRequest(
+                runtime=AnalysisRuntime(
+                    config=fake_config,
+                    r2_factory=create_r2_client,
+                    binary=_default_binary_services(),
+                ),
+            ),
         )
 
         # The function returns Err for missing files
         assert isinstance(result, Err)
-        assert "not found" in result.error.lower() or "not exist" in result.error.lower()
+        assert "not found" in str(result.error).lower() or "not exist" in str(result.error).lower()
 
 
 class TestAnalyzeDirectoryWithDI:
-    """Tests for analyze_directory function with mock dependencies."""
+    """Tests for analyze_directory function with fake dependencies."""
 
-    def test_execute_directory_not_found(self, mock_config):
+    def test_execute_directory_not_found(self, fake_config):
         """Test analysis handles missing directory gracefully."""
         result = analyze_directory(
             directory="/nonexistent/directory",
-            config=mock_config,
+            request=DirectoryAnalysisRequest(
+                runtime=AnalysisRuntime(
+                    config=fake_config,
+                    config_factory=create_config_from_dict,
+                    r2_factory=create_r2_client,
+                    binary=_default_binary_services(),
+                    directory=DirectoryRuntimeServices(file_finder=_default_file_finder),
+                ),
+            ),
         )
 
         assert isinstance(result, Err)
-        assert "does not exist" in result.error.lower()
+        assert "does not exist" in str(result.error).lower()
 
-    def test_uses_config_output_dir(self, tmp_path, mock_config_factory):
+    def test_uses_config_output_dir(self, tmp_path, fake_config_factory):
         """Test analysis uses config output directory when not provided."""
         output_dir = tmp_path / "configured_output"
-        config = mock_config_factory({
+        config = fake_config_factory({
             "output": {"directory": str(output_dir)}
         })
 
         # Just verify the config is used correctly
         assert config.get_output_dir() == str(output_dir)
+
+
+class TestSerializeConfigContract:
+    def test_serialize_config_uses_real_config_repository(self):
+        from bannedfuncdetector.application.internal.directory_workers import serialize_config
+        from bannedfuncdetector.infrastructure.config_storage import ImmutableConfig as DictConfig
+
+        assert serialize_config(DictConfig({"worker_limit": 4})) == {"worker_limit": 4}
 
 
 # =============================================================================
@@ -336,36 +375,46 @@ class TestAnalyzeFunctionWithDI:
 
     def test_analyze_with_custom_banned_functions(self):
         """Test analyze_function uses provided banned functions."""
-        mock_config = MockConfigRepository({
+        fake_config = FakeConfigRepository({
             "banned_functions": ["custom_banned_func"]
         })
 
         # Test with a function that matches our custom banned function
-        func = {"name": "custom_banned_func", "offset": 0x1000}
+        func = function_descriptor_from_dto({"name": "custom_banned_func", "offset": 0x1000})
         result = analyze_function(
             r2=None,  # Not needed for name matching
             func=func,
-            banned_functions={"custom_banned_func"},
-            decompiler_type="default",
-            verbose=False,
-            config=mock_config
+            request=FunctionAnalysisRequest(
+                runtime=AnalysisRuntime(
+                    config=fake_config,
+                    r2_factory=create_r2_client,
+                    binary=_default_binary_services(),
+                ),
+                banned_functions={"custom_banned_func"},
+                decompiler_type="default",
+            ),
         )
 
         assert result.is_ok()
         detection = result.unwrap()
-        assert detection["detection_method"] == "name"
-        assert "custom_banned_func" in detection["banned_functions"]
+        assert detection.detection_method == "name"
+        assert "custom_banned_func" in detection.banned_calls
 
-    def test_analyze_with_different_banned_functions(self, mock_config):
+    def test_analyze_with_different_banned_functions(self, fake_config):
         """Test analyze_function with different banned functions set."""
-        func = {"name": "safefunc", "offset": 0x1000}
+        func = function_descriptor_from_dto({"name": "safefunc", "offset": 0x1000})
         result = analyze_function(
             r2=None,
             func=func,
-            banned_functions={"dangerous_func"},  # Not matching function name
-            decompiler_type="default",
-            verbose=False,
-            config=mock_config
+            request=FunctionAnalysisRequest(
+                runtime=AnalysisRuntime(
+                    config=fake_config,
+                    r2_factory=create_r2_client,
+                    binary=_default_binary_services(),
+                ),
+                banned_functions={"dangerous_func"},  # Not matching function name
+                decompiler_type="default",
+            ),
         )
 
         # Should not detect since function name doesn't match banned set
@@ -380,7 +429,7 @@ class TestAnalyzeFunctionWithDI:
 class TestFullDependencyInjectionChain:
     """Integration tests verifying the full DI chain works correctly."""
 
-    def test_analyzer_with_all_injected_dependencies(self, mock_config, fake_r2_factory):
+    def test_analyzer_with_all_injected_dependencies(self, fake_config, fake_r2_factory):
         """Test R2BinaryAnalyzer with fully injected dependencies."""
         # Create mock R2 client that returns test data
         fake = fake_r2_factory(
@@ -392,29 +441,30 @@ class TestFullDependencyInjectionChain:
                 ]
             }
         )
-        r2_factory = MockR2ClientFactory(fake)
+        r2_factory = FakeR2ClientFactory(fake)
 
         # Create analyzer with all dependencies injected
         analyzer = R2BinaryAnalyzer(
             decompiler_type="default",
             verbose=True,
             r2_factory=r2_factory.create,
-            config=mock_config
+            config=fake_config,
+            binary_services=_default_binary_services(),
         )
 
         # Verify the configuration is properly injected
-        assert analyzer._config is mock_config
+        assert analyzer._config is fake_config
         assert analyzer.decompiler_type == "default"
         assert analyzer.verbose is True
 
-    def test_analyzer_with_factory_created_config(self, mock_config):
+    def test_analyzer_with_factory_created_config(self, fake_config):
         """Test that factory-created analyzer has correct configuration."""
         analyzer = create_binary_analyzer(
-            config=mock_config,
+            config=fake_config,
             decompiler_type="default",
             verbose=False
         )
 
         # Verify the analyzer has the right configuration
-        assert analyzer._config is mock_config
+        assert analyzer._config is fake_config
         assert analyzer.decompiler_type == "default"

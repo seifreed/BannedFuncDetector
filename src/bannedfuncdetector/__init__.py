@@ -1,33 +1,42 @@
-"""BannedFuncDetector - Detect banned/insecure functions in binary files.
+"""Public package surface for BannedFuncDetector.
 
-Public API:
-    - main: CLI entry point
-    - analyze_binary: Direct function for single binary analysis
-    - analyze_directory: Direct function for directory batch analysis
-    - create_binary_analyzer: Factory for creating analyzers
-    - create_config_from_file: Load config from JSON file
-    - create_config_from_dict: Create config from dictionary
-    - BannedFunction: Domain entity for detected functions
-    - AnalysisResult: Domain entity for analysis results
+Keep the import surface stable without eagerly importing the full runtime stack.
 """
 
-from .bannedfunc import main
-from .factories import (
-    create_binary_analyzer,
-    create_config_from_file,
-    create_config_from_dict,
-)
-from .domain.entities import BannedFunction, AnalysisResult
-from .application.binary_analyzer import analyze_binary
-from .application.directory_scanner import analyze_directory
+from importlib import import_module
+from typing import Any
 
 __all__ = [
     "main",
     "analyze_binary",
     "analyze_directory",
+    "create_application_wiring",
     "create_binary_analyzer",
     "create_config_from_file",
     "create_config_from_dict",
     "BannedFunction",
     "AnalysisResult",
 ]
+
+_EXPORTS: dict[str, tuple[str, str]] = {
+    "main": ("bannedfuncdetector.bannedfunc", "main"),
+    "analyze_binary": ("bannedfuncdetector.application.binary_analyzer", "analyze_binary"),
+    "analyze_directory": ("bannedfuncdetector.application.directory_scanner", "analyze_directory"),
+    "create_application_wiring": ("bannedfuncdetector.factories", "create_application_wiring"),
+    "create_binary_analyzer": ("bannedfuncdetector.factories", "create_binary_analyzer"),
+    "create_config_from_file": ("bannedfuncdetector.factories", "create_config_from_file"),
+    "create_config_from_dict": ("bannedfuncdetector.factories", "create_config_from_dict"),
+    "BannedFunction": ("bannedfuncdetector.domain.entities", "BannedFunction"),
+    "AnalysisResult": ("bannedfuncdetector.domain.entities", "AnalysisResult"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Load public exports lazily to keep package import cheap and robust."""
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attribute = _EXPORTS[name]
+    module = import_module(module_name)
+    value = getattr(module, attribute)
+    globals()[name] = value
+    return value

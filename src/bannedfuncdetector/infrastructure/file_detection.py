@@ -17,7 +17,7 @@ import os
 
 import magic
 
-from .constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
+from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -261,10 +261,30 @@ def _find_executables(
         raise ValueError(f"Directory does not exist: {directory}")
 
     executable_files: list[str] = []
+    visited_dirs: set[tuple[int, int]] = set()  # (device, inode) pairs for cycle detection
 
-    for root, _, files in os.walk(directory):
+    for root, dirs, files in os.walk(directory, followlinks=True):
+        # Detect symlink cycles by tracking real directory identities
+        real_root = os.path.realpath(root)
+        try:
+            stat = os.stat(real_root)
+            dir_id = (stat.st_dev, stat.st_ino)
+        except OSError:
+            continue
+        if dir_id in visited_dirs:
+            logger.warning("Skipping circular symlink at: %s", root)
+            dirs.clear()  # prevent os.walk from descending further
+            continue
+        visited_dirs.add(dir_id)
+
         for file in files:
             file_path = os.path.join(root, file)
+
+            if os.path.islink(file_path):
+                if not os.path.exists(file_path):
+                    logger.warning("Skipping broken symlink: %s", file_path)
+                    continue
+                logger.debug("Following symlink: %s", file_path)
 
             if is_executable_file(file_path, file_type):
                 executable_files.append(file_path)

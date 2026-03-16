@@ -167,8 +167,11 @@ def _decompile_with_default_cascade(
 
     # Fall back to assembly if enabled
     if fallback_to_asm:
-        # Seek to function first before getting assembly
+        # Seek to function and verify the seek succeeded before disassembly
         r2.cmd(f"s {function_name}")
+        current_addr = r2.cmd("s").strip()
+        if not current_addr or current_addr == "0x0":
+            return err(f"Seek to {function_name} failed, cannot get assembly")
         asm_output = r2.cmd("pdf")
         return ok(asm_output) if asm_output else err("Could not get assembly")
 

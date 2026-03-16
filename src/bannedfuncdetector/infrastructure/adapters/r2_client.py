@@ -11,14 +11,35 @@ Author: Marc Rivero | @seifreed
 """
 
 import logging
+import errno
 from collections.abc import Callable
 from typing import Any
 
 import r2pipe
 
+from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 from bannedfuncdetector.domain.protocols import IR2Client
 
 logger = logging.getLogger(__name__)
+_TRANSIENT_ERRNOS = {errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT, errno.EINTR}
+
+
+def _exception_chain(exc: BaseException) -> list[BaseException]:
+    chain: list[BaseException] = []
+    current: BaseException | None = exc
+    while current is not None and current not in chain:
+        chain.append(current)
+        current = current.__cause__ or current.__context__
+    return chain
+
+
+def _is_transient_r2_exception(exc: BaseException) -> bool:
+    for candidate in _exception_chain(exc):
+        if isinstance(candidate, BrokenPipeError):
+            return True
+        if isinstance(candidate, OSError) and getattr(candidate, "errno", None) in _TRANSIENT_ERRNOS:
+            return True
+    return False
 
 
 class R2Client(IR2Client):
@@ -102,6 +123,8 @@ class R2Client(IR2Client):
         except (RuntimeError, ValueError) as e:
             # r2pipe connection or initialization failure
             logger.error(f"Failed to initialize r2pipe for {file_path}: {e}")
+            if _is_transient_r2_exception(e):
+                raise TransientR2Error(str(e)) from e
             raise
 
     def cmd(self, command: str) -> str:
@@ -295,6 +318,8 @@ class R2Client(IR2Client):
             return result
         except (RuntimeError, ValueError, OSError) as e:
             logger.error(f"Error executing {label} '{command}': {e}")
+            if _is_transient_r2_exception(e):
+                raise TransientR2Error(str(e)) from e
             raise
         except TypeError as e:
             # TypeError can occur with invalid command arguments

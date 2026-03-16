@@ -11,21 +11,17 @@ Author: Marc Rivero | @seifreed
 """
 
 import concurrent.futures
-from unittest.mock import patch
 
 import pytest
 
-from bannedfuncdetector.application.parallel_analyzer import (
-    _resolve_thread_count,
-    _analyze_functions_parallel,
-    _process_parallel_results,
-    _run_parallel_detection,
+from bannedfuncdetector.application.function_detection_runtime import (
+    analyze_functions_in_binary,
+    run_intra_binary_detection,
 )
+from bannedfuncdetector.application.function_detection_support import process_parallel_results
+from bannedfuncdetector.application.internal.execution_plans import FunctionScanPlan
 from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
 from bannedfuncdetector.domain.result import Ok, Err
-from bannedfuncdetector.domain.config_types import AnalysisOptions
-from bannedfuncdetector.infrastructure.config_repository import get_default_config
-from conftest import FakeR2
 
 
 class FakeConfig:
@@ -44,64 +40,8 @@ class FakeConfig:
         return self.data[key]
 
 
-class TestResolveThreadCount:
-    """Test suite for _resolve_thread_count function."""
-
-    def test_resolve_thread_count_with_explicit_limit(self):
-        """Test thread count resolution with explicit worker_limit."""
-        result = _resolve_thread_count(worker_limit=4)
-
-        assert result == 4
-
-    def test_resolve_thread_count_from_config(self):
-        """Test thread count resolution from config."""
-        config = FakeConfig(worker_limit=8)
-
-        result = _resolve_thread_count(worker_limit=None, config=config)
-
-        assert result == 8
-
-    def test_resolve_thread_count_from_cpu_count(self):
-        """Test thread count resolution from CPU count."""
-        import os
-
-        config = FakeConfig(worker_limit=None)
-
-        result = _resolve_thread_count(worker_limit=None, config=config)
-
-        # Should use CPU count
-        expected = os.cpu_count() or 1
-        assert result == expected
-
-    def test_resolve_thread_count_capped_by_max_items(self):
-        """Test thread count capped by max_items."""
-        config = FakeConfig(worker_limit=8)
-
-        result = _resolve_thread_count(
-            worker_limit=None, max_items=3, config=config
-        )
-
-        # Should be capped at 3
-        assert result == 3
-
-    def test_resolve_thread_count_max_items_larger_than_limit(self):
-        """Test that larger max_items doesn't increase thread count."""
-        result = _resolve_thread_count(worker_limit=4, max_items=10)
-
-        # Should still be 4
-        assert result == 4
-
-    def test_resolve_thread_count_uses_default_config(self):
-        """Test thread count resolution with default config."""
-        result = _resolve_thread_count(worker_limit=None, config=None)
-
-        # Should get a valid number
-        assert isinstance(result, int)
-        assert result > 0
-
-
 class TestProcessParallelResults:
-    """Test suite for _process_parallel_results function."""
+    """Test suite for process_parallel_results function."""
 
     def test_process_parallel_results_all_ok(self):
         """Test processing results where all futures return Ok."""
@@ -117,7 +57,7 @@ class TestProcessParallelResults:
         ]
         futures = [make_future(d) for d in detections]
 
-        results = _process_parallel_results(futures, verbose=False)
+        results = process_parallel_results(futures, verbose=False)
 
         # Check that we got 2 results
         assert len(results) == 2
@@ -144,7 +84,7 @@ class TestProcessParallelResults:
             make_ok_future({"name": "func2", "address": "0x2000"}),
         ]
 
-        results = _process_parallel_results(futures, verbose=False)
+        results = process_parallel_results(futures, verbose=False)
 
         # Only Ok results should be collected
         assert len(results) == 2
@@ -165,7 +105,7 @@ class TestProcessParallelResults:
             make_err_future("Clean function"),
         ]
 
-        results = _process_parallel_results(futures, verbose=False)
+        results = process_parallel_results(futures, verbose=False)
 
         assert len(results) == 0
 
@@ -187,7 +127,7 @@ class TestProcessParallelResults:
             make_ok_future({"name": "func2", "address": "0x2000"}),
         ]
 
-        results = _process_parallel_results(futures, verbose=False)
+        results = process_parallel_results(futures, verbose=False)
 
         # Exception should be caught, only Ok results returned
         assert len(results) == 2
@@ -203,13 +143,13 @@ class TestProcessParallelResults:
             make_ok_future({"name": "func1", "address": "0x1000"}),
         ]
 
-        results = _process_parallel_results(futures, verbose=True)
+        results = process_parallel_results(futures, verbose=True)
 
         assert len(results) == 1
 
 
-class TestAnalyzeFunctionsParallel:
-    """Test suite for _analyze_functions_parallel function."""
+class TestAnalyzeFunctionsInBinary:
+    """Test suite for _analyze_functions_in_binary function."""
 
     def test_analyze_functions_parallel_basic(self, fake_r2_factory):
         """Test parallel function analysis basic flow."""
@@ -220,23 +160,23 @@ class TestAnalyzeFunctionsParallel:
         ]
         banned_set = {"strcpy", "gets"}
         config = FakeConfig()
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=2,
             config=config,
         )
 
-        # Mock analyzer that returns Ok
-        def mock_analyzer(r2, func, banned, dec_type, verbose, cfg):
+        # Fake analyzer that returns Ok
+        def fake_analyzer(r2, func, *, request):
             return Ok({"name": func["name"], "address": hex(func["offset"])})
 
-        results = _analyze_functions_parallel(
+        results = analyze_functions_in_binary(
             r2=fake,
             functions=functions,
             banned_functions_set=banned_set,
             options=options,
-            function_analyzer=mock_analyzer,
+            function_analyzer=fake_analyzer,
         )
 
         assert len(results) == 2
@@ -250,25 +190,25 @@ class TestAnalyzeFunctionsParallel:
         ]
         banned_set = {"strcpy"}
         config = FakeConfig()
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=2,
             config=config,
         )
 
-        # Mock analyzer that returns Err for "clean"
-        def mock_analyzer(r2, func, banned, dec_type, verbose, cfg):
+        # Fake analyzer that returns Err for "clean"
+        def fake_analyzer(r2, func, *, request):
             if func["name"] == "clean":
                 return Err("No banned functions")
             return Ok({"name": func["name"], "address": hex(func["offset"])})
 
-        results = _analyze_functions_parallel(
+        results = analyze_functions_in_binary(
             r2=fake,
             functions=functions,
             banned_functions_set=banned_set,
             options=options,
-            function_analyzer=mock_analyzer,
+            function_analyzer=fake_analyzer,
         )
 
         # Only "banned" should be in results
@@ -281,7 +221,7 @@ class TestAnalyzeFunctionsParallel:
         functions = [{"name": "test", "offset": 4096}]
         banned_set = {"strcpy"}
         config = FakeConfig()
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=1,
@@ -289,7 +229,7 @@ class TestAnalyzeFunctionsParallel:
         )
 
         with pytest.raises(ValueError, match="function_analyzer must be provided"):
-            _analyze_functions_parallel(
+            analyze_functions_in_binary(
                 r2=fake,
                 functions=functions,
                 banned_functions_set=banned_set,
@@ -303,55 +243,54 @@ class TestAnalyzeFunctionsParallel:
         functions = [{"name": f"func{i}", "offset": 4096 + i * 100} for i in range(10)]
         banned_set = {"strcpy"}
         config = FakeConfig()
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=2,
             config=config,
         )
 
-        def mock_analyzer(r2, func, banned, dec_type, verbose, cfg):
+        def fake_analyzer(r2, func, *, request):
             return Err("Clean")
 
-        results = _analyze_functions_parallel(
+        results = analyze_functions_in_binary(
             r2=fake,
             functions=functions,
             banned_functions_set=banned_set,
             options=options,
-            function_analyzer=mock_analyzer,
+            function_analyzer=fake_analyzer,
         )
 
         # All functions analyzed, even with limited workers
         assert isinstance(results, list)
 
-
-class TestRunParallelDetection:
-    """Test suite for _run_parallel_detection function."""
+class TestRunIntraBinaryDetection:
+    """Test suite for _run_intra_binary_detection function."""
 
     def test_run_parallel_detection_basic(self, fake_r2_factory):
         """Test parallel detection basic flow."""
         fake = fake_r2_factory()
         functions = [{"name": "test", "offset": 4096}]
         config = FakeConfig(banned_functions=["strcpy", "gets"])
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=1,
             config=config,
         )
 
-        def mock_provider(cfg):
+        def fake_provider(cfg):
             return {"strcpy", "gets"}
 
-        def mock_analyzer(r2, func, banned, dec_type, verbose, cfg):
+        def fake_analyzer(r2, func, *, request):
             return Err("Clean")
 
-        results = _run_parallel_detection(
+        results = run_intra_binary_detection(
             r2=fake,
             functions=functions,
             options=options,
-            function_analyzer=mock_analyzer,
-            banned_functions_provider=mock_provider,
+            function_analyzer=fake_analyzer,
+            banned_functions_provider=fake_provider,
         )
 
         assert isinstance(results, list)
@@ -361,21 +300,21 @@ class TestRunParallelDetection:
         fake = fake_r2_factory()
         functions = [{"name": "test", "offset": 4096}]
         config = FakeConfig()
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=1,
             config=config,
         )
 
-        def mock_analyzer(r2, func, banned, dec_type, verbose, cfg):
+        def fake_analyzer(r2, func, *, request):
             return Err("Clean")
 
-        results = _run_parallel_detection(
+        results = run_intra_binary_detection(
             r2=fake,
             functions=functions,
             options=options,
-            function_analyzer=mock_analyzer,
+            function_analyzer=fake_analyzer,
         )
 
         assert isinstance(results, list)
@@ -418,27 +357,27 @@ class TestParallelAnalyzerIntegration:
             {"name": "func3", "offset": 12288},
         ]
         config = FakeConfig(banned_functions=["strcpy"])
-        options = AnalysisOptions(
+        options = FunctionScanPlan(
             decompiler_type="r2ghidra",
             verbose=False,
             worker_limit=2,
             config=config,
         )
 
-        def mock_analyzer(r2, func, banned, dec_type, verbose, cfg):
+        def fake_analyzer(r2, func, *, request):
             if func["name"] == "func2":
                 return Ok({"name": func["name"], "address": hex(func["offset"])})
             return Err("Clean")
 
-        def mock_provider(cfg):
+        def fake_provider(cfg):
             return {"strcpy"}
 
-        results = _run_parallel_detection(
+        results = run_intra_binary_detection(
             r2=fake,
             functions=functions,
             options=options,
-            function_analyzer=mock_analyzer,
-            banned_functions_provider=mock_provider,
+            function_analyzer=fake_analyzer,
+            banned_functions_provider=fake_provider,
         )
 
         assert len(results) == 1
