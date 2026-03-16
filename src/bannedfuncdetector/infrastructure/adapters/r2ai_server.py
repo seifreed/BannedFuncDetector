@@ -23,7 +23,7 @@ from collections.abc import Callable, Sequence
 from typing import Any, cast
 from dataclasses import dataclass
 
-import requests  # type: ignore[import-untyped]
+import requests
 
 # Configure module logger
 logger = logging.getLogger(__name__)

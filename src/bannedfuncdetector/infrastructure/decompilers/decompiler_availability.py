@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, cast
 
-import requests  # type: ignore[import-untyped]
+import requests
 
 from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
 
