@@ -565,7 +565,7 @@ def r2pm_shim(shim_path):
     script = textwrap.dedent(
         """
         #!/bin/sh
-        python - <<'PY' &
+        python3 - <<'PY' &
 import threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
@@ -643,7 +643,7 @@ if [ "$1" = "-m" ]; then
   echo "model-6"
   exit 0
 fi
-python - <<'PY'
+python3 - <<'PY'
 import threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
@@ -696,7 +696,7 @@ if [ "$1" = "-m" ]; then
   echo "model-1"
   exit 0
 fi
-python - <<'PY'
+python3 - <<'PY'
 import threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
@@ -780,7 +780,7 @@ def path_with_shim(shim_path: Any) -> Callable[[Any], Any]:
         original_path = os.environ.get("PATH", "")
         return {
             "original_path": original_path,
-            "modified_path": f"{shim_script.parent}:{original_path}",
+            "modified_path": f"{shim_script.parent}{os.pathsep}{original_path}",
         }
     return _factory
 

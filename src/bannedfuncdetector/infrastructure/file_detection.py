@@ -19,12 +19,14 @@ from typing import Any
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
 
 
+_magic: Any | None = None
+
 try:
     import magic as _magic
 except (ImportError, OSError):
     _magic = None
 
-magic = _magic
+magic: Any | None = _magic
 
 
 def _load_magic_module() -> Any | None:

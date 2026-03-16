@@ -19,7 +19,6 @@ import shutil
 import time
 import os
 import asyncio
-import subprocess
 from collections.abc import Callable, Sequence
 from typing import Any, cast
 from dataclasses import dataclass
@@ -30,19 +29,33 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def _run_subprocess_detached(
+async def _run_subprocess_detached_async(
     args: Sequence[str],
     *,
-    stdout: int | None = subprocess.DEVNULL,
-    stderr: int | None = subprocess.DEVNULL,
-    **_: Any,
-) -> subprocess.Popen[Any]:
-    """Run a process without waiting for it to finish."""
-    return subprocess.Popen(
-        args,
+    stdout: Any = asyncio.subprocess.DEVNULL,
+    stderr: Any = asyncio.subprocess.DEVNULL,
+) -> asyncio.subprocess.Process:
+    """Start a command without waiting for it to finish."""
+    return await asyncio.create_subprocess_exec(
+        *args,
         stdout=stdout,
         stderr=stderr,
     )
+
+
+def _run_subprocess_detached(
+    args: Sequence[str],
+    *,
+    stdout: Any = asyncio.subprocess.DEVNULL,
+    stderr: Any = asyncio.subprocess.DEVNULL,
+    **_: Any,
+) -> None:
+    """Run a process without waiting for it to finish."""
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_run_subprocess_detached_async(args, stdout=stdout, stderr=stderr))
+    except RuntimeError:
+        asyncio.run(_run_subprocess_detached_async(args, stdout=stdout, stderr=stderr))
 
 
 def _is_http_ok(response: Any) -> bool:
@@ -389,8 +402,8 @@ def _launch_server_process(
     _validate_executable(resolved_cmd)
     popen(
         resolved_cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
     )
     logger.info("r2ai-server started in the background")
     return True

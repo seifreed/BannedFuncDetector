@@ -67,7 +67,7 @@ def test_check_r2ai_server_available_ping_fail():
 
 def test_check_r2ai_server_available_start_cancel(r2ai_server_shim, stdin_stream):
     original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}:{original_path}"
+    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
     sys.stdin = stdin_stream("n\n")
     try:
@@ -84,7 +84,7 @@ def test_check_r2ai_server_available_start_success(r2ai_server_shim, stdin_strea
         models_payload=b'{"models": ["a"]}',
     )
     original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}:{original_path}"
+    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
     sys.stdin = stdin_stream("y\n\n")
     try:
@@ -102,7 +102,7 @@ def test_check_r2ai_server_available_start_with_model(r2ai_server_shim, stdin_st
         models_payload=b'{"models": ["a"]}',
     )
     original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}:{original_path}"
+    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
     sys.stdin = stdin_stream("y\ncustom-model\n")
     try:
@@ -120,7 +120,7 @@ def test_check_r2ai_server_available_models_unavailable(r2ai_server_shim, stdin_
     os.chmod(script, 0o755)
 
     original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}:{original_path}"
+    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
     sys.stdin = stdin_stream("y\n\n")
     try:
@@ -132,7 +132,7 @@ def test_check_r2ai_server_available_models_unavailable(r2ai_server_shim, stdin_
 
 def test_check_r2ai_server_available_not_installed_cancel(r2ai_server_fail_shim, stdin_stream):
     original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}:{original_path}"
+    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
     sys.stdin = stdin_stream("n\n")
     try:
@@ -144,7 +144,7 @@ def test_check_r2ai_server_available_not_installed_cancel(r2ai_server_fail_shim,
 
 def test_check_r2ai_server_available_install_path(r2ai_server_fail_shim, r2pm_shim, stdin_stream):
     original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}:{original_path}"
+    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
     sys.stdin = stdin_stream("y\nn\n")
     try:
