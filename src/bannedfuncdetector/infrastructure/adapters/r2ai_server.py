@@ -147,7 +147,7 @@ def _validate_executable(args: list[str]) -> None:
     """Raise ValueError if the command's base executable is not in the allowlist."""
     if not args:
         raise ValueError("Empty command")
-    base = os.path.basename(args[0])
+    base = os.path.splitext(os.path.basename(args[0]))[0]
     if base not in ALLOWED_EXECUTABLES:
         raise ValueError(f"Blocked executable not in allowlist: {base}")
 

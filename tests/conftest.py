@@ -520,6 +520,51 @@ def make_executable(path: Any, content: str) -> None:
     os.chmod(path, 0o755)
 
 
+def make_windows_cmd(path: Any, python_one_liner: str, models: str | None = None, usage: str = "usage: r2ai-server") -> None:
+    """
+    Create a Windows-friendly .cmd wrapper for shim scripts.
+
+    Args:
+        path: Base path (without extension) of the shim.
+        python_one_liner: Python code to execute via -c.
+        models: Optional newline-separated models output for -m flag.
+        usage: Help text for -h flag.
+    """
+    if os.name != "nt":
+        return
+    cmd_path = path.with_suffix(path.suffix + ".cmd")
+    models_block = ""
+    if models is not None:
+        # Escape carets for cmd output
+        models_lines = models.splitlines()
+        models_block = "\n".join(f'if "%1"=="-m" (echo {line} & set EXITED=1)' for line in models_lines)
+        models_block += '\nif "%1"=="-m" (exit /b 0)\n'
+    cmd_content = textwrap.dedent(
+        f"""\
+        @echo off
+        setlocal
+        if "%~1"=="-h" (
+          echo {usage}
+          exit /b 0
+        )
+        {models_block}if "%~1"=="-m" (
+          exit /b 0
+        )
+        set PY_BIN=
+        for %%P in (python3.exe python.exe) do (
+          where %%P >nul 2>nul
+          if not errorlevel 1 if not defined PY_BIN set PY_BIN=%%P
+        )
+        if not defined PY_BIN (
+          echo Python interpreter not found
+          exit /b 1
+        )
+        "%PY_BIN%" -c "{python_one_liner}"
+        """
+    )
+    cmd_path.write_text(cmd_content)
+
+
 @pytest.fixture()
 def r2ai_server_shim(shim_path):
     script = textwrap.dedent(
@@ -541,6 +586,11 @@ def r2ai_server_shim(shim_path):
     )
     path = shim_path / "r2ai-server"
     make_executable(path, script)
+    make_windows_cmd(
+        path,
+        python_one_liner="import time; time.sleep(0.1)",
+        models="model-a\nmodel-b",
+    )
     return path
 
 
@@ -557,6 +607,11 @@ def r2ai_server_fail_shim(shim_path):
     )
     path = shim_path / "r2ai-server"
     make_executable(path, script)
+    make_windows_cmd(
+        path,
+        python_one_liner="import sys; sys.exit(1)",
+        models="",
+    )
     return path
 
 
@@ -565,7 +620,13 @@ def r2pm_shim(shim_path):
     script = textwrap.dedent(
         """
         #!/bin/sh
-        python3 - <<'PY' &
+PYTHON_BIN="$(command -v python3 || command -v python)"
+if [ -z "$PYTHON_BIN" ]; then
+  echo "Python interpreter not found"
+  exit 1
+fi
+
+"$PYTHON_BIN" - <<'PY' &
 import threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
@@ -594,6 +655,26 @@ PY
     )
     path = shim_path / "r2pm"
     make_executable(path, script)
+    make_windows_cmd(
+        path,
+        python_one_liner=(
+            "import http.server,threading,time; "
+            "class H(http.server.BaseHTTPRequestHandler):\n"
+            "    def do_GET(self):\n"
+            "        if self.path == '/ping':\n"
+            "            self.send_response(200); self.end_headers(); self.wfile.write(b'pong'); return\n"
+            "        if self.path == '/models':\n"
+            "            self.send_response(200); self.end_headers(); "
+            "self.wfile.write(b'{\"models\": [\"a\"]}'); return\n"
+            "        self.send_response(404); self.end_headers()\n"
+            "    def log_message(self, *_):\n"
+            "        return\n"
+            "s=http.server.HTTPServer(('127.0.0.1',18081),H); "
+            "threading.Thread(target=s.serve_forever,daemon=True).start(); "
+            "time.sleep(3); s.shutdown()"
+        ),
+        usage="usage: r2pm",
+    )
     return path
 
 
@@ -630,20 +711,26 @@ def r2ai_server_with_models_shim(shim_path: Any) -> Any:
     make_executable(
         script,
         """#!/bin/sh
-if [ "$1" = "-h" ]; then
-  echo "usage: r2ai-server"
-  exit 0
-fi
-if [ "$1" = "-m" ]; then
+    if [ "$1" = "-h" ]; then
+      echo "usage: r2ai-server"
+      exit 0
+    fi
+    if [ "$1" = "-m" ]; then
   echo "model-1"
   echo "model-2"
   echo "model-3"
   echo "model-4"
   echo "model-5"
   echo "model-6"
-  exit 0
+    exit 0
 fi
-python3 - <<'PY'
+PYTHON_BIN="$(command -v python3 || command -v python)"
+if [ -z "$PYTHON_BIN" ]; then
+  echo "Python interpreter not found" >&2
+  exit 1
+fi
+
+"$PYTHON_BIN" - <<'PY'
 import threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
@@ -658,12 +745,25 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 server = HTTPServer(("127.0.0.1", 18080), Handler)
-threading.Thread(target=server.serve_forever, daemon=True).start()
-time.sleep(2)
-server.shutdown()
+server.serve_forever()
 PY
 exit 0
 """,
+    )
+    make_windows_cmd(
+        script,
+        python_one_liner=(
+            "import http.server; "
+            "class H(http.server.BaseHTTPRequestHandler):\n"
+            "    def do_GET(self):\n"
+            "        if self.path == '/ping':\n"
+            "            self.send_response(200); self.end_headers(); self.wfile.write(b'pong'); return\n"
+            "        self.send_response(404); self.end_headers()\n"
+            "    def log_message(self, *_):\n"
+            "        return\n"
+            "http.server.HTTPServer(('127.0.0.1',18080),H).serve_forever()"
+        ),
+        models="model-1\nmodel-2\nmodel-3\nmodel-4\nmodel-5\nmodel-6",
     )
     return script
 
@@ -696,7 +796,13 @@ if [ "$1" = "-m" ]; then
   echo "model-1"
   exit 0
 fi
-python3 - <<'PY'
+PYTHON_BIN="$(command -v python3 || command -v python)"
+if [ -z "$PYTHON_BIN" ]; then
+  echo "Python interpreter not found" >&2
+  exit 1
+fi
+
+"$PYTHON_BIN" - <<'PY'
 import threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
@@ -711,12 +817,25 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 server = HTTPServer(("127.0.0.1", 18082), Handler)
-threading.Thread(target=server.serve_forever, daemon=True).start()
-time.sleep(2)
-server.shutdown()
+server.serve_forever()
 PY
 exit 0
 """,
+    )
+    make_windows_cmd(
+        script,
+        python_one_liner=(
+            "import http.server; "
+            "class H(http.server.BaseHTTPRequestHandler):\n"
+            "    def do_GET(self):\n"
+            "        if self.path == '/ping':\n"
+            "            self.send_response(200); self.end_headers(); self.wfile.write(b'pong'); return\n"
+            "        self.send_response(404); self.end_headers()\n"
+            "    def log_message(self, *_):\n"
+            "        return\n"
+            "http.server.HTTPServer(('127.0.0.1',18082),H).serve_forever()"
+        ),
+        models="model-1",
     )
     return script
 
@@ -751,6 +870,11 @@ if [ "$1" = "-m" ]; then
 fi
 exit 0
 """,
+    )
+    make_windows_cmd(
+        script,
+        python_one_liner="import time; time.sleep(0.1)",
+        models="model-1",
     )
     return script
 
