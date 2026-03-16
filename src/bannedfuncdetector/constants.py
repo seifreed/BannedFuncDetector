@@ -4,7 +4,7 @@ Author: Marc Rivero | @seifreed
 """
 
 # Python version requirements
-MIN_PYTHON_VERSION = (3, 14)
+MIN_PYTHON_VERSION = (3, 12)
 
 # Analysis thresholds
 # Minimum 10 characters to filter out empty/error decompilation results

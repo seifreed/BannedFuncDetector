@@ -28,6 +28,23 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
+      - name: Install radare2 (ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y radare2
+
+      - name: Install radare2 (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install radare2
+
+      - name: Install radare2 (windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install -y radare2
+        shell: pwsh
+
       - name: Install dependencies
         run: |
           python -m pip install -e .
