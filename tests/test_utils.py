@@ -167,17 +167,13 @@ def test_check_r2ai_server_available_subprocess_error(stdin_stream, tmp_path):
         os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_start_server_loop(r2ai_server_with_models_shim, stdin_stream, path_with_shim):
-    path_manager = path_with_shim(r2ai_server_with_models_shim)
-    original_path = path_manager["original_path"]
-    os.environ["PATH"] = path_manager["modified_path"]
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\n\n")
+def test_check_r2ai_server_available_server_already_running():
+    """Test check_r2ai_server_available when server is already running (ping succeeds)."""
+    server_url, server = start_test_server(ping_status=200, models_status=200)
     try:
-        assert check_r2ai_server_available("http://127.0.0.1:18080") is True
+        assert check_r2ai_server_available(server_url) is True
     finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
+        server.shutdown()
 
 
 def test_check_r2ai_server_available_models_many():
@@ -202,17 +198,14 @@ def test_start_test_server_unknown_path():
         server.shutdown()
 
 
-def test_check_r2ai_server_available_start_server_with_model(r2ai_server_single_model_shim, stdin_stream, path_with_shim):
-    path_manager = path_with_shim(r2ai_server_single_model_shim)
-    original_path = path_manager["original_path"]
-    os.environ["PATH"] = path_manager["modified_path"]
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\ncustom-model\n")
+def test_check_r2ai_server_available_ping_ok_but_models_fail():
+    """Test check_r2ai_server_available when ping works but models endpoint fails."""
+    server_url, server = start_test_server(ping_status=200, models_status=500)
     try:
-        assert check_r2ai_server_available("http://127.0.0.1:18082") is True
+        # Should still return True since ping succeeded
+        assert check_r2ai_server_available(server_url) is True
     finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
+        server.shutdown()
 
 
 def test_launch_server_process_popen_error():
