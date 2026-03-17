@@ -77,6 +77,11 @@ strict_equality = true
 
 [tool.bandit]
 exclude_dirs = ["venv", "tests", "__pycache__", "output", "saved", ".git"]
+# B404: import subprocess — the tool needs subprocess to run radare2 and r2ai-server.
+# B603: subprocess without shell — all subprocess calls are validated against an
+#       explicit allowlist (ALLOWED_EXECUTABLES, ALLOWED_REQUIREMENT_EXECUTABLES)
+#       via _validate_executable() before execution.
+skips = ["B404", "B603"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

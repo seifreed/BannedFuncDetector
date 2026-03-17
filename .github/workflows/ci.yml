@@ -54,7 +54,7 @@ jobs:
       - name: Lint
         run: |
           ruff check src tests
-          bandit -q -r src
+          bandit -q -r src -c pyproject.toml
 
       - name: Type check
         run: mypy src
