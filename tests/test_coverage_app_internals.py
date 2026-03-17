@@ -298,10 +298,10 @@ class TestSelectionError:
             def select_decompiler(self, requested=None, force=False):
                 raise DecompilerNotAvailableError("no decompiler found")
 
-            def decompile_function(self, *a, **kw):  # pragma: no cover
+            def decompile_function(self, *a, **kw):
                 raise NotImplementedError
 
-            def check_decompiler_available(self, dt):  # pragma: no cover
+            def check_decompiler_available(self, dt):
                 return False
 
         config = _base_config()

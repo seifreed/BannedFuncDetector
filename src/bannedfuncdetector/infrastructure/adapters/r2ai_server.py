@@ -15,56 +15,17 @@ Author: Marc Rivero | @seifreed
 
 import json
 import logging
-import shutil
-import time
 import os
-import asyncio
-from collections.abc import Callable, Sequence
-from typing import Any, cast
-from dataclasses import dataclass
+import shutil
+import subprocess
+import time
+from collections.abc import Callable
+from typing import Any
 
 import requests
 
 # Configure module logger
 logger = logging.getLogger(__name__)
-
-
-async def _run_subprocess_detached_async(
-    args: Sequence[str],
-    *,
-    stdout: Any = asyncio.subprocess.DEVNULL,
-    stderr: Any = asyncio.subprocess.DEVNULL,
-) -> asyncio.subprocess.Process:
-    """Start a command without waiting for it to finish."""
-    return await asyncio.create_subprocess_exec(
-        *args,
-        stdout=stdout,
-        stderr=stderr,
-    )
-
-
-def _run_subprocess_detached(
-    args: Sequence[str],
-    *,
-    stdout: Any = asyncio.subprocess.DEVNULL,
-    stderr: Any = asyncio.subprocess.DEVNULL,
-    **_: Any,
-) -> None:
-    """Run a process without waiting for it to finish."""
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_run_subprocess_detached_async(args, stdout=stdout, stderr=stderr))
-    except RuntimeError:
-        asyncio.run(_run_subprocess_detached_async(args, stdout=stdout, stderr=stderr))
-
-
-def _is_http_ok(response: Any) -> bool:
-    """Return ``True`` when a response object reports HTTP 200."""
-    try:
-        status_code = cast(int, response.status_code)
-        return status_code == 200
-    except (AttributeError, TypeError):
-        return False
 
 
 # =============================================================================
@@ -75,15 +36,6 @@ AFFIRMATIVE_RESPONSES = {'s', 'si', 'yes', 'y'}
 ALLOWED_EXECUTABLES = frozenset({"r2ai-server", "r2pm"})
 
 
-@dataclass(frozen=True)
-class _CommandResult:
-    """Portable result object for command execution wrappers."""
-
-    returncode: int
-    stdout: str = ""
-    stderr: str = ""
-
-
 def _is_affirmative(response: str) -> bool:
     """Return True if the response is an affirmative answer."""
     return response.strip().lower() in AFFIRMATIVE_RESPONSES
@@ -92,7 +44,7 @@ def _is_affirmative(response: str) -> bool:
 def _ping_server(server_url: str, timeout: int) -> bool:
     """Return True if the server responds with HTTP 200."""
     response = requests.get(f"{server_url}/ping", timeout=timeout)
-    return _is_http_ok(response)
+    return response.status_code == 200
 
 
 def _wait_for_server(server_url: str, attempts: int = 10, timeout: int = 1) -> bool:
@@ -111,9 +63,11 @@ def _wait_for_server(server_url: str, attempts: int = 10, timeout: int = 1) -> b
     return False
 
 
-def _run_r2ai_server_command(args: list[str]) -> _CommandResult:
+def _run_r2ai_server_command(args: list[str]) -> subprocess.CompletedProcess[str]:
     """Run an r2ai-server command and return the completed process."""
-    return _run_subprocess_command(args, capture_output=True, check=False)
+    resolved = _resolve_command(args)
+    _validate_executable(resolved)
+    return subprocess.run(resolved, capture_output=True, text=True)
 
 
 def _get_models_from_cli() -> list[str]:
@@ -150,75 +104,6 @@ def _validate_executable(args: list[str]) -> None:
     base = os.path.splitext(os.path.basename(args[0]))[0]
     if base not in ALLOWED_EXECUTABLES:
         raise ValueError(f"Blocked executable not in allowlist: {base}")
-
-
-async def _run_process_async(
-    args: Sequence[str],
-    *,
-    capture_output: bool = True,
-) -> _CommandResult:
-    process = await asyncio.create_subprocess_exec(
-        *args,
-        stdout=asyncio.subprocess.PIPE if capture_output else None,
-        stderr=asyncio.subprocess.PIPE if capture_output else None,
-    )
-    stdout_bytes, stderr_bytes = await process.communicate()
-    if not capture_output:
-        stdout_bytes = stdout_bytes if stdout_bytes is not None else b""
-        stderr_bytes = stderr_bytes if stderr_bytes is not None else b""
-    stdout = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
-    stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
-    return _CommandResult(
-        returncode=process.returncode if process.returncode is not None else 0,
-        stdout=stdout,
-        stderr=stderr,
-    )
-
-
-async def _spawn_process_async(args: Sequence[str]) -> asyncio.subprocess.Process:
-    """Start a subprocess without waiting for it to finish."""
-    return await asyncio.create_subprocess_exec(
-        *args,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-
-
-def _spawn_subprocess_sync(args: Sequence[str], **_: Any) -> asyncio.subprocess.Process:
-    """Execute a subprocess in the background from synchronous context."""
-    return asyncio.run(_spawn_process_async(args))
-
-
-def _run_subprocess_sync(
-    args: Sequence[str],
-    *,
-    capture_output: bool = True,
-    check: bool = False,
-) -> _CommandResult:
-    """Execute an async subprocess in synchronous context with no shell."""
-    result = asyncio.run(_run_process_async(args, capture_output=capture_output))
-    if check and result.returncode != 0:
-        raise RuntimeError(
-            f"Command failed with return code {result.returncode}: {list(args)}"
-        )
-    return result
-
-
-def _run_subprocess_command(
-    args: Sequence[str],
-    *,
-    run_fn: Callable[..., _CommandResult] = _run_subprocess_sync,
-    capture_output: bool = True,
-    check: bool = False,
-) -> _CommandResult:
-    """Execute a validated local command for r2ai interactions."""
-    resolved_args = _resolve_command(list(args))
-    _validate_executable(resolved_args)
-    return run_fn(
-        resolved_args,
-        capture_output=capture_output,
-        check=check,
-    )
 
 
 def check_r2ai_server_available(
@@ -281,7 +166,7 @@ def get_r2ai_models(server_url: str = "http://localhost:8080", timeout: int = 2)
     """
     try:
         response = requests.get(f"{server_url}/models", timeout=timeout)
-        if _is_http_ok(response):
+        if response.status_code == 200:
             models_data = response.json()
             models: list[Any] = models_data.get("models", [])
             return models
@@ -395,16 +280,12 @@ def _build_server_command(model: str) -> list[str]:
 def _launch_server_process(
     cmd: list[str],
     *,
-    popen: Callable[..., Any] = _run_subprocess_detached,
+    popen: Callable[..., Any] = subprocess.Popen,
 ) -> bool:
     """Launch the r2ai-server process in the background."""
     resolved_cmd = _resolve_command(cmd)
     _validate_executable(resolved_cmd)
-    popen(
-        resolved_cmd,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
+    popen(resolved_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     logger.info("r2ai-server started in the background")
     return True
 
@@ -422,7 +303,7 @@ def _start_r2ai_server(
     server_url: str,
     prompt_callback: Callable[[str], str] | None = None,
     *,
-    popen: Callable[..., Any] = _run_subprocess_detached,
+    popen: Callable[..., Any] = subprocess.Popen,
 ) -> bool:
     """
     Start r2ai-server with user-selected model.
@@ -446,9 +327,7 @@ def _start_r2ai_server(
         cmd = _build_server_command(model)
         _launch_server_process(cmd, popen=popen)
         return _await_server_ready(server_url)
-    except (ValueError, TypeError, OSError, IOError, RuntimeError, Exception) as e:
-        # Value/Type errors indicate configuration issues, Exception covers
-        # subprocess-like failures from injected callbacks in tests.
+    except (subprocess.SubprocessError, OSError, IOError, ValueError, TypeError, RuntimeError) as e:
         logger.error("Error starting r2ai-server: %s", str(e))
         return False
 
@@ -477,15 +356,11 @@ def _prompt_install_r2ai_server(
         try:
             install_cmd = _resolve_command(['r2pm', 'install', 'r2ai-server'])
             _validate_executable(install_cmd)
-            runner = run or _run_subprocess_sync
-            runner(install_cmd, check=True, capture_output=False)
+            runner = run or subprocess.run
+            runner(install_cmd, check=True)
             logger.info("r2ai-server installed successfully")
             return check_r2ai_server_available(server_url, prompt_callback=prompt_callback)
-        except (OSError, IOError) as e:
-            # OSError/IOError: System-level errors
-            logger.error("Error installing r2ai-server: %s", str(e))
-            return False
-        except Exception as e:
+        except (subprocess.CalledProcessError, subprocess.SubprocessError, OSError, IOError, RuntimeError, ValueError) as e:
             logger.error("Error installing r2ai-server: %s", str(e))
             return False
 
