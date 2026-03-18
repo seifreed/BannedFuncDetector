@@ -162,18 +162,6 @@ print(results)
 
 ---
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
 ## Support the Project
 
 If you find BannedFuncDetector useful, consider supporting its development:
@@ -181,16 +169,6 @@ If you find BannedFuncDetector useful, consider supporting its development:
 <a href="https://buymeacoffee.com/seifreed" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
 </a>
-
----
-
-## License
-
-This project is licensed under the GPL-3.0-or-later license - see the [LICENSE](LICENSE) file for details.
-
-**Attribution Required:**
-- Author: **Marc Rivero** | [@seifreed](https://github.com/seifreed)
-- Repository: [github.com/seifreed/BannedFuncDetector](https://github.com/seifreed/BannedFuncDetector)
 
 ---
 
