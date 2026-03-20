@@ -76,6 +76,9 @@ warn_unused_ignores = true
 warn_return_any = true
 strict_equality = true
 
+[tool.ruff]
+exclude = [".github"]
+
 [tool.bandit]
 exclude_dirs = ["venv", "tests", "__pycache__", "output", "saved", ".git"]
 # B404: import subprocess — the tool needs subprocess to run radare2 and r2ai-server.
