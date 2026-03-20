@@ -51,7 +51,10 @@ from bannedfuncdetector.infrastructure.adapters import r2ai_server as r2ai_mod
 from bannedfuncdetector.infrastructure.adapters.r2_session import (
     open_binary_with_r2,
 )
-from bannedfuncdetector.infrastructure.config_models import AppConfig, DEFAULT_DECOMPILER_OPTIONS
+from bannedfuncdetector.infrastructure.config_models import (
+    AppConfig,
+    DEFAULT_DECOMPILER_OPTIONS,
+)
 from bannedfuncdetector.infrastructure.decompilers.availability import (
     check_decompiler_available,
 )
@@ -116,7 +119,6 @@ from bannedfuncdetector.infrastructure.validators import (
     _check_available_decompilers,
 )
 from bannedfuncdetector.presentation.reporting import display_final_results
-
 
 # ===========================================================================
 # 1. infrastructure/adapters/r2_session.py — lines 43-44, 81-82
@@ -203,9 +205,7 @@ def test_wait_for_server_returns_false_when_all_attempts_fail():
     Purpose: Cover lines 59-61 — RequestException triggers sleep; all attempts
     exhaust and False is returned. Targets a port that is definitely not listening.
     """
-    result = r2ai_mod._wait_for_server(
-        "http://127.0.0.1:19999", attempts=2, timeout=1
-    )
+    result = r2ai_mod._wait_for_server("http://127.0.0.1:19999", attempts=2, timeout=1)
     assert result is False
 
 
@@ -256,6 +256,7 @@ def test_check_r2ai_server_available_unreachable_server_no_autostart():
     _handle_r2ai_server_not_running which needs auto_start=False and
     a prompt_callback that declines.
     """
+
     # prompt_callback that always says no — avoids stdin interaction
     def _no(_prompt: str) -> str:
         return "n"
@@ -308,10 +309,11 @@ def test_handle_r2ai_server_not_running_installed_prompt_no(tmp_path):
     Uses a shim that exits 0 for -h.
     """
     shim = tmp_path / "r2ai-server"
-    make_executable(shim, "#!/bin/sh\nif [ \"$1\" = \"-h\" ]; then exit 0; fi\nexit 1\n")
+    make_executable(shim, '#!/bin/sh\nif [ "$1" = "-h" ]; then exit 0; fi\nexit 1\n')
     original_path = os.environ.get("PATH", "")
     os.environ["PATH"] = f"{tmp_path}:{original_path}"
     try:
+
         def _no(_prompt: str) -> str:
             return "n"
 
@@ -335,6 +337,7 @@ def test_handle_r2ai_server_not_running_not_installed_prompt_no(tmp_path):
     original_path = os.environ.get("PATH", "")
     os.environ["PATH"] = f"{tmp_path}:{original_path}"
     try:
+
         def _no(_prompt: str) -> str:
             return "n"
 
@@ -352,6 +355,7 @@ def test_prompt_install_r2ai_server_user_says_no():
     """
     Purpose: Cover lines 333-338 — user declines install; function returns False.
     """
+
     def _no(_prompt: str) -> str:
         return "n"
 
@@ -423,7 +427,10 @@ def test_app_config_from_dict_partial_decompiler_section():
     assert cfg.decompiler_type == "r2ghidra"
     # r2ghidra option should be present with defaults
     assert "r2ghidra" in cfg.decompiler_options
-    assert cfg.decompiler_options["r2ghidra"].command == DEFAULT_DECOMPILER_OPTIONS["r2ghidra"].command
+    assert (
+        cfg.decompiler_options["r2ghidra"].command
+        == DEFAULT_DECOMPILER_OPTIONS["r2ghidra"].command
+    )
 
 
 def test_app_config_from_dict_nested_error_handling_options():
@@ -431,31 +438,43 @@ def test_app_config_from_dict_nested_error_handling_options():
     Purpose: Cover lines 183-201 — error_handling and advanced_options sub-dicts
     are parsed when present.
     """
-    cfg = AppConfig.from_dict({
-        "decompiler": {
-            "type": "r2dec",
-            "options": {
-                "r2dec": {
-                    "enabled": False,
-                    "error_handling": {
-                        "ignore_unknown_branches": False,
-                        "clean_error_messages": False,
-                        "fallback_to_asm": False,
-                    },
-                    "advanced_options": {
-                        "temperature": 0.5,
-                        "context": 4096,
-                        "max_tokens": 1024,
-                        "system_prompt": "custom",
-                    },
-                }
+    cfg = AppConfig.from_dict(
+        {
+            "decompiler": {
+                "type": "r2dec",
+                "options": {
+                    "r2dec": {
+                        "enabled": False,
+                        "error_handling": {
+                            "ignore_unknown_branches": False,
+                            "clean_error_messages": False,
+                            "fallback_to_asm": False,
+                        },
+                        "advanced_options": {
+                            "temperature": 0.5,
+                            "context": 4096,
+                            "max_tokens": 1024,
+                            "system_prompt": "custom",
+                        },
+                    }
+                },
             },
-        },
-        "output": {"directory": "/tmp/out", "format": "csv", "open_results": True, "verbose": True},
-        "analysis": {"parallel": False, "max_workers": 8, "timeout": 120, "worker_limit": 2},
-        "skip_small_functions": False,
-        "small_function_threshold": 5,
-    })
+            "output": {
+                "directory": "/tmp/out",
+                "format": "csv",
+                "open_results": True,
+                "verbose": True,
+            },
+            "analysis": {
+                "parallel": False,
+                "max_workers": 8,
+                "timeout": 120,
+                "worker_limit": 2,
+            },
+            "skip_small_functions": False,
+            "small_function_threshold": 5,
+        }
+    )
     r2dec_opt = cfg.decompiler_options["r2dec"]
     assert r2dec_opt.enabled is False
     assert r2dec_opt.ignore_unknown_branches is False
@@ -482,21 +501,23 @@ def test_app_config_from_dict_model_api_host_port_server_url():
     Purpose: Cover lines 192-197 — model, api, prompt, host, port, server_url are
     forwarded from options dict.
     """
-    cfg = AppConfig.from_dict({
-        "decompiler": {
-            "type": "decai",
-            "options": {
-                "decai": {
-                    "model": "mymodel",
-                    "api": "openai",
-                    "prompt": "do it",
-                    "host": "http://example.com",
-                    "port": 9999,
-                    "server_url": "http://example.com:9999",
-                }
-            },
+    cfg = AppConfig.from_dict(
+        {
+            "decompiler": {
+                "type": "decai",
+                "options": {
+                    "decai": {
+                        "model": "mymodel",
+                        "api": "openai",
+                        "prompt": "do it",
+                        "host": "http://example.com",
+                        "port": 9999,
+                        "server_url": "http://example.com:9999",
+                    }
+                },
+            }
         }
-    })
+    )
     decai_opt = cfg.decompiler_options["decai"]
     assert decai_opt.model == "mymodel"
     assert decai_opt.api == "openai"
@@ -512,10 +533,12 @@ def test_app_config_from_dict_model_api_host_port_server_url():
 
 
 def _make_config(decompiler_type: str = "default") -> FakeConfigRepository:
-    return FakeConfigRepository({
-        "decompiler": {"type": decompiler_type, "options": {}},
-        "output": {"directory": "output"},
-    })
+    return FakeConfigRepository(
+        {
+            "decompiler": {"type": decompiler_type, "options": {}},
+            "output": {"directory": "output"},
+        }
+    )
 
 
 def test_resolve_to_decompiler_type_with_enum_passthrough():
@@ -614,7 +637,10 @@ def test_log_unavailable_decompiler_decai_branch():
     Purpose: Cover lines 158-162 — decai branch uses 'AI assistant plugin' message.
     Calls the internal function directly.
     """
-    from bannedfuncdetector.infrastructure.decompilers.selector import _log_unavailable_decompiler
+    from bannedfuncdetector.infrastructure.decompilers.selector import (
+        _log_unavailable_decompiler,
+    )
+
     # Just verify it does not raise
     _log_unavailable_decompiler("decai")
     _log_unavailable_decompiler("r2ghidra")
@@ -695,14 +721,16 @@ def test_decompile_with_default_cascade_fallback_to_asm():
     Purpose: Cover lines 172-176 — all decompilers return empty output;
     fallback_to_asm=True causes assembly retrieval.
     """
-    r2 = FakeR2(cmd_map={
-        "s main": "",
-        "pdg": "",
-        "pdd": "",
-        "pdc": "",
-        "pdf": "push rbp; mov rbp, rsp; ret",
-        "s": "0x1000",
-    })
+    r2 = FakeR2(
+        cmd_map={
+            "s main": "",
+            "pdg": "",
+            "pdd": "",
+            "pdc": "",
+            "pdf": "push rbp; mov rbp, rsp; ret",
+            "s": "0x1000",
+        }
+    )
     result = _decompile_with_default_cascade(
         r2, "main", clean_error_messages=True, options={"fallback_to_asm": True}
     )
@@ -728,13 +756,15 @@ def test_decompile_with_default_cascade_asm_seek_fails():
     Purpose: Cover lines 173-174 — seek returns '0x0', so asm fallback
     returns err about seek failure.
     """
-    r2 = FakeR2(cmd_map={
-        "s main": "",
-        "pdg": "",
-        "pdd": "",
-        "pdc": "",
-        "s": "0x0",
-    })
+    r2 = FakeR2(
+        cmd_map={
+            "s main": "",
+            "pdg": "",
+            "pdd": "",
+            "pdc": "",
+            "s": "0x0",
+        }
+    )
     result = _decompile_with_default_cascade(
         r2, "main", clean_error_messages=True, options={"fallback_to_asm": True}
     )
@@ -752,10 +782,12 @@ def test_decompile_with_selected_decompiler_empty_functions():
     Purpose: Cover lines 37-40 — empty functions list returns [] immediately
     with a warning.
     """
-    config = create_config_from_dict({
-        "decompiler": {"type": "default", "options": {}},
-        "banned_functions": ["strcpy"],
-    })
+    config = create_config_from_dict(
+        {
+            "decompiler": {"type": "default", "options": {}},
+            "banned_functions": ["strcpy"],
+        }
+    )
     r2 = FakeR2()
     result = decompile_with_selected_decompiler(
         r2, functions=[], verbose=True, config=config
@@ -768,10 +800,12 @@ def test_decompiler_orchestrator_decompile_function_with_options():
     Purpose: Cover lines 77-85 — options passed to decompile_function cause
     config_factory branch to be taken.
     """
-    config = create_config_from_dict({
-        "decompiler": {"type": "default", "options": {}},
-        "banned_functions": [],
-    })
+    config = create_config_from_dict(
+        {
+            "decompiler": {"type": "default", "options": {}},
+            "banned_functions": [],
+        }
+    )
 
     def _factory(d: dict) -> Any:
         return create_config_from_dict(d)
@@ -789,9 +823,11 @@ def test_decompiler_orchestrator_select_decompiler():
     """
     Purpose: Cover line 92 — select_decompiler returns a valid string.
     """
-    config = create_config_from_dict({
-        "decompiler": {"type": "default", "options": {}},
-    })
+    config = create_config_from_dict(
+        {
+            "decompiler": {"type": "default", "options": {}},
+        }
+    )
     orch = DecompilerOrchestrator(config)
     selected = orch.select_decompiler()
     assert isinstance(selected, str)
@@ -801,9 +837,11 @@ def test_decompiler_orchestrator_check_decompiler_available():
     """
     Purpose: Cover line 97 — check_decompiler_available delegates correctly.
     """
-    config = create_config_from_dict({
-        "decompiler": {"type": "default", "options": {}},
-    })
+    config = create_config_from_dict(
+        {
+            "decompiler": {"type": "default", "options": {}},
+        }
+    )
     orch = DecompilerOrchestrator(config)
     assert orch.check_decompiler_available("default") is True
     assert orch.check_decompiler_available("r2ai") is False
@@ -831,15 +869,19 @@ def test_decompile_function_runtime_error_from_decompilation():
     """
     Purpose: Cover lines 35-37 — DecompilationError is caught and returned as err.
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilationError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        DecompilationError,
+    )
 
     class _ExplodingR2(FakeR2):
         def cmd(self, command: str) -> str:
             raise DecompilationError("decompiler exploded")
 
-    config = create_config_from_dict({
-        "decompiler": {"type": "default", "options": {}},
-    })
+    config = create_config_from_dict(
+        {
+            "decompiler": {"type": "default", "options": {}},
+        }
+    )
     r2 = _ExplodingR2()
     result = decompile_function(r2, "main", "default", config=config)
     assert result.is_err()
@@ -890,12 +932,14 @@ def test_handle_processing_exception_silent_at_non_interval():
 
 
 def _make_simple_config():
-    return create_config_from_dict({
-        "decompiler": {"type": "default", "options": {}},
-        "banned_functions": [],
-        "skip_small_functions": False,
-        "small_function_threshold": 0,
-    })
+    return create_config_from_dict(
+        {
+            "decompiler": {"type": "default", "options": {}},
+            "banned_functions": [],
+            "skip_small_functions": False,
+            "small_function_threshold": 0,
+        }
+    )
 
 
 def test_process_single_function_empty_decompilation():
@@ -903,6 +947,7 @@ def test_process_single_function_empty_decompilation():
     Purpose: Cover line 49 — decompile_result.unwrap() returns empty string;
     err about empty result is returned.
     """
+
     def _empty_decompile(r2, func_name, decompiler_type, *, config):
         return ok("")
 
@@ -928,6 +973,7 @@ def test_process_single_function_raises_runtime_error():
     Purpose: Cover lines 53-54 — RuntimeError from decompile_function_impl
     is caught and returns (err, False).
     """
+
     def _exploding_decompile(r2, func_name, decompiler_type, *, config):
         raise RuntimeError("r2 crashed")
 
@@ -1022,6 +1068,7 @@ def test_check_plugin_decompiler_logs_available(caplog):
     from bannedfuncdetector.infrastructure.decompilers.availability import (
         _check_plugin_decompiler,
     )
+
     # _check_plugin_decompiler with print_message=True; result may be True or False
     # depending on actual r2 plugins installed — we only check it does not raise
     _check_plugin_decompiler("r2ghidra", print_message=True)
@@ -1154,8 +1201,12 @@ def test_try_decompile_pair_primary_succeeds():
     code = "void fn() { return 99; } // extra filler content to pass length check"
     r2 = FakeR2(cmd_map={"s fn": "", "pdg": code, "pdd": ""})
     result = _try_decompile_pair(
-        r2, "fn", primary_cmd="pdg", fallback_cmd="pdd",
-        clean_error_messages=True, use_alternative=True,
+        r2,
+        "fn",
+        primary_cmd="pdg",
+        fallback_cmd="pdd",
+        clean_error_messages=True,
+        use_alternative=True,
     )
     assert "fn" in result or len(result) > 0
 
@@ -1166,8 +1217,12 @@ def test_try_decompile_pair_primary_fails_fallback_disabled():
     """
     r2 = FakeR2(cmd_map={"s fn": "", "pdg": "", "pdd": ""})
     result = _try_decompile_pair(
-        r2, "fn", primary_cmd="pdg", fallback_cmd="pdd",
-        clean_error_messages=True, use_alternative=False,
+        r2,
+        "fn",
+        primary_cmd="pdg",
+        fallback_cmd="pdd",
+        clean_error_messages=True,
+        use_alternative=False,
     )
     assert result == ""
 
@@ -1178,8 +1233,12 @@ def test_try_decompile_pair_primary_fails_fallback_also_fails():
     """
     r2 = FakeR2(cmd_map={"s fn": "", "pdg": "", "pdd": ""})
     result = _try_decompile_pair(
-        r2, "fn", primary_cmd="pdg", fallback_cmd="pdd",
-        clean_error_messages=True, use_alternative=True,
+        r2,
+        "fn",
+        primary_cmd="pdg",
+        fallback_cmd="pdd",
+        clean_error_messages=True,
+        use_alternative=True,
     )
     assert result == ""
 
@@ -1253,13 +1312,19 @@ def test_create_decompiler_string_r2ghidra():
     Purpose: Cover lines 82-95 — string 'r2ghidra' is resolved to enum and
     corresponding instance is returned.
     """
-    from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import R2GhidraDecompiler
+    from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import (
+        R2GhidraDecompiler,
+    )
+
     d = create_decompiler("r2ghidra")
     assert isinstance(d, R2GhidraDecompiler)
 
 
 def test_create_decompiler_string_r2dec():
-    from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import R2DecDecompiler
+    from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import (
+        R2DecDecompiler,
+    )
+
     d = create_decompiler("r2dec")
     assert isinstance(d, R2DecDecompiler)
 
@@ -1325,6 +1390,7 @@ def test_decai_decompiler_decompile_runtime_error_returns_empty():
     """
     Purpose: Cover lines 296-302 — RuntimeError caught; returns "".
     """
+
     class _ExplodingR2(FakeR2):
         def cmdj(self, command: str):
             raise RuntimeError("r2 gone")
@@ -1338,6 +1404,7 @@ def test_decai_decompiler_decompile_attribute_error_returns_empty():
     """
     Purpose: Cover lines 303-309 — AttributeError caught; returns "".
     """
+
     class _BadAttrR2(FakeR2):
         def cmdj(self, command: str):
             raise AttributeError("no attribute")
@@ -1351,10 +1418,12 @@ def test_configure_decai_model_already_configured():
     """
     Purpose: Cover lines 58-59 — both api and model are set; early return.
     """
-    r2 = FakeR2(cmd_map={
-        "decai -e api": "api=ollama",
-        "decai -e model": "model=qwen2:5b",
-    })
+    r2 = FakeR2(
+        cmd_map={
+            "decai -e api": "api=ollama",
+            "decai -e model": "model=qwen2:5b",
+        }
+    )
     _configure_decai_model(r2)  # Must not raise
 
 
@@ -1376,6 +1445,7 @@ def test_configure_decai_model_api_set_no_model():
 
     r2 = FakeR2()
     r2.cmd_map = {}  # replace map with callable
+
     class _SmartR2(FakeR2):
         def cmd(self, command: str) -> str:
             return _cmd(command)
@@ -1388,6 +1458,7 @@ def test_configure_decai_model_ollama_detected():
     """
     Purpose: Cover lines 75-101 — ollama list returns output; preferred model found.
     """
+
     class _OllamaR2(FakeR2):
         def cmd(self, command: str) -> str:
             if command == "decai -e api":
@@ -1405,6 +1476,7 @@ def test_configure_decai_model_no_ollama():
     """
     Purpose: Cover line 77 — ollama list empty; early return with info log.
     """
+
     class _NoOllamaR2(FakeR2):
         def cmd(self, command: str) -> str:
             if command in ("decai -e api", "decai -e model"):
@@ -1440,11 +1512,13 @@ def test_try_decai_decompilation_all_methods_fail():
     """
     Purpose: Cover line 148 — all three methods fail; returns None.
     """
-    r2 = FakeR2(cmd_map={
-        "decai -d": "",
-        "decai -dr": "",
-        "pdf": "",
-    })
+    r2 = FakeR2(
+        cmd_map={
+            "decai -d": "",
+            "decai -dr": "",
+            "pdf": "",
+        }
+    )
     # The third method uses cmd with a dynamic key containing the query
     result = _try_decai_decompilation(r2, "main")
     assert result is None
@@ -1463,7 +1537,9 @@ def test_fallback_to_r2ghidra_raises_on_runtime_error():
     """
     Purpose: Cover lines 181-182 — RuntimeError during pdg raises DecompilationError.
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilationError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        DecompilationError,
+    )
 
     class _ExplodingR2(FakeR2):
         def cmd(self, command: str) -> str:
@@ -1497,7 +1573,9 @@ def test_decompile_with_decai_seek_returns_empty_list_raises():
     """
     Purpose: Cover lines 213-214 — sj returns empty list; DecompilationError raised.
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilationError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        DecompilationError,
+    )
 
     r2 = FakeR2(
         cmd_map={
@@ -1516,7 +1594,9 @@ def test_decompile_with_decai_sj_dict_no_offset_raises():
     """
     Purpose: Cover lines 225-227 — sj returns dict without 'offset' key.
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilationError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        DecompilationError,
+    )
 
     r2 = FakeR2(
         cmd_map={"decai -h": "Usage: decai"},
@@ -1533,7 +1613,9 @@ def test_decompile_with_decai_sj_wrong_type_raises():
     """
     Purpose: Cover lines 228-229 — sj returns unexpected type (int).
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilationError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        DecompilationError,
+    )
 
     r2 = FakeR2(
         cmd_map={"decai -h": "Usage: decai"},
@@ -1550,10 +1632,14 @@ def test_resolve_function_offset_function_not_found_raises():
     """
     Purpose: Cover lines 165-167 — afij returns None; FunctionNotFoundError raised.
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import FunctionNotFoundError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        FunctionNotFoundError,
+    )
 
     r2 = FakeR2(cmdj_map={"afij @ main": None})
-    with pytest.raises(FunctionNotFoundError, match="Could not get function information"):
+    with pytest.raises(
+        FunctionNotFoundError, match="Could not get function information"
+    ):
         _resolve_function_offset(r2, "main")
 
 
@@ -1562,7 +1648,9 @@ def test_resolve_function_offset_offset_none_raises():
     Purpose: Cover lines 170-171 — _get_function_offset returns None;
     FunctionNotFoundError raised.
     """
-    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import FunctionNotFoundError
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+        FunctionNotFoundError,
+    )
 
     r2 = FakeR2(
         cmdj_map={
@@ -1715,6 +1803,7 @@ def test_display_final_results_format_address_none_like():
     returns hex(0).
     """
     from bannedfuncdetector.presentation.reporting import _format_address
+
     assert _format_address(None) == "0x0"
     assert _format_address(0x1234) == "0x1234"
     assert _format_address("sym.main") == "sym.main"

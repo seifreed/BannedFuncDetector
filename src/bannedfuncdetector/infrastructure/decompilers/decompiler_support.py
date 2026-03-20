@@ -5,17 +5,22 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from bannedfuncdetector.constants import MIN_DECOMPILED_CODE_LENGTH, MIN_VALID_CODE_LENGTH
+from bannedfuncdetector.constants import (
+    MIN_DECOMPILED_CODE_LENGTH,
+    MIN_VALID_CODE_LENGTH,
+)
 from bannedfuncdetector.domain.protocols import IR2Client
 
 logger = logging.getLogger(__name__)
 
-ERROR_SKIP_PATTERNS: frozenset[str] = frozenset([
-    "error:",
-    "warn:",
-    "warning:",
-    "unknown branch",
-])
+ERROR_SKIP_PATTERNS: frozenset[str] = frozenset(
+    [
+        "error:",
+        "warn:",
+        "warning:",
+        "unknown branch",
+    ]
+)
 
 
 def clean_decompiled_output(decompiled_text: str | None) -> str | None:

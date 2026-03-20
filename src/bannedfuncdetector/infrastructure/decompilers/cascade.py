@@ -29,9 +29,15 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     try_decompile_with_command,
 )
 from bannedfuncdetector.infrastructure.decompilers.registry import DECOMPILER_INSTANCES
-from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import R2GhidraDecompiler
-from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import R2DecDecompiler
-from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import (
+    R2GhidraDecompiler,
+)
+from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import (
+    R2DecDecompiler,
+)
+from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+    DecAIDecompiler,
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -86,8 +92,10 @@ def _decompile_with_instance(
                 return err("DecAI decompiler not properly configured")
             # DecAIDecompiler.decompile returns str (extends BaseR2Decompiler)
             result = decai.decompile(r2, function_name)
-            return ok(result) if result else err(
-                f"DecAI decompilation failed for {function_name}"
+            return (
+                ok(result)
+                if result
+                else err(f"DecAI decompilation failed for {function_name}")
             )
 
         if decompiler_type == DecompilerType.R2GHIDRA:
@@ -95,12 +103,15 @@ def _decompile_with_instance(
             if not isinstance(ghidra, R2GhidraDecompiler):
                 return err("R2Ghidra decompiler not properly configured")
             result = ghidra.decompile(
-                r2, function_name,
+                r2,
+                function_name,
                 clean_error_messages=clean_error_messages,
-                use_alternative=use_alternative
+                use_alternative=use_alternative,
             )
-            return ok(result) if result else err(
-                f"R2Ghidra decompilation failed for {function_name}"
+            return (
+                ok(result)
+                if result
+                else err(f"R2Ghidra decompilation failed for {function_name}")
             )
 
         if decompiler_type == DecompilerType.R2DEC:
@@ -108,12 +119,15 @@ def _decompile_with_instance(
             if not isinstance(r2dec, R2DecDecompiler):
                 return err("R2Dec decompiler not properly configured")
             result = r2dec.decompile(
-                r2, function_name,
+                r2,
+                function_name,
                 clean_error_messages=clean_error_messages,
-                use_alternative=use_alternative
+                use_alternative=use_alternative,
             )
-            return ok(result) if result else err(
-                f"R2Dec decompilation failed for {function_name}"
+            return (
+                ok(result)
+                if result
+                else err(f"R2Dec decompilation failed for {function_name}")
             )
 
         # Default decompiler - uses cascade logic for better results
@@ -156,8 +170,9 @@ def _decompile_with_default_cascade(
     # Try decompilers in priority order
     for decomp_name, command in DECOMPILER_CASCADE_ORDER:
         # Default is always available; others need plugin availability check
-        if decomp_name == DecompilerType.DEFAULT.value or check_decompiler_plugin_available(
-            decomp_name
+        if (
+            decomp_name == DecompilerType.DEFAULT.value
+            or check_decompiler_plugin_available(decomp_name)
         ):
             decompiled = try_decompile_with_command(
                 r2, command, function_name, clean_error_messages

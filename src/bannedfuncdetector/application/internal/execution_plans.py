@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Internal execution plans for analysis use cases."""
+
 from dataclasses import dataclass
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -10,7 +11,11 @@ from ..analysis_error import ExecutionFailure
 
 if TYPE_CHECKING:
     from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
-    from bannedfuncdetector.domain.protocols import IConfigRepository, IDecompilerOrchestrator, IR2Client
+    from bannedfuncdetector.domain.protocols import (
+        IConfigRepository,
+        IDecompilerOrchestrator,
+        IR2Client,
+    )
     from bannedfuncdetector.domain.result import Result
     from .directory_runners import CompletedFutures, ExecutorFactory
 
@@ -51,7 +56,7 @@ class DirectoryScanPlan:
     force_decompiler: bool = False
     skip_banned: bool = False
     skip_analysis: bool = False
-    worker_entrypoint: "Callable[[DirectoryWorkerJob], Result[BinaryAnalysisOutcome, ExecutionFailure]] | None" = None
+    worker_entrypoint: "Callable[[DirectoryWorkerJob], Result[BinaryAnalysisOutcome, ExecutionFailure]] | None" = (None)
     parallel_executor_factory: "ExecutorFactory | None" = None
     completed_futures: "CompletedFutures | None" = None
 
@@ -84,7 +89,9 @@ class DirectoryWorkerJob:
     r2_factory: "Callable[[str], IR2Client]"
     binary_opener: "Callable[[str, bool, Callable[[str], IR2Client]], IR2Client]"
     r2_closer: "Callable[[IR2Client], Any]"
-    orchestrator_factory: "Callable[[IConfigRepository], IDecompilerOrchestrator] | None" = None
+    orchestrator_factory: (
+        "Callable[[IConfigRepository], IDecompilerOrchestrator] | None"
+    ) = None
     force_decompiler: bool = False
     skip_banned: bool = False
     skip_analysis: bool = False

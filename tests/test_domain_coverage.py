@@ -12,7 +12,6 @@ Coverage tests for:
 All tests call real production code with real inputs.  No mocks, no stubs.
 """
 
-
 from bannedfuncdetector.domain.entities import (
     CATEGORY_RISK_WEIGHTS,
     CRITICAL_CATEGORIES,
@@ -36,10 +35,10 @@ from bannedfuncdetector.application.dto_mappers import (
     function_descriptor_to_dto,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers – build real domain objects used across multiple tests
 # ---------------------------------------------------------------------------
+
 
 def _make_banned_function(
     name: str = "strcpy",
@@ -78,6 +77,7 @@ def _make_analysis_result(
 # ===========================================================================
 # domain/entities.py – BannedFunction
 # ===========================================================================
+
 
 class TestBannedFunctionIsCritical:
     """BannedFunction.is_critical covers category-None and category-in/out-of-critical-set."""
@@ -118,7 +118,9 @@ class TestBannedFunctionIsCritical:
     def test_all_critical_categories_constant_members_yield_true(self):
         for cat in CRITICAL_CATEGORIES:
             func = _make_banned_function(category=cat)
-            assert func.is_critical is True, f"Expected is_critical=True for category {cat!r}"
+            assert (
+                func.is_critical is True
+            ), f"Expected is_critical=True for category {cat!r}"
 
 
 class TestBannedFunctionRiskScore:
@@ -136,11 +138,15 @@ class TestBannedFunctionRiskScore:
     def test_risk_score_uses_category_weight(self):
         # string_input has weight 10, decompilation method weight 10
         # score = min(100, 10*7 + 10*3) = min(100, 100) = 100
-        func = _make_banned_function(category="string_input", detection_method="decompilation")
+        func = _make_banned_function(
+            category="string_input", detection_method="decompilation"
+        )
         assert func.risk_score == 100
 
     def test_risk_score_caps_at_100(self):
-        func = _make_banned_function(category="string_input", detection_method="decompilation")
+        func = _make_banned_function(
+            category="string_input", detection_method="decompilation"
+        )
         assert func.risk_score <= 100
 
     def test_risk_score_with_none_category_uses_default_weight_5(self):
@@ -158,12 +164,18 @@ class TestBannedFunctionRiskScore:
     def test_risk_score_for_all_known_categories_stays_in_range(self):
         for cat in CATEGORY_RISK_WEIGHTS:
             func = _make_banned_function(category=cat, detection_method="import")
-            assert 0 <= func.risk_score <= 100, f"Score out of range for category {cat!r}"
+            assert (
+                0 <= func.risk_score <= 100
+            ), f"Score out of range for category {cat!r}"
 
     def test_risk_score_for_all_known_detection_methods_stays_in_range(self):
         for method in DETECTION_METHOD_WEIGHTS:
-            func = _make_banned_function(category="string_copy", detection_method=method)
-            assert 0 <= func.risk_score <= 100, f"Score out of range for method {method!r}"
+            func = _make_banned_function(
+                category="string_copy", detection_method=method
+            )
+            assert (
+                0 <= func.risk_score <= 100
+            ), f"Score out of range for method {method!r}"
 
     def test_risk_score_formula_correctness(self):
         # string_copy weight=8, "string" method weight=4
@@ -176,6 +188,7 @@ class TestBannedFunctionRiskScore:
 # domain/entities.py – AnalysisResult
 # ===========================================================================
 
+
 class TestAnalysisResultProperties:
     """AnalysisResult critical_count and has_critical_issues properties."""
 
@@ -185,7 +198,9 @@ class TestAnalysisResultProperties:
 
     def test_critical_count_counts_only_critical_functions(self):
         critical = _make_banned_function(category="string_copy")
-        non_critical = _make_banned_function(name="mktemp", category="path_manipulation")
+        non_critical = _make_banned_function(
+            name="mktemp", category="path_manipulation"
+        )
         result = _make_analysis_result(detected_functions=(critical, non_critical))
         assert result.critical_count == 1
 
@@ -223,6 +238,7 @@ class TestAnalysisResultProperties:
 # ===========================================================================
 # domain/entities.py – DirectoryAnalysisSummary
 # ===========================================================================
+
 
 class TestDirectoryAnalysisSummaryProperties:
     """DirectoryAnalysisSummary.analyzed_files and total_findings properties."""
@@ -279,6 +295,7 @@ class TestDirectoryAnalysisSummaryProperties:
 # domain/types.py – classify_error
 # ===========================================================================
 
+
 class TestClassifyError:
     """classify_error exercises every branch: OSError/IOError, RuntimeError/ValueError,
     KeyError/AttributeError/TypeError, and the default fallback."""
@@ -319,6 +336,7 @@ class TestClassifyError:
     def test_unexpected_exception_subclass_returns_error_category(self):
         class CustomException(Exception):
             pass
+
         result = classify_error(CustomException("custom"))
         assert result == ErrorCategory.ERROR
 
@@ -326,6 +344,7 @@ class TestClassifyError:
 # ===========================================================================
 # domain/types.py – safe_parse_address
 # ===========================================================================
+
 
 class TestSafeParseAddress:
     """safe_parse_address covers None, int, hex string, empty string, non-hex string,
@@ -374,6 +393,7 @@ class TestSafeParseAddress:
 # domain/types.py – search_banned_call_in_text
 # ===========================================================================
 
+
 class TestSearchBannedCallInText:
     """search_banned_call_in_text checks pattern matching against decompiled text."""
 
@@ -411,7 +431,7 @@ class TestSearchBannedCallInText:
         assert search_banned_call_in_text("", "strcpy") is False
 
     def test_gets_canonical_function(self):
-        code = 'char *ptr = gets(buf);'
+        code = "char *ptr = gets(buf);"
         assert search_banned_call_in_text(code, "gets") is True
 
     def test_whitespace_between_name_and_paren(self):
@@ -439,6 +459,7 @@ class TestSearchBannedCallInText:
 # ===========================================================================
 # domain/types.py – create_detection_result
 # ===========================================================================
+
 
 class TestCreateDetectionResult:
     """create_detection_result builds a BannedFunction via safe_parse_address
@@ -499,6 +520,7 @@ class TestCreateDetectionResult:
 # application/dto_mappers.py – function_descriptor_to_dto
 # ===========================================================================
 
+
 class TestFunctionDescriptorToDto:
     """function_descriptor_to_dto converts a FunctionDescriptor entity to a dict."""
 
@@ -525,7 +547,9 @@ class TestFunctionDescriptorToDto:
     def test_roundtrip_descriptor_through_dto(self):
         entity = FunctionDescriptor(name="roundtrip", address=0xFF00, size=50)
         dto = function_descriptor_to_dto(entity)
-        recovered = function_descriptor_from_dto({"name": dto["name"], "offset": dto["offset"], "size": dto["size"]})
+        recovered = function_descriptor_from_dto(
+            {"name": dto["name"], "offset": dto["offset"], "size": dto["size"]}
+        )
         assert recovered.name == entity.name
         assert recovered.address == entity.address
         assert recovered.size == entity.size
@@ -534,6 +558,7 @@ class TestFunctionDescriptorToDto:
 # ===========================================================================
 # application/dto_mappers.py – detection_entity_from_dto
 # ===========================================================================
+
 
 class TestDetectionEntityFromDto:
     """detection_entity_from_dto converts a raw dict or BannedFunction into a domain entity."""
@@ -556,7 +581,12 @@ class TestDetectionEntityFromDto:
         assert isinstance(result, BannedFunction)
 
     def test_name_extracted_from_dict(self):
-        raw = {"name": "vuln_func", "address": 0x100, "banned_functions": [], "detection_method": "name"}
+        raw = {
+            "name": "vuln_func",
+            "address": 0x100,
+            "banned_functions": [],
+            "detection_method": "name",
+        }
         result = detection_entity_from_dto(raw)
         assert result.name == "vuln_func"
 
@@ -566,7 +596,12 @@ class TestDetectionEntityFromDto:
         assert result.name == "unknown"
 
     def test_address_parsed_from_hex_string(self):
-        raw = {"name": "f", "address": "0x401000", "banned_functions": [], "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": "0x401000",
+            "banned_functions": [],
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.address == 0x401000
 
@@ -576,7 +611,12 @@ class TestDetectionEntityFromDto:
         assert result.address == 0
 
     def test_banned_calls_populated_from_banned_functions_key(self):
-        raw = {"name": "f", "address": 0, "banned_functions": ["strcpy", "gets"], "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": ["strcpy", "gets"],
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.banned_calls == ("strcpy", "gets")
 
@@ -586,27 +626,54 @@ class TestDetectionEntityFromDto:
         assert result.banned_calls == ()
 
     def test_category_taken_from_type_key(self):
-        raw = {"name": "f", "address": 0, "banned_functions": [], "type": "memory", "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": [],
+            "type": "memory",
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.category == "memory"
 
     def test_category_is_none_when_type_is_not_string(self):
-        raw = {"name": "f", "address": 0, "banned_functions": [], "type": 42, "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": [],
+            "type": 42,
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.category is None
 
     def test_category_is_none_when_type_absent(self):
-        raw = {"name": "f", "address": 0, "banned_functions": [], "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": [],
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.category is None
 
     def test_detection_method_from_detection_method_key(self):
-        raw = {"name": "f", "address": 0, "banned_functions": [], "detection_method": "decompilation"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": [],
+            "detection_method": "decompilation",
+        }
         result = detection_entity_from_dto(raw)
         assert result.detection_method == "decompilation"
 
     def test_detection_method_falls_back_to_match_type_key(self):
-        raw = {"name": "f", "address": 0, "banned_functions": [], "match_type": "string"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": [],
+            "match_type": "string",
+        }
         result = detection_entity_from_dto(raw)
         assert result.detection_method == "string"
 
@@ -617,17 +684,33 @@ class TestDetectionEntityFromDto:
 
     def test_non_string_items_in_banned_functions_are_filtered(self):
         # The mapper filters with isinstance(call, str)
-        raw = {"name": "f", "address": 0, "banned_functions": ["strcpy", 42, None, "gets"], "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": ["strcpy", 42, None, "gets"],
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.banned_calls == ("strcpy", "gets")
 
     def test_size_extracted_from_dict(self):
-        raw = {"name": "f", "address": 0, "size": 256, "banned_functions": [], "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "size": 256,
+            "banned_functions": [],
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.size == 256
 
     def test_size_defaults_to_zero_when_absent(self):
-        raw = {"name": "f", "address": 0, "banned_functions": [], "detection_method": "import"}
+        raw = {
+            "name": "f",
+            "address": 0,
+            "banned_functions": [],
+            "detection_method": "import",
+        }
         result = detection_entity_from_dto(raw)
         assert result.size == 0
 
@@ -635,6 +718,7 @@ class TestDetectionEntityFromDto:
 # ===========================================================================
 # application/dto_mappers.py – detection_entity_to_dto
 # ===========================================================================
+
 
 class TestDetectionEntityToDto:
     """detection_entity_to_dto serialises a BannedFunction into a dict."""

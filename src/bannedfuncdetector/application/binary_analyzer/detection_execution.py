@@ -40,7 +40,9 @@ def _execute_default_detection(
     params: BinaryScanPlan,
     function_analyzer: Callable[..., Result[BannedFunction, str]],
 ) -> list[BannedFunction]:
-    from bannedfuncdetector.application.function_detection_runtime import run_intra_binary_detection
+    from bannedfuncdetector.application.function_detection_runtime import (
+        run_intra_binary_detection,
+    )
 
     return run_intra_binary_detection(
         r2,

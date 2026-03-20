@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bannedfuncdetector.domain import AnalysisResult, DirectoryAnalysisSummary, FunctionDescriptor
+from bannedfuncdetector.domain import (
+    AnalysisResult,
+    DirectoryAnalysisSummary,
+    FunctionDescriptor,
+)
 
 
 @dataclass(frozen=True)

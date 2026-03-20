@@ -11,16 +11,19 @@ Author: Marc Rivero | @seifreed
 """
 
 from dataclasses import dataclass
+
 # Categories considered critical from a security perspective
 # These involve memory corruption, code execution, or direct system access
-CRITICAL_CATEGORIES: frozenset[str] = frozenset([
-    "string_copy",
-    "string_concat",
-    "string_format",
-    "string_input",
-    "memory",
-    "process",
-])
+CRITICAL_CATEGORIES: frozenset[str] = frozenset(
+    [
+        "string_copy",
+        "string_concat",
+        "string_format",
+        "string_input",
+        "memory",
+        "process",
+    ]
+)
 
 # Risk weights by category (higher = more dangerous)
 STRING_TOKEN_RISK_WEIGHT = 4
@@ -61,6 +64,7 @@ DETECTION_METHOD_WEIGHTS: dict[str, int] = {
 @dataclass(frozen=True)
 class FunctionDescriptor:
     """Represents a discovered function within a binary."""
+
     name: str
     address: int
     size: int = 0
@@ -69,11 +73,16 @@ class FunctionDescriptor:
 @dataclass(frozen=True)
 class BannedFunction:
     """Represents a detected banned/insecure function."""
+
     name: str
     address: int
     size: int
-    banned_calls: tuple[str, ...]  # tuple for immutability (frozen dataclass requires hashable fields)
-    detection_method: str  # 'name', 'import', 'string', 'decompilation', 'name+decompilation'
+    banned_calls: tuple[
+        str, ...
+    ]  # tuple for immutability (frozen dataclass requires hashable fields)
+    detection_method: (
+        str  # 'name', 'import', 'string', 'decompilation', 'name+decompilation'
+    )
     category: str | None = None
 
     @property
@@ -100,10 +109,13 @@ class BannedFunction:
 @dataclass(frozen=True)
 class AnalysisResult:
     """Represents the result of analyzing a binary file."""
+
     file_name: str
     file_path: str
     total_functions: int
-    detected_functions: tuple[BannedFunction, ...]  # tuple of BannedFunction (immutable)
+    detected_functions: tuple[
+        BannedFunction, ...
+    ]  # tuple of BannedFunction (immutable)
     analysis_date: str
     analyzer: str = "BannedFuncDetector - Author: Marc Rivero | @seifreed"
 
@@ -129,6 +141,7 @@ class AnalysisResult:
 @dataclass(frozen=True)
 class DirectoryAnalysisSummary:
     """Represents the result of analyzing a directory of binaries."""
+
     directory: str
     analyzed_results: tuple[AnalysisResult, ...]
     total_files: int

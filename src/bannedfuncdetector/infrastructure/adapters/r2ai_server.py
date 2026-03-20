@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # R2AI SERVER UTILITIES
 # =============================================================================
 
-AFFIRMATIVE_RESPONSES = {'s', 'si', 'yes', 'y'}
+AFFIRMATIVE_RESPONSES = {"s", "si", "yes", "y"}
 ALLOWED_EXECUTABLES = frozenset({"r2ai-server", "r2pm"})
 
 
@@ -72,7 +72,7 @@ def _run_r2ai_server_command(args: list[str]) -> subprocess.CompletedProcess[str
 
 def _get_models_from_cli() -> list[str]:
     """Fetch available models via r2ai-server CLI."""
-    models_result = _run_r2ai_server_command(['r2ai-server', '-m'])
+    models_result = _run_r2ai_server_command(["r2ai-server", "-m"])
     if models_result.returncode != 0 or not models_result.stdout.strip():
         return []
     return models_result.stdout.strip().splitlines()
@@ -110,7 +110,7 @@ def check_r2ai_server_available(
     server_url: str = "http://localhost:8080",
     auto_start: bool = False,
     timeout: int = 2,
-    prompt_callback: Callable[[str], str] | None = None
+    prompt_callback: Callable[[str], str] | None = None,
 ) -> bool:
     """
     Check if r2ai-server is available at the specified URL.
@@ -148,7 +148,9 @@ def check_r2ai_server_available(
         return _handle_r2ai_server_not_running(server_url, auto_start, prompt_callback)
 
 
-def get_r2ai_models(server_url: str = "http://localhost:8080", timeout: int = 2) -> list:
+def get_r2ai_models(
+    server_url: str = "http://localhost:8080", timeout: int = 2
+) -> list:
     """
     Get the list of available models from r2ai-server.
 
@@ -191,10 +193,7 @@ def _log_available_models(server_url: str, timeout: int) -> None:
             for model in models[:5]:
                 logger.info("    - %s", model)
             if len(models) > 5:
-                logger.info(
-                    "    ... and %d more",
-                    len(models) - 5
-                )
+                logger.info("    ... and %d more", len(models) - 5)
         else:
             logger.warning("No available models found in r2ai-server")
     except requests.RequestException as e:
@@ -208,7 +207,7 @@ def _log_available_models(server_url: str, timeout: int) -> None:
 def _handle_r2ai_server_not_running(
     server_url: str,
     auto_start: bool,
-    prompt_callback: Callable[[str], str] | None = None
+    prompt_callback: Callable[[str], str] | None = None,
 ) -> bool:
     """
     Handle the case when r2ai-server is not running.
@@ -223,7 +222,7 @@ def _handle_r2ai_server_not_running(
     """
     # Check if r2ai-server is installed
     try:
-        result = _run_r2ai_server_command(['r2ai-server', '-h'])
+        result = _run_r2ai_server_command(["r2ai-server", "-h"])
         if result.returncode != 0:
             logger.warning("r2ai-server is not installed")
             if not auto_start:
@@ -247,8 +246,7 @@ def _handle_r2ai_server_not_running(
 
 
 def _prompt_start_r2ai_server(
-    server_url: str,
-    prompt_callback: Callable[[str], str] | None = None
+    server_url: str, prompt_callback: Callable[[str], str] | None = None
 ) -> bool:
     """
     Prompt the user to start r2ai-server.
@@ -271,9 +269,9 @@ def _prompt_start_r2ai_server(
 
 def _build_server_command(model: str) -> list[str]:
     """Build the r2ai-server command with optional model."""
-    cmd = _resolve_command(['r2ai-server', '-l', 'r2ai'])
+    cmd = _resolve_command(["r2ai-server", "-l", "r2ai"])
     if model:
-        cmd.extend(['-m', model])
+        cmd.extend(["-m", model])
     return cmd
 
 
@@ -321,13 +319,22 @@ def _start_r2ai_server(
     _log_model_list(models_lines, "Models available for r2ai-server:")
 
     prompt_fn = prompt_callback or input
-    model = prompt_fn("Which model do you want to use? (leave blank for default): ").strip()
+    model = prompt_fn(
+        "Which model do you want to use? (leave blank for default): "
+    ).strip()
 
     try:
         cmd = _build_server_command(model)
         _launch_server_process(cmd, popen=popen)
         return _await_server_ready(server_url)
-    except (subprocess.SubprocessError, OSError, IOError, ValueError, TypeError, RuntimeError) as e:
+    except (
+        subprocess.SubprocessError,
+        OSError,
+        IOError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    ) as e:
         logger.error("Error starting r2ai-server: %s", str(e))
         return False
 
@@ -354,13 +361,22 @@ def _prompt_install_r2ai_server(
     if _is_affirmative(install_server):
         logger.info("Installing r2ai-server...")
         try:
-            install_cmd = _resolve_command(['r2pm', 'install', 'r2ai-server'])
+            install_cmd = _resolve_command(["r2pm", "install", "r2ai-server"])
             _validate_executable(install_cmd)
             runner = run or subprocess.run
             runner(install_cmd, check=True)
             logger.info("r2ai-server installed successfully")
-            return check_r2ai_server_available(server_url, prompt_callback=prompt_callback)
-        except (subprocess.CalledProcessError, subprocess.SubprocessError, OSError, IOError, RuntimeError, ValueError) as e:
+            return check_r2ai_server_available(
+                server_url, prompt_callback=prompt_callback
+            )
+        except (
+            subprocess.CalledProcessError,
+            subprocess.SubprocessError,
+            OSError,
+            IOError,
+            RuntimeError,
+            ValueError,
+        ) as e:
             logger.error("Error installing r2ai-server: %s", str(e))
             return False
 

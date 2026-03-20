@@ -2,7 +2,10 @@ import logging
 from collections.abc import Callable
 
 from bannedfuncdetector.analyzer_exceptions import AnalysisError
-from bannedfuncdetector.application.analysis_error import BinaryExecutionError, ExecutionFailure
+from bannedfuncdetector.application.analysis_error import (
+    BinaryExecutionError,
+    ExecutionFailure,
+)
 from bannedfuncdetector.application.contracts import BinaryAnalysisRequest
 from bannedfuncdetector.application.internal import BinaryScanPlan
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
@@ -20,7 +23,9 @@ from .detection_execution import _execute_detection
 logger = logging.getLogger(__name__)
 
 
-def _analysis_error(binary_path: str, phase: str, exc: Exception) -> BinaryAnalysisResultType:
+def _analysis_error(
+    binary_path: str, phase: str, exc: Exception
+) -> BinaryAnalysisResultType:
     if isinstance(exc, AnalysisError):
         category = "Analysis error"
     else:
@@ -51,7 +56,9 @@ def _finalize_analysis(
 def resolve_analysis_setup(
     binary_path: str,
     request: BinaryAnalysisRequest,
-) -> Result[tuple[BinaryScanPlan, IR2Client, list[FunctionDescriptor]], ExecutionFailure]:
+) -> Result[
+    tuple[BinaryScanPlan, IR2Client, list[FunctionDescriptor]], ExecutionFailure
+]:
     params_result = _validate_and_resolve_params(
         binary_path,
         request,
@@ -78,7 +85,9 @@ def run_detection_with_cleanup(
     binary_path: str,
     request: BinaryAnalysisRequest,
     *,
-    detect_impl: Callable[[IR2Client, list[FunctionDescriptor], BinaryScanPlan], list[BannedFunction]],
+    detect_impl: Callable[
+        [IR2Client, list[FunctionDescriptor], BinaryScanPlan], list[BannedFunction]
+    ],
 ) -> BinaryAnalysisResultType:
     setup_result = resolve_analysis_setup(binary_path, request)
     if isinstance(setup_result, Err):

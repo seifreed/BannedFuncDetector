@@ -15,7 +15,9 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilerType,
     check_decompiler_plugin_available,
 )
-from bannedfuncdetector.infrastructure.decompilers.decompiler_support import _try_decompile_pair
+from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+    _try_decompile_pair,
+)
 
 
 class R2DecDecompiler(BaseR2Decompiler):

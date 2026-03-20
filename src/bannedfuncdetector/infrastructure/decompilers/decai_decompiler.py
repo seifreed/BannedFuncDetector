@@ -22,7 +22,9 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     get_function_info,
     is_valid_result,
 )
-from bannedfuncdetector.infrastructure.decompilers.decompiler_support import _get_function_offset
+from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+    _get_function_offset,
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -56,7 +58,9 @@ def _configure_decai_model(r2: IR2Client) -> None:
 
         # If already configured with a valid API and model, use it
         if current_api and current_model:
-            logger.info(f"Using configured decai: api={current_api}, model={current_model}")
+            logger.info(
+                f"Using configured decai: api={current_api}, model={current_model}"
+            )
             return
 
         # If API is set but model is empty, list available models for that API
@@ -67,7 +71,9 @@ def _configure_decai_model(r2: IR2Client) -> None:
                 first_model = available.splitlines()[0].strip()
                 if first_model:
                     r2.cmd(f"decai -e model={first_model}")
-                    logger.info(f"Using decai with api={current_api}, model={first_model}")
+                    logger.info(
+                        f"Using decai with api={current_api}, model={first_model}"
+                    )
                     return
 
         # Try to configure Ollama if no API is set
@@ -164,11 +170,15 @@ def _resolve_function_offset(r2: IR2Client, function_name: str) -> int:
     """
     function_info = get_function_info(r2, function_name)
     if function_info is None:
-        raise FunctionNotFoundError(f"Could not get function information: {function_name}")
+        raise FunctionNotFoundError(
+            f"Could not get function information: {function_name}"
+        )
 
     function_offset = _get_function_offset(r2, function_name, function_info)
     if function_offset is None:
-        raise FunctionNotFoundError(f"Could not get valid function information: {function_name}")
+        raise FunctionNotFoundError(
+            f"Could not get valid function information: {function_name}"
+        )
 
     return function_offset
 
@@ -211,22 +221,30 @@ def decompile_with_decai(r2: IR2Client, function_name: str) -> str:
     # sj returns a list (seek stack), find the current position
     current_pos = r2.cmdj("sj")
     if not current_pos:
-        raise DecompilationError(f"Could not position at the function address: {function_name}")
+        raise DecompilationError(
+            f"Could not position at the function address: {function_name}"
+        )
 
     # Handle both list (seek stack) and dict formats
     if isinstance(current_pos, list):
         # Find the entry with "current": true, or use the last entry
         current_entry = next(
             (p for p in current_pos if p.get("current")),
-            current_pos[-1] if current_pos else None
+            current_pos[-1] if current_pos else None,
         )
         if not current_entry or "offset" not in current_entry:
-            raise DecompilationError(f"Could not position at the function address: {function_name}")
+            raise DecompilationError(
+                f"Could not position at the function address: {function_name}"
+            )
     elif isinstance(current_pos, dict):
         if "offset" not in current_pos:
-            raise DecompilationError(f"Could not position at the function address: {function_name}")
+            raise DecompilationError(
+                f"Could not position at the function address: {function_name}"
+            )
     else:
-        raise DecompilationError(f"Could not position at the function address: {function_name}")
+        raise DecompilationError(
+            f"Could not position at the function address: {function_name}"
+        )
 
     logger.info(f"Decompiling {function_name} with decai...")
     _configure_decai_model(r2)
@@ -303,9 +321,7 @@ class DecAIDecompiler(BaseR2Decompiler):
         except (AttributeError, TypeError) as e:
             # AttributeError: r2 instance issues
             # TypeError: Unexpected data types
-            logger.error(
-                f"Data error in DecAI decompilation for {function_name}: {e}"
-            )
+            logger.error(f"Data error in DecAI decompilation for {function_name}: {e}")
             return ""
 
     def is_available(self, r2: IR2Client | None = None) -> bool:

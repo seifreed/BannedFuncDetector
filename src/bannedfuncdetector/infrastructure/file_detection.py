@@ -18,7 +18,6 @@ from typing import Any
 
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
 
-
 _magic: Any | None = None
 
 

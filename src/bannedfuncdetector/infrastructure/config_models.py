@@ -133,12 +133,16 @@ class AppConfig:
                 opt_dict["server_url"] = opt.server_url
             decompiler_options_dict[name] = opt_dict
 
-        decompiler_options_dict["ignore_unknown_branches"] = self.ignore_unknown_branches
+        decompiler_options_dict["ignore_unknown_branches"] = (
+            self.ignore_unknown_branches
+        )
         decompiler_options_dict["max_retries"] = self.max_retries
         decompiler_options_dict["fallback_to_asm"] = self.fallback_to_asm
         decompiler_options_dict["error_threshold"] = self.error_threshold
         decompiler_options_dict["clean_error_messages"] = self.clean_error_messages
-        decompiler_options_dict["use_alternative_decompiler"] = self.use_alternative_decompiler
+        decompiler_options_dict["use_alternative_decompiler"] = (
+            self.use_alternative_decompiler
+        )
 
         return {
             "decompiler": {
@@ -209,7 +213,9 @@ class AppConfig:
             fallback_to_asm=options_data.get("fallback_to_asm", True),
             max_retries=options_data.get("max_retries", 3),
             error_threshold=options_data.get("error_threshold", 0.1),
-            use_alternative_decompiler=options_data.get("use_alternative_decompiler", True),
+            use_alternative_decompiler=options_data.get(
+                "use_alternative_decompiler", True
+            ),
             output_directory=output_data.get("directory", DEFAULT_OUTPUT_DIR),
             output_format=output_data.get("format", "json"),
             open_results=output_data.get("open_results", False),

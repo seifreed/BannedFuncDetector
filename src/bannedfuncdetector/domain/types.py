@@ -5,6 +5,7 @@ Type aliases and shared domain utilities.
 
 Author: Marc Rivero | @seifreed
 """
+
 import re
 from typing import Any, TypeAlias
 
@@ -45,6 +46,7 @@ def _ensure_call_pattern_cache() -> dict[str, re.Pattern[str]]:
     """Lazily build the call-pattern cache on first use (avoids circular import at module load)."""
     if not _CALL_PATTERN_CACHE:
         from .banned_functions import BANNED_FUNCTIONS
+
         for f in BANNED_FUNCTIONS:
             _CALL_PATTERN_CACHE[f] = _compile_call_pattern(f)
     return _CALL_PATTERN_CACHE

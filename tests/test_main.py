@@ -11,8 +11,15 @@ import bannedfuncdetector.bannedfunc as bannedfunc_module
 import bannedfuncdetector.application.binary_analyzer as binary_analyzer
 import bannedfuncdetector.application.directory_scanner as directory_scanner
 from bannedfuncdetector.factories import create_config_from_dict, create_r2_client
-from bannedfuncdetector.domain import AnalysisResult, BannedFunction, DirectoryAnalysisSummary
-from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices, AnalysisRuntime
+from bannedfuncdetector.domain import (
+    AnalysisResult,
+    BannedFunction,
+    DirectoryAnalysisSummary,
+)
+from bannedfuncdetector.application.analysis_runtime import (
+    BinaryRuntimeServices,
+    AnalysisRuntime,
+)
 from bannedfuncdetector.application.contracts import (
     BinaryAnalysisRequest,
     DirectoryAnalysisRequest,
@@ -21,7 +28,11 @@ from bannedfuncdetector.application.analysis_outcome import (
     BinaryAnalysisOutcome,
     DirectoryAnalysisOutcome,
 )
-from bannedfuncdetector.runtime_factories import _default_binary_opener, _default_r2_closer, _default_file_finder
+from bannedfuncdetector.runtime_factories import (
+    _default_binary_opener,
+    _default_r2_closer,
+    _default_file_finder,
+)
 from bannedfuncdetector.application.analysis_runtime import DirectoryRuntimeServices
 from bannedfuncdetector.domain.result import Ok, Err, ok
 from bannedfuncdetector.cli import parse_arguments
@@ -75,6 +86,7 @@ def make_directory_request(runtime=None, **kwargs):
 # Helpers for sys.argv manipulation
 # ---------------------------------------------------------------------------
 
+
 class _SysArgvOverride:
     """Context manager that temporarily replaces sys.argv."""
 
@@ -95,6 +107,7 @@ class _SysArgvOverride:
 # ---------------------------------------------------------------------------
 # Helpers for building fake args namespaces (avoids touching sys.argv at all)
 # ---------------------------------------------------------------------------
+
 
 def _make_args(**overrides):
     """Build an argparse.Namespace with sensible defaults for dispatch tests."""
@@ -171,7 +184,10 @@ def test_analyze_file_missing(tmp_path):
         str(tmp_path / "missing.bin"), request=make_binary_request()
     )
     assert isinstance(result, Err)
-    assert "not found" in str(result.error).lower() or "not exist" in str(result.error).lower()
+    assert (
+        "not found" in str(result.error).lower()
+        or "not exist" in str(result.error).lower()
+    )
 
 
 def test_analyze_file_non_binary(tmp_path):
@@ -182,7 +198,9 @@ def test_analyze_file_non_binary(tmp_path):
     """
     text_path = tmp_path / "note.txt"
     text_path.write_text("hello")
-    result = binary_analyzer.analyze_binary(str(text_path), request=make_binary_request())
+    result = binary_analyzer.analyze_binary(
+        str(text_path), request=make_binary_request()
+    )
     if isinstance(result, Ok):
         assert result.value.report.insecure_count >= 0
         assert result.value.report.total_functions >= 0
@@ -243,26 +261,40 @@ def test_analyze_directory_parallel(compiled_binary, tmp_path):
 
 def test_analyze_directory_no_executables(tmp_path):
     (tmp_path / "note.txt").write_text("hi")
-    result = analyzers.analyze_directory(str(tmp_path), request=make_directory_request())
+    result = analyzers.analyze_directory(
+        str(tmp_path), request=make_directory_request()
+    )
     assert result.is_err()
-    assert "no executable" in str(result.error).lower() or "no pe files" in str(result.error).lower()
+    assert (
+        "no executable" in str(result.error).lower()
+        or "no pe files" in str(result.error).lower()
+    )
 
 
 def test_analyze_directory_parallel_no_executables(tmp_path):
     (tmp_path / "note.txt").write_text("hi")
-    result = directory_scanner.analyze_directory(str(tmp_path), request=make_directory_request())
+    result = directory_scanner.analyze_directory(
+        str(tmp_path), request=make_directory_request()
+    )
     assert result.is_err()
-    assert "no executable" in str(result.error).lower() or "no pe files" in str(result.error).lower()
+    assert (
+        "no executable" in str(result.error).lower()
+        or "no pe files" in str(result.error).lower()
+    )
 
 
 def test_analyze_directory_missing(tmp_path):
-    result = analyzers.analyze_directory(str(tmp_path / "missing"), request=make_directory_request())
+    result = analyzers.analyze_directory(
+        str(tmp_path / "missing"), request=make_directory_request()
+    )
     assert result.is_err()
     assert "does not exist" in str(result.error).lower()
 
 
 def test_analyze_directory_parallel_missing(tmp_path):
-    result = directory_scanner.analyze_directory(str(tmp_path / "missing"), request=make_directory_request())
+    result = directory_scanner.analyze_directory(
+        str(tmp_path / "missing"), request=make_directory_request()
+    )
     assert result.is_err()
     assert "does not exist" in str(result.error).lower()
 
@@ -276,15 +308,17 @@ def test_main_entry(compiled_binary, tmp_path):
     """Test main() end-to-end with real binary and --skip-analysis --skip-banned."""
     binary = tmp_path / "sample.bin"
     os.link(compiled_binary, binary)
-    with _SysArgvOverride([
-        "prog",
-        "-f",
-        str(binary),
-        "--skip-analysis",
-        "--skip-banned",
-        "-o",
-        str(tmp_path / "out"),
-    ]):
+    with _SysArgvOverride(
+        [
+            "prog",
+            "-f",
+            str(binary),
+            "--skip-analysis",
+            "--skip-banned",
+            "-o",
+            str(tmp_path / "out"),
+        ]
+    ):
         assert bannedfunc_module.main() == 0
 
 
@@ -476,7 +510,11 @@ def test_check_single_requirement_success():
 def test_check_single_requirement_wrong_expected():
     """_check_single_requirement fails when output doesn't match expected."""
     result = _check_single_requirement(
-        {"name": "python", "command": ["python", "--version"], "expected": "ZZZZZ_NONEXISTENT"}
+        {
+            "name": "python",
+            "command": ["python", "--version"],
+            "expected": "ZZZZZ_NONEXISTENT",
+        }
     )
     assert result is False
 
@@ -484,7 +522,11 @@ def test_check_single_requirement_wrong_expected():
 def test_check_single_requirement_blocked_command():
     """_check_single_requirement blocks commands not in ALLOWED_REQUIREMENT_EXECUTABLES."""
     result = _check_single_requirement(
-        {"name": "test", "command": ["curl", "http://example.com"], "expected": "anything"}
+        {
+            "name": "test",
+            "command": ["curl", "http://example.com"],
+            "expected": "anything",
+        }
     )
     assert result is False
     assert "curl" not in ALLOWED_REQUIREMENT_EXECUTABLES
@@ -639,15 +681,17 @@ def test_analyze_file_verbose(compiled_binary, tmp_path):
 
 
 def test_unwrap_or_log_ok():
-    result = ok(BinaryAnalysisOutcome(
-        report=AnalysisResult(
-            file_name="test.bin",
-            file_path="/tmp/test.bin",
-            total_functions=0,
-            detected_functions=(),
-            analysis_date="2026-03-11T00:00:00",
-        ),
-    ))
+    result = ok(
+        BinaryAnalysisOutcome(
+            report=AnalysisResult(
+                file_name="test.bin",
+                file_path="/tmp/test.bin",
+                total_functions=0,
+                detected_functions=(),
+                analysis_date="2026-03-11T00:00:00",
+            ),
+        )
+    )
     value = unwrap_or_log(result, "ctx", logger=logging.getLogger("test"))
     assert value is not None
     assert value.report.file_name == "test.bin"
@@ -717,4 +761,8 @@ def test_analyze_binary_with_fake_r2_open_error(compiled_binary, tmp_path):
         request=BinaryAnalysisRequest.for_runtime(runtime),
     )
     assert isinstance(result, Err)
-    assert "runtime" in str(result.error).lower() or "error" in str(result.error).lower() or "boom" in str(result.error).lower()
+    assert (
+        "runtime" in str(result.error).lower()
+        or "error" in str(result.error).lower()
+        or "boom" in str(result.error).lower()
+    )

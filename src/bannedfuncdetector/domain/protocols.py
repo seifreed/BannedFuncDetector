@@ -102,10 +102,7 @@ class IR2Client(Protocol):
         ...
 
     def __exit__(
-        self,
-        exc_type: type | None,
-        exc_val: BaseException | None,
-        exc_tb: Any | None
+        self, exc_type: type | None, exc_val: BaseException | None, exc_tb: Any | None
     ) -> None:
         """Exit context manager, ensuring cleanup."""
         ...
@@ -189,7 +186,7 @@ class IDecompilerOrchestrator(Protocol):
         r2: "IR2Client",
         function_name: str,
         decompiler_type: str | None = None,
-        **options: Any
+        **options: Any,
     ) -> "Result[str, str]":
         """
         Decompile a function using the configured decompiler.
@@ -230,9 +227,7 @@ class IDecompilerOrchestrator(Protocol):
         ...
 
     def select_decompiler(
-        self,
-        requested: str | None = None,
-        force: bool = False
+        self, requested: str | None = None, force: bool = False
     ) -> str:
         """
         Select appropriate decompiler based on availability.
@@ -303,8 +298,8 @@ class IDecompilerOrchestrator(Protocol):
 
 
 __all__ = [
-    'IDecompiler',
-    'IR2Client',
-    'IConfigRepository',
-    'IDecompilerOrchestrator',
+    "IDecompiler",
+    "IR2Client",
+    "IConfigRepository",
+    "IDecompilerOrchestrator",
 ]

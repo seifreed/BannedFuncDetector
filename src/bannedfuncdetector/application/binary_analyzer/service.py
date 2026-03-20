@@ -1,8 +1,12 @@
 """Protocol-facing analyzer implementation."""
+
 from collections.abc import Callable
 
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.application.contracts import AnalysisRuntime, BinaryAnalysisRequest
+from bannedfuncdetector.application.contracts import (
+    AnalysisRuntime,
+    BinaryAnalysisRequest,
+)
 from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 
@@ -45,5 +49,6 @@ class R2BinaryAnalyzer:
                 verbose=self.verbose,
             ),
         )
+
 
 __all__ = ["R2BinaryAnalyzer"]

@@ -24,7 +24,9 @@ class DecompilerType(str, Enum):
 
         value_lower = value.lower().strip()
         if value_lower == "r2ai":
-            logger.warning("r2ai is not a decompiler, it's an AI assistant. Using default decompiler.")
+            logger.warning(
+                "r2ai is not a decompiler, it's an AI assistant. Using default decompiler."
+            )
             return cls.DEFAULT
 
         for member in cls:

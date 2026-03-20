@@ -5,11 +5,17 @@ from typing import TypeAlias
 from .analysis_error import ExecutionFailure
 from bannedfuncdetector.domain.result import Result
 
-from .analysis_outcome import BinaryAnalysisOutcome, DirectoryAnalysisOutcome, FunctionDiscoveryOutcome
+from .analysis_outcome import (
+    BinaryAnalysisOutcome,
+    DirectoryAnalysisOutcome,
+    FunctionDiscoveryOutcome,
+)
 
 BinaryAnalysisResultType: TypeAlias = Result[BinaryAnalysisOutcome, ExecutionFailure]
 FunctionDiscoveryResultType: TypeAlias = Result[FunctionDiscoveryOutcome, str]
-DirectoryAnalysisResultType: TypeAlias = Result[DirectoryAnalysisOutcome, ExecutionFailure]
+DirectoryAnalysisResultType: TypeAlias = Result[
+    DirectoryAnalysisOutcome, ExecutionFailure
+]
 
 __all__ = [
     "BinaryAnalysisResultType",

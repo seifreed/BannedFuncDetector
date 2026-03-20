@@ -7,7 +7,10 @@ from pathlib import Path
 
 from collections.abc import Callable
 
-from bannedfuncdetector.application.analysis_error import DirectoryExecutionError, ExecutionFailure
+from bannedfuncdetector.application.analysis_error import (
+    DirectoryExecutionError,
+    ExecutionFailure,
+)
 from .directory_results import directory_error_from_exception
 from bannedfuncdetector.domain.result import Err, Result, err, ok
 
@@ -43,9 +46,21 @@ def validate_directory(directory: str) -> Result[Path, ExecutionFailure]:
                 )
             )
         return ok(path)
-    except (AttributeError, TypeError, KeyError, OSError, IOError, RuntimeError, ValueError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        KeyError,
+        OSError,
+        IOError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
         logger.error("Error validating directory %s: %s", directory, exc)
-        return err(ExecutionFailure(error=directory_error_from_exception(exc, context=directory)))
+        return err(
+            ExecutionFailure(
+                error=directory_error_from_exception(exc, context=directory)
+            )
+        )
 
 
 def discover_executable_files(
@@ -72,12 +87,26 @@ def discover_executable_files(
             )
 
         if verbose:
-            logger.info(f"Found {len(executable_files)} executable files in {directory}.")
+            logger.info(
+                f"Found {len(executable_files)} executable files in {directory}."
+            )
 
         return ok(executable_files)
-    except (AttributeError, TypeError, KeyError, OSError, IOError, RuntimeError, ValueError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        KeyError,
+        OSError,
+        IOError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
         logger.error("Error discovering executable files in %s: %s", directory, exc)
-        return err(ExecutionFailure(error=directory_error_from_exception(exc, context=directory)))
+        return err(
+            ExecutionFailure(
+                error=directory_error_from_exception(exc, context=directory)
+            )
+        )
 
 
 def prepare_directory_analysis(
@@ -92,7 +121,9 @@ def prepare_directory_analysis(
         return validation_result
 
     executable_files_result = discover_executable_files(
-        directory, verbose, file_finder=file_finder,
+        directory,
+        verbose,
+        file_finder=file_finder,
     )
     if isinstance(executable_files_result, Err):
         return executable_files_result

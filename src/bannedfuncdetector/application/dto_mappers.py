@@ -42,7 +42,9 @@ def function_descriptor_to_dto(entity: FunctionDescriptor) -> dict[str, object]:
     }
 
 
-def detection_entity_from_dto(detection: BannedFunction | dict[str, object]) -> BannedFunction:
+def detection_entity_from_dto(
+    detection: BannedFunction | dict[str, object],
+) -> BannedFunction:
     """Convert a raw detection payload into a domain detection entity."""
     if isinstance(detection, BannedFunction):
         return detection
@@ -51,11 +53,15 @@ def detection_entity_from_dto(detection: BannedFunction | dict[str, object]) -> 
     parsed_address = safe_parse_address(address)
     banned_calls_raw = detection.get("banned_functions", [])
     if isinstance(banned_calls_raw, list):
-        banned_calls = tuple(str(call) for call in banned_calls_raw if isinstance(call, str))
+        banned_calls = tuple(
+            str(call) for call in banned_calls_raw if isinstance(call, str)
+        )
     else:
         banned_calls = ()
     category = detection.get("type")
-    detection_method = detection.get("detection_method", detection.get("match_type", "unknown"))
+    detection_method = detection.get(
+        "detection_method", detection.get("match_type", "unknown")
+    )
     return BannedFunction(
         name=str(detection.get("name", "unknown")),
         address=parsed_address,

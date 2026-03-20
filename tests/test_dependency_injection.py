@@ -9,7 +9,6 @@ for testing components with fake dependencies.
 Author: Marc Rivero | @seifreed
 """
 
-
 from bannedfuncdetector.factories import (
     DEFAULT_R2_FLAGS,
     DictConfig,
@@ -19,12 +18,25 @@ from bannedfuncdetector.factories import (
 )
 from conftest import FakeR2ClientFactory, FakeConfigRepository
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.application.binary_analyzer import R2BinaryAnalyzer, analyze_function, analyze_binary
+from bannedfuncdetector.application.binary_analyzer import (
+    R2BinaryAnalyzer,
+    analyze_function,
+    analyze_binary,
+)
 from bannedfuncdetector.application.directory_scanner import analyze_directory
-from bannedfuncdetector.application.contracts import BinaryAnalysisRequest, FunctionAnalysisRequest, AnalysisRuntime, DirectoryAnalysisRequest
+from bannedfuncdetector.application.contracts import (
+    BinaryAnalysisRequest,
+    FunctionAnalysisRequest,
+    AnalysisRuntime,
+    DirectoryAnalysisRequest,
+)
 from bannedfuncdetector.domain.result import Ok, Err
 from bannedfuncdetector.application.dto_mappers import function_descriptor_from_dto
-from bannedfuncdetector.runtime_factories import _default_binary_opener, _default_r2_closer, _default_file_finder
+from bannedfuncdetector.runtime_factories import (
+    _default_binary_opener,
+    _default_r2_closer,
+    _default_file_finder,
+)
 from bannedfuncdetector.application.analysis_runtime import DirectoryRuntimeServices
 
 
@@ -148,18 +160,14 @@ class TestCreateBinaryAnalyzer:
     def test_creates_analyzer_with_decompiler_type(self, fake_config):
         """Test that factory passes decompiler type."""
         analyzer = create_binary_analyzer(
-            config=fake_config,
-            decompiler_type="r2ghidra"
+            config=fake_config, decompiler_type="r2ghidra"
         )
 
         assert analyzer.decompiler_type == "r2ghidra"
 
     def test_creates_analyzer_with_verbose_flag(self, fake_config):
         """Test that factory passes verbose flag."""
-        analyzer = create_binary_analyzer(
-            config=fake_config,
-            verbose=True
-        )
+        analyzer = create_binary_analyzer(config=fake_config, verbose=True)
 
         assert analyzer.verbose is True
 
@@ -168,10 +176,7 @@ class TestCreateBinaryAnalyzer:
         fake = fake_r2_factory()
         r2_factory = FakeR2ClientFactory(fake)
 
-        analyzer = create_binary_analyzer(
-            config=fake_config,
-            r2_factory=r2_factory
-        )
+        analyzer = create_binary_analyzer(config=fake_config, r2_factory=r2_factory)
 
         # The analyzer should use our factory
         assert analyzer._r2_factory is not None
@@ -283,11 +288,13 @@ class TestAnalyzeBinaryWithDI:
         test_file = tmp_path / "test.bin"
         test_file.write_bytes(b"test binary data")
 
-        fake_config = FakeConfigRepository({
-            "banned_functions": ["strcpy"],
-            "output": {"directory": str(tmp_path / "output")},
-            "decompiler": {"type": "default"}
-        })
+        fake_config = FakeConfigRepository(
+            {
+                "banned_functions": ["strcpy"],
+                "output": {"directory": str(tmp_path / "output")},
+                "decompiler": {"type": "default"},
+            }
+        )
 
         result = analyze_binary(
             binary_path=str(test_file),
@@ -322,7 +329,10 @@ class TestAnalyzeBinaryWithDI:
 
         # The function returns Err for missing files
         assert isinstance(result, Err)
-        assert "not found" in str(result.error).lower() or "not exist" in str(result.error).lower()
+        assert (
+            "not found" in str(result.error).lower()
+            or "not exist" in str(result.error).lower()
+        )
 
 
 class TestAnalyzeDirectoryWithDI:
@@ -338,7 +348,9 @@ class TestAnalyzeDirectoryWithDI:
                     config_factory=create_config_from_dict,
                     r2_factory=create_r2_client,
                     binary=_default_binary_services(),
-                    directory=DirectoryRuntimeServices(file_finder=_default_file_finder),
+                    directory=DirectoryRuntimeServices(
+                        file_finder=_default_file_finder
+                    ),
                 ),
             ),
         )
@@ -349,9 +361,7 @@ class TestAnalyzeDirectoryWithDI:
     def test_uses_config_output_dir(self, tmp_path, fake_config_factory):
         """Test analysis uses config output directory when not provided."""
         output_dir = tmp_path / "configured_output"
-        config = fake_config_factory({
-            "output": {"directory": str(output_dir)}
-        })
+        config = fake_config_factory({"output": {"directory": str(output_dir)}})
 
         # Just verify the config is used correctly
         assert config.get_output_dir() == str(output_dir)
@@ -359,8 +369,12 @@ class TestAnalyzeDirectoryWithDI:
 
 class TestSerializeConfigContract:
     def test_serialize_config_uses_real_config_repository(self):
-        from bannedfuncdetector.application.internal.directory_workers import serialize_config
-        from bannedfuncdetector.infrastructure.config_storage import ImmutableConfig as DictConfig
+        from bannedfuncdetector.application.internal.directory_workers import (
+            serialize_config,
+        )
+        from bannedfuncdetector.infrastructure.config_storage import (
+            ImmutableConfig as DictConfig,
+        )
 
         assert serialize_config(DictConfig({"worker_limit": 4})) == {"worker_limit": 4}
 
@@ -375,12 +389,12 @@ class TestAnalyzeFunctionWithDI:
 
     def test_analyze_with_custom_banned_functions(self):
         """Test analyze_function uses provided banned functions."""
-        fake_config = FakeConfigRepository({
-            "banned_functions": ["custom_banned_func"]
-        })
+        fake_config = FakeConfigRepository({"banned_functions": ["custom_banned_func"]})
 
         # Test with a function that matches our custom banned function
-        func = function_descriptor_from_dto({"name": "custom_banned_func", "offset": 0x1000})
+        func = function_descriptor_from_dto(
+            {"name": "custom_banned_func", "offset": 0x1000}
+        )
         result = analyze_function(
             r2=None,  # Not needed for name matching
             func=func,
@@ -429,7 +443,9 @@ class TestAnalyzeFunctionWithDI:
 class TestFullDependencyInjectionChain:
     """Integration tests verifying the full DI chain works correctly."""
 
-    def test_analyzer_with_all_injected_dependencies(self, fake_config, fake_r2_factory):
+    def test_analyzer_with_all_injected_dependencies(
+        self, fake_config, fake_r2_factory
+    ):
         """Test R2BinaryAnalyzer with fully injected dependencies."""
         # Create mock R2 client that returns test data
         fake = fake_r2_factory(
@@ -439,7 +455,7 @@ class TestFullDependencyInjectionChain:
                     {"name": "main", "offset": 0x1000, "size": 100},
                     {"name": "strcpy", "offset": 0x2000, "size": 50},
                 ]
-            }
+            },
         )
         r2_factory = FakeR2ClientFactory(fake)
 
@@ -460,9 +476,7 @@ class TestFullDependencyInjectionChain:
     def test_analyzer_with_factory_created_config(self, fake_config):
         """Test that factory-created analyzer has correct configuration."""
         analyzer = create_binary_analyzer(
-            config=fake_config,
-            decompiler_type="default",
-            verbose=False
+            config=fake_config, decompiler_type="default", verbose=False
         )
 
         # Verify the analyzer has the right configuration

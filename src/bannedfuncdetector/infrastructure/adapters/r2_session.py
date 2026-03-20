@@ -28,7 +28,14 @@ def close_r2_client(r2: IR2Client) -> Result[None, str]:
     try:
         r2.quit()
         return ok(None)
-    except (RuntimeError, OSError, IOError, AttributeError, TypeError, ValueError) as exc:
+    except (
+        RuntimeError,
+        OSError,
+        IOError,
+        AttributeError,
+        TypeError,
+        ValueError,
+    ) as exc:
         message = f"Error closing r2 client {hex(id(r2))} ({type(r2).__name__}): {exc}"
         logger.warning(message)
         return err(message)
@@ -40,7 +47,12 @@ def is_transient_r2_setup_error(exc: Exception) -> bool:
     if isinstance(exc, BrokenPipeError):
         return True
     if isinstance(exc, OSError):
-        if getattr(exc, "errno", None) in {errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT, errno.EINTR}:
+        if getattr(exc, "errno", None) in {
+            errno.EPIPE,
+            errno.ECONNRESET,
+            errno.ETIMEDOUT,
+            errno.EINTR,
+        }:
             return True
     return False
 
@@ -63,7 +75,13 @@ def open_binary_with_r2(
                 logger.info("Analyzing the binary...")
             r2.cmd("aaa")
             return r2
-        except (TransientR2Error, BrokenPipeError, OSError, IOError, RuntimeError) as exc:
+        except (
+            TransientR2Error,
+            BrokenPipeError,
+            OSError,
+            IOError,
+            RuntimeError,
+        ) as exc:
             last_error = exc
             if r2 is not None:
                 close_r2_client(r2)

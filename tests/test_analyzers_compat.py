@@ -64,13 +64,17 @@ class TestAnalyzersLazyImportCaching:
 
     def test_binary_analyzer_imports(self):
         """Test that binary_analyzer functions are importable."""
-        from bannedfuncdetector.application.binary_analyzer.runtime import _validate_binary_input
+        from bannedfuncdetector.application.binary_analyzer.runtime import (
+            _validate_binary_input,
+        )
 
         assert callable(_validate_binary_input)
 
     def test_binary_operations_imports(self):
         """Test that binary_operations functions are importable from binary_analyzer."""
-        from bannedfuncdetector.infrastructure.adapters.r2_session import open_binary_with_r2
+        from bannedfuncdetector.infrastructure.adapters.r2_session import (
+            open_binary_with_r2,
+        )
 
         assert callable(open_binary_with_r2)
 
@@ -80,9 +84,15 @@ class TestAnalyzersBackwardCompatibility:
 
     def test_all_internal_functions_available(self):
         """Test that internal functions are available from their modules."""
-        from bannedfuncdetector.application.binary_analyzer.runtime import _validate_binary_input
-        from bannedfuncdetector.application.binary_analyzer.session_setup import setup_binary_analysis
-        from bannedfuncdetector.application.internal.directory_preparation import validate_directory as _validate_directory
+        from bannedfuncdetector.application.binary_analyzer.runtime import (
+            _validate_binary_input,
+        )
+        from bannedfuncdetector.application.binary_analyzer.session_setup import (
+            setup_binary_analysis,
+        )
+        from bannedfuncdetector.application.internal.directory_preparation import (
+            validate_directory as _validate_directory,
+        )
 
         # All internal functions should be callable from their source modules
         assert callable(_validate_binary_input)
@@ -98,10 +108,10 @@ class TestAnalyzersPublicAPINoWarnings:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-
             # No deprecation warnings for public API
             deprecation_warnings = [
-                warning for warning in w
+                warning
+                for warning in w
                 if issubclass(warning.category, DeprecationWarning)
             ]
             assert len(deprecation_warnings) == 0

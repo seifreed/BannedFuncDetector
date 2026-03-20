@@ -18,7 +18,9 @@ from bannedfuncdetector.application.function_detection_runtime import (
     analyze_functions_in_binary,
     run_intra_binary_detection,
 )
-from bannedfuncdetector.application.function_detection_support import process_parallel_results
+from bannedfuncdetector.application.function_detection_support import (
+    process_parallel_results,
+)
 from bannedfuncdetector.application.internal.execution_plans import FunctionScanPlan
 from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
 from bannedfuncdetector.domain.result import Ok, Err
@@ -45,6 +47,7 @@ class TestProcessParallelResults:
 
     def test_process_parallel_results_all_ok(self):
         """Test processing results where all futures return Ok."""
+
         # Create futures that return Ok results
         def make_future(value):
             future = concurrent.futures.Future()
@@ -68,6 +71,7 @@ class TestProcessParallelResults:
 
     def test_process_parallel_results_mixed_ok_err(self):
         """Test processing results with mix of Ok and Err."""
+
         def make_ok_future(value):
             future = concurrent.futures.Future()
             future.set_result(Ok(value))
@@ -95,6 +99,7 @@ class TestProcessParallelResults:
 
     def test_process_parallel_results_all_err(self):
         """Test processing results where all futures return Err."""
+
         def make_err_future(error):
             future = concurrent.futures.Future()
             future.set_result(Err(error))
@@ -111,6 +116,7 @@ class TestProcessParallelResults:
 
     def test_process_parallel_results_with_exception(self):
         """Test processing results handles future exceptions."""
+
         def make_exception_future():
             future = concurrent.futures.Future()
             future.set_exception(RuntimeError("Analysis failed"))
@@ -134,6 +140,7 @@ class TestProcessParallelResults:
 
     def test_process_parallel_results_verbose_mode(self):
         """Test processing results with verbose logging."""
+
         def make_ok_future(value):
             future = concurrent.futures.Future()
             future.set_result(Ok(value))
@@ -215,7 +222,9 @@ class TestAnalyzeFunctionsInBinary:
         assert len(results) == 1
         assert results[0]["name"] == "banned"
 
-    def test_analyze_functions_parallel_requires_function_analyzer(self, fake_r2_factory):
+    def test_analyze_functions_parallel_requires_function_analyzer(
+        self, fake_r2_factory
+    ):
         """Test that function raises error when no analyzer provided."""
         fake = fake_r2_factory()
         functions = [{"name": "test", "offset": 4096}]
@@ -263,6 +272,7 @@ class TestAnalyzeFunctionsInBinary:
 
         # All functions analyzed, even with limited workers
         assert isinstance(results, list)
+
 
 class TestRunIntraBinaryDetection:
     """Test suite for _run_intra_binary_detection function."""

@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
-from bannedfuncdetector.application.analysis_outcome import DirectoryAnalysisOutcome, OperationalNotice
-from bannedfuncdetector.domain import AnalysisResult, BannedFunction, DirectoryAnalysisSummary
+from bannedfuncdetector.application.analysis_outcome import (
+    DirectoryAnalysisOutcome,
+    OperationalNotice,
+)
+from bannedfuncdetector.domain import (
+    AnalysisResult,
+    BannedFunction,
+    DirectoryAnalysisSummary,
+)
 
 
 def banned_function_to_dict(entity: BannedFunction) -> dict[str, object]:
@@ -25,7 +32,9 @@ def analysis_result_to_dict(entity: AnalysisResult) -> dict[str, object]:
         "file_name": entity.file_name,
         "total_functions": entity.total_functions,
         "unsafe_functions": entity.insecure_count,
-        "results": [banned_function_to_dict(finding) for finding in entity.detected_functions],
+        "results": [
+            banned_function_to_dict(finding) for finding in entity.detected_functions
+        ],
         "analysis_date": entity.analysis_date,
         "analyzer": entity.analyzer,
     }
@@ -37,14 +46,18 @@ def directory_summary_to_dict(entity: DirectoryAnalysisSummary) -> dict[str, obj
         "directory": entity.directory,
         "total_files": entity.total_files,
         "analyzed_files": entity.analyzed_files,
-        "results": [analysis_result_to_dict(result) for result in entity.analyzed_results],
+        "results": [
+            analysis_result_to_dict(result) for result in entity.analyzed_results
+        ],
     }
 
 
 def directory_outcome_to_dict(entity: DirectoryAnalysisOutcome) -> dict[str, object]:
     payload = directory_summary_to_dict(entity.summary)
     if entity.operational_notices:
-        payload["operational_notices"] = [operational_notice_to_dict(notice) for notice in entity.operational_notices]
+        payload["operational_notices"] = [
+            operational_notice_to_dict(notice) for notice in entity.operational_notices
+        ]
     return payload
 
 

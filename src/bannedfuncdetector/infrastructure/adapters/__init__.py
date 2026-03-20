@@ -11,10 +11,19 @@ __all__ = [
 ]
 
 _EXPORTS: dict[str, tuple[str, str]] = {
-    "DetectionResultDTO": ("bannedfuncdetector.infrastructure.adapters.dtos", "DetectionResultDTO"),
-    "FunctionInfoDTO": ("bannedfuncdetector.infrastructure.adapters.dtos", "FunctionInfoDTO"),
+    "DetectionResultDTO": (
+        "bannedfuncdetector.infrastructure.adapters.dtos",
+        "DetectionResultDTO",
+    ),
+    "FunctionInfoDTO": (
+        "bannedfuncdetector.infrastructure.adapters.dtos",
+        "FunctionInfoDTO",
+    ),
     "R2Client": ("bannedfuncdetector.infrastructure.adapters.r2_client", "R2Client"),
-    "check_r2ai_server_available": ("bannedfuncdetector.infrastructure.adapters.r2ai_server", "check_r2ai_server_available"),
+    "check_r2ai_server_available": (
+        "bannedfuncdetector.infrastructure.adapters.r2ai_server",
+        "check_r2ai_server_available",
+    ),
 }
 
 

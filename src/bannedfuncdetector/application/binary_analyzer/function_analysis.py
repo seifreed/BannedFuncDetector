@@ -42,7 +42,9 @@ def _merge_detections(
     code_result: BannedFunction,
 ) -> BannedFunction:
     """Merge name-match and decompilation detections into a single result."""
-    all_calls = tuple(sorted(set(name_result.banned_calls) | set(code_result.banned_calls)))
+    all_calls = tuple(
+        sorted(set(name_result.banned_calls) | set(code_result.banned_calls))
+    )
     category = get_highest_risk_category(all_calls)
     return BannedFunction(
         name=name_result.name,

@@ -24,6 +24,7 @@ from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
     _try_decai_decompilation,
     decompile_with_decai,
 )
+
 # Import from base_decompiler as some tests may reference internal functions
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     _check_decai_service_available as _check_decai_available,
@@ -133,6 +134,7 @@ class TestDecAIModelConfiguration:
 
     def test_configure_decai_model_exception_handling(self, fake_r2_factory):
         """Test model configuration handles exceptions gracefully."""
+
         def raise_error():
             # Use RuntimeError as a specific exception that _configure_decai_model catches
             raise RuntimeError("Connection error")
@@ -152,7 +154,7 @@ class TestDecAIDecompilation:
 
     def test_try_decai_decompilation_first_method_success(self, fake_r2_factory):
         """Test decompilation succeeds with first method."""
-        expected_code = "void main() { printf(\"hello\"); }"
+        expected_code = 'void main() { printf("hello"); }'
         fake = fake_r2_factory(
             cmd_map={
                 "decai -d": expected_code,
@@ -220,7 +222,9 @@ class TestDecAIDecompilation:
             }
         )
 
-        with pytest.raises(FunctionNotFoundError, match="Could not get function information"):
+        with pytest.raises(
+            FunctionNotFoundError, match="Could not get function information"
+        ):
             decompile_with_decai(fake, "main")
 
     def test_decompile_with_decai_invalid_offset(self, fake_r2_factory):
@@ -231,7 +235,9 @@ class TestDecAIDecompilation:
             }
         )
 
-        with pytest.raises(FunctionNotFoundError, match="Could not get valid function information"):
+        with pytest.raises(
+            FunctionNotFoundError, match="Could not get valid function information"
+        ):
             decompile_with_decai(fake, "main")
 
     def test_decompile_with_decai_plugin_unavailable_fallback(self, fake_r2_factory):
@@ -245,7 +251,7 @@ class TestDecAIDecompilation:
                 "decai -h": "Unknown command",
                 "s 4096": "",
                 "pdg": "void main() { }",
-            }
+            },
         )
 
         result = decompile_with_decai(fake, "main")
@@ -262,15 +268,17 @@ class TestDecAIDecompilation:
             cmd_map={
                 "decai -h": "Usage: decai",
                 "s 4096": "",
-            }
+            },
         )
 
-        with pytest.raises(DecompilationError, match="Could not position at the function address"):
+        with pytest.raises(
+            DecompilationError, match="Could not position at the function address"
+        ):
             decompile_with_decai(fake, "main")
 
     def test_decompile_with_decai_success(self, fake_r2_factory):
         """Test successful decompilation with decai."""
-        expected_code = "void main() { printf(\"test\"); }"
+        expected_code = 'void main() { printf("test"); }'
         fake = fake_r2_factory(
             cmdj_map={
                 "afij @ main": {"name": "main", "offset": 4096},
@@ -283,7 +291,7 @@ class TestDecAIDecompilation:
                 "decai -e api=ollama": "",
                 "decai -e model=*": "",
                 "decai -d": expected_code,
-            }
+            },
         )
 
         result = decompile_with_decai(fake, "main")
@@ -311,7 +319,7 @@ class TestDecAIDecompilation:
                 "decai -e model=*": "",
                 "decai -d": raise_error,
                 "pdg": fallback_code,
-            }
+            },
         )
 
         result = decompile_with_decai(fake, "main")
@@ -361,7 +369,7 @@ class TestDecAIDecompilerClass:
                 "decai -e api=ollama": "",
                 "decai -e model=*": "",
                 "decai -d": expected_code,
-            }
+            },
         )
 
         decompiler = DecAIDecompiler()
@@ -395,7 +403,7 @@ class TestDecAIDecompilerClass:
             cmd_map={
                 "decai -h": "Usage: decai",
                 "s 4096": "",
-            }
+            },
         )
 
         decompiler = DecAIDecompiler()
@@ -407,6 +415,7 @@ class TestDecAIDecompilerClass:
 
     def test_decai_decompiler_decompile_unexpected_error(self, fake_r2_factory):
         """Test decompile method handles unexpected errors."""
+
         def raise_error():
             raise RuntimeError("Unexpected runtime error")
 

@@ -7,7 +7,9 @@ from bannedfuncdetector.domain import AnalysisResult
 logger = logging.getLogger(__name__)
 
 
-def directory_scan_plan_from_request(request: DirectoryAnalysisRequest) -> DirectoryScanPlan:
+def directory_scan_plan_from_request(
+    request: DirectoryAnalysisRequest,
+) -> DirectoryScanPlan:
     resolved_decompiler = (
         request.decompiler_type
         if request.decompiler_type is not None

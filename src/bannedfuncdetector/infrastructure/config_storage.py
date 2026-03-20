@@ -50,7 +50,9 @@ class ImmutableConfig:
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self._config: dict[str, Any] = (
-            copy.deepcopy(config) if config is not None else copy.deepcopy(DEFAULT_CONFIG)
+            copy.deepcopy(config)
+            if config is not None
+            else copy.deepcopy(DEFAULT_CONFIG)
         )
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -100,21 +102,28 @@ class ImmutableConfig:
                 logger.warning(f"Configuration file {config_file} not found.")
                 return
             if not validate_config(user_config):
-                logger.warning(f"Configuration file {config_file} missing required keys, merging with defaults.")
+                logger.warning(
+                    f"Configuration file {config_file} missing required keys, merging with defaults."
+                )
 
             # Reject configs where dict keys are overridden with non-dict values
             for key in ("decompiler", "output", "analysis"):
                 if key in user_config and not isinstance(user_config[key], dict):
-                    logger.error(f"Configuration key '{key}' must be a dict, got {type(user_config[key]).__name__}. Keeping current config.")
+                    logger.error(
+                        f"Configuration key '{key}' must be a dict, got {type(user_config[key]).__name__}. Keeping current config."
+                    )
                     return
 
             merged = deep_merge(DEFAULT_CONFIG, user_config)
 
             # Run deep validation on the merged config
             from ..domain.result import Err as _Err
+
             validation_result = validate_full_config(merged)
             if isinstance(validation_result, _Err):
-                logger.warning(f"Configuration validation: {validation_result.error}. Keeping current config.")
+                logger.warning(
+                    f"Configuration validation: {validation_result.error}. Keeping current config."
+                )
                 return
 
             self._config = merged
@@ -136,21 +145,28 @@ def load_config(config_file: str = "config.json") -> dict[str, Any]:
             return copy.deepcopy(DEFAULT_CONFIG)
 
         if not validate_config(user_config):
-            logger.warning(f"Configuration file {config_file} missing required keys, merging with defaults.")
+            logger.warning(
+                f"Configuration file {config_file} missing required keys, merging with defaults."
+            )
 
         # Reject configs where dict keys are overridden with non-dict values
         for key in ("decompiler", "output", "analysis"):
             if key in user_config and not isinstance(user_config[key], dict):
-                logger.error(f"Configuration key '{key}' must be a dict, got {type(user_config[key]).__name__}. Using defaults.")
+                logger.error(
+                    f"Configuration key '{key}' must be a dict, got {type(user_config[key]).__name__}. Using defaults."
+                )
                 return copy.deepcopy(DEFAULT_CONFIG)
 
         merged = deep_merge(DEFAULT_CONFIG, user_config)
 
         # Run deep validation on the merged config
         from ..domain.result import Err as _Err
+
         validation_result = validate_full_config(merged)
         if isinstance(validation_result, _Err):
-            logger.warning(f"Configuration validation: {validation_result.error}. Using defaults.")
+            logger.warning(
+                f"Configuration validation: {validation_result.error}. Using defaults."
+            )
             return copy.deepcopy(DEFAULT_CONFIG)
 
         logger.info(f"Configuration loaded from {config_file}")

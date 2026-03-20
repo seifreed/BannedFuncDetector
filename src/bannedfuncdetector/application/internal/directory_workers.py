@@ -8,7 +8,11 @@ from collections.abc import Callable
 from typing import Any
 
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
-from bannedfuncdetector.domain.protocols import IConfigRepository, IDecompilerOrchestrator, IR2Client
+from bannedfuncdetector.domain.protocols import (
+    IConfigRepository,
+    IDecompilerOrchestrator,
+    IR2Client,
+)
 from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.domain.result import Result
 
@@ -29,7 +33,7 @@ def analyze_binary_job(
     force_decompiler: bool = False,
     skip_banned: bool = False,
     skip_analysis: bool = False,
-    ) -> Result[BinaryAnalysisOutcome, ExecutionFailure]:
+) -> Result[BinaryAnalysisOutcome, ExecutionFailure]:
     """Analyze a single binary file with explicitly injected dependencies."""
     from ..binary_analyzer import analyze_binary
 
@@ -66,7 +70,11 @@ def analyze_binary_job_from_worker_payload(
 ) -> Result[BinaryAnalysisOutcome, ExecutionFailure]:
     """Recreate per-process dependencies and execute one directory-analysis job."""
     config = job.config_factory(job.config_dict)
-    orchestrator = job.orchestrator_factory(config) if job.orchestrator_factory is not None else None
+    orchestrator = (
+        job.orchestrator_factory(config)
+        if job.orchestrator_factory is not None
+        else None
+    )
     binary_services = BinaryRuntimeServices(
         binary_opener=job.binary_opener,
         r2_closer=job.r2_closer,

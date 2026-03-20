@@ -3,11 +3,19 @@ from collections.abc import Callable
 from bannedfuncdetector.application.internal import FunctionScanPlan
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
 from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
-from bannedfuncdetector.domain.protocols import IConfigRepository, IDecompilerOrchestrator, IR2Client
+from bannedfuncdetector.domain.protocols import (
+    IConfigRepository,
+    IDecompilerOrchestrator,
+    IR2Client,
+)
 from bannedfuncdetector.domain.result import Result
 
-from .function_detection_support import build_function_analysis_request, log_function_result
+from .function_detection_support import (
+    build_function_analysis_request,
+    log_function_result,
+)
 from .function_detection_support import log_selected_decompiler
+
 
 def resolve_banned_functions(
     options: FunctionScanPlan,
@@ -53,7 +61,8 @@ def run_intra_binary_detection(
     log_selected_decompiler(
         options.decompiler_type,
         verbose=options.verbose,
-        decompiler_orchestrator=decompiler_orchestrator or options.decompiler_orchestrator,
+        decompiler_orchestrator=decompiler_orchestrator
+        or options.decompiler_orchestrator,
     )
     return analyze_functions_in_binary(
         r2,

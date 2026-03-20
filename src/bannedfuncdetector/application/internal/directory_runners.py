@@ -14,8 +14,16 @@ from bannedfuncdetector.application.types import BinaryAnalysisResultType
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
 from bannedfuncdetector.domain.result import Result
 
-from .directory_results import error_result_from_exception, handle_directory_future, normalize_directory_result
-from .directory_workers import analyze_binary_job, analyze_binary_job_from_worker_payload, serialize_config
+from .directory_results import (
+    error_result_from_exception,
+    handle_directory_future,
+    normalize_directory_result,
+)
+from .directory_workers import (
+    analyze_binary_job,
+    analyze_binary_job_from_worker_payload,
+    serialize_config,
+)
 from .execution_plans import DirectoryScanPlan, DirectoryWorkerJob
 
 logger = logging.getLogger(__name__)
@@ -38,7 +46,10 @@ class ExecutorLike(Protocol):
 
 
 ExecutorFactory: TypeAlias = Callable[..., ExecutorLike]
-CompletedFutures: TypeAlias = Callable[[Iterable[concurrent.futures.Future[BinaryAnalysisResultType]]], Iterable[concurrent.futures.Future[BinaryAnalysisResultType]]]
+CompletedFutures: TypeAlias = Callable[
+    [Iterable[concurrent.futures.Future[BinaryAnalysisResultType]]],
+    Iterable[concurrent.futures.Future[BinaryAnalysisResultType]],
+]
 
 
 def iter_parallel_directory_results(
@@ -74,13 +85,14 @@ def iter_parallel_directory_results(
         for executable_file in executable_files
     ]
     worker = plan.worker_entrypoint or analyze_binary_job_from_worker_payload
-    pool_factory = plan.parallel_executor_factory or concurrent.futures.ProcessPoolExecutor
+    pool_factory = (
+        plan.parallel_executor_factory or concurrent.futures.ProcessPoolExecutor
+    )
     completed_iterator = plan.completed_futures or concurrent.futures.as_completed
 
     with pool_factory(max_workers=max_workers) as executor:
         futures: dict[concurrent.futures.Future[BinaryAnalysisResultType], str] = {
-            executor.submit(worker, job): job.executable_file
-            for job in jobs
+            executor.submit(worker, job): job.executable_file for job in jobs
         }
 
         for future in completed_iterator(futures.keys()):
@@ -120,7 +132,15 @@ def iter_sequential_directory_results(
                 skip_analysis=plan.skip_analysis,
             )
             yield executable_file, normalize_directory_result(executable_file, result)
-        except (AttributeError, TypeError, KeyError, OSError, IOError, RuntimeError, ValueError) as exc:
+        except (
+            AttributeError,
+            TypeError,
+            KeyError,
+            OSError,
+            IOError,
+            RuntimeError,
+            ValueError,
+        ) as exc:
             yield executable_file, error_result_from_exception(
                 exc,
                 context=executable_file,

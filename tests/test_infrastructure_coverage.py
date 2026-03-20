@@ -52,10 +52,10 @@ from bannedfuncdetector.domain.result import Ok, Err, ok
 from bannedfuncdetector.domain.error_types import ErrorCategory
 from bannedfuncdetector.analyzer_exceptions import AnalysisError
 
-
 # ===========================================================================
 # Helpers — minimal valid config dict that passes validate_full_config
 # ===========================================================================
+
 
 def _minimal_valid_config() -> dict:
     """Return the smallest dict that passes validate_full_config."""
@@ -204,7 +204,10 @@ class TestValidateOutputSettings:
 
     def test_invalid_format_still_returns_ok_but_logs_warning(self, caplog):
         settings = {"directory": "/tmp/out", "format": "xml"}
-        with caplog.at_level(logging.WARNING, logger="bannedfuncdetector.infrastructure.config_validation"):
+        with caplog.at_level(
+            logging.WARNING,
+            logger="bannedfuncdetector.infrastructure.config_validation",
+        ):
             result = validate_output_settings(settings)
         assert isinstance(result, Ok)
         assert any("xml" in record.message for record in caplog.records)
@@ -284,7 +287,9 @@ class TestValidateAnalysisSettings:
         assert "dictionary" in result.error.lower()
 
     def test_all_valid_fields_together_pass(self):
-        result = validate_analysis_settings({"max_workers": 8, "timeout": 120, "parallel": True})
+        result = validate_analysis_settings(
+            {"max_workers": 8, "timeout": 120, "parallel": True}
+        )
         assert isinstance(result, Ok)
 
 
@@ -349,7 +354,10 @@ class TestValidateConfig:
 
     def test_missing_one_key_returns_false(self, caplog):
         config = {"decompiler": {}, "output": {}}
-        with caplog.at_level(logging.WARNING, logger="bannedfuncdetector.infrastructure.config_validation"):
+        with caplog.at_level(
+            logging.WARNING,
+            logger="bannedfuncdetector.infrastructure.config_validation",
+        ):
             result = validate_config(config)
         assert result is False
         assert any("analysis" in record.message for record in caplog.records)
@@ -459,6 +467,7 @@ class TestLoadConfigFromFile:
         # Create a file that exists on disk but has no read permission,
         # triggering the OSError branch (lines 32-34).
         import os
+
         cfg_path = tmp_path / "no_read.json"
         cfg_path.write_text(json.dumps({"x": 1}))
         original_mode = cfg_path.stat().st_mode
@@ -500,10 +509,15 @@ class TestLoadConfig:
         assert result["output"]["directory"] == "/custom/output"
         assert result["analysis"]["max_workers"] == 2
 
-    def test_partial_config_missing_required_keys_still_merges_with_defaults(self, tmp_path):
+    def test_partial_config_missing_required_keys_still_merges_with_defaults(
+        self, tmp_path
+    ):
         # Only has 'decompiler', missing 'output' and 'analysis'
         cfg_path = tmp_path / "config.json"
-        user_config = {"decompiler": {"type": "default", "options": {}}, "extra_key": "extra_val"}
+        user_config = {
+            "decompiler": {"type": "default", "options": {}},
+            "extra_key": "extra_val",
+        }
         cfg_path.write_text(json.dumps(user_config))
         result = load_config(str(cfg_path))
         # Should still return a valid merged result (defaults fill the gaps)
@@ -598,7 +612,11 @@ class TestImmutableConfig:
         assert "output" in cfg
 
     def test_explicit_dict_is_stored_independently(self):
-        data = {"decompiler": {"type": "r2dec", "options": {}}, "output": {"directory": "out"}, "analysis": {}}
+        data = {
+            "decompiler": {"type": "r2dec", "options": {}},
+            "output": {"directory": "out"},
+            "analysis": {},
+        }
         cfg = ImmutableConfig(data)
         assert cfg.get("decompiler")["type"] == "r2dec"
 
@@ -654,11 +672,13 @@ class TestImmutableConfig:
         assert cfg.get("a")["b"] == 1
 
     def test_get_output_dir_from_output_section(self):
-        cfg = ImmutableConfig({
-            "output": {"directory": "/results"},
-            "decompiler": {"type": "default", "options": {}},
-            "analysis": {},
-        })
+        cfg = ImmutableConfig(
+            {
+                "output": {"directory": "/results"},
+                "decompiler": {"type": "default", "options": {}},
+                "analysis": {},
+            }
+        )
         assert cfg.get_output_dir() == "/results"
 
     def test_get_output_dir_returns_default_when_output_missing(self):
@@ -755,7 +775,9 @@ class TestImmutableConfig:
         # JSONDecodeError is caught, config unchanged
         assert cfg.get("decompiler") == original
 
-    def test_reload_handles_missing_required_keys_by_logging_warning(self, tmp_path, caplog):
+    def test_reload_handles_missing_required_keys_by_logging_warning(
+        self, tmp_path, caplog
+    ):
         # Config without 'output' and 'analysis' keys — validate_config returns False
         # but reload still merges with defaults; validate_full_config then decides
         cfg_path = tmp_path / "config.json"
@@ -872,7 +894,9 @@ class TestLogError:
         def raise_key_error() -> "Ok[str] | Err[str]":
             raise KeyError("no_key")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_key_error()
         assert not any("Data error" in r.message for r in caplog.records)
 
@@ -881,7 +905,9 @@ class TestLogError:
         def raise_key_error() -> "Ok[str] | Err[str]":
             raise KeyError("no_key")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_key_error()
         assert any("no_key" in r.message for r in caplog.records)
 
@@ -890,7 +916,9 @@ class TestLogError:
         def raise_runtime_error() -> "Ok[int] | Err[str]":
             raise RuntimeError("bad state")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_runtime_error()
         assert any("bad state" in r.message for r in caplog.records)
 
@@ -899,7 +927,9 @@ class TestLogError:
         def raise_runtime_error() -> "Ok[int] | Err[str]":
             raise RuntimeError("silent failure")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_runtime_error()
         assert not any("silent failure" in r.message for r in caplog.records)
 
@@ -908,7 +938,9 @@ class TestLogError:
         def raise_os_error() -> "Ok[str] | Err[str]":
             raise OSError("disk full")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_os_error()
         assert any("disk full" in r.message for r in caplog.records)
 
@@ -917,7 +949,9 @@ class TestLogError:
         def raise_os_error() -> "Ok[str] | Err[str]":
             raise OSError("silent io")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_os_error()
         assert not any("silent io" in r.message for r in caplog.records)
 
@@ -1041,7 +1075,9 @@ class TestHandleErrors:
         assert "Analysis error" in result.error
         assert "analyzing function" in result.error
 
-    def test_decorator_without_include_analysis_errors_does_not_catch_analysis_error(self):
+    def test_decorator_without_include_analysis_errors_does_not_catch_analysis_error(
+        self,
+    ):
         @handle_errors("analyzing function", include_analysis_errors=False)
         def analyze() -> "Ok[str] | Err[str]":
             raise AnalysisError("decompiler failed")
@@ -1050,20 +1086,28 @@ class TestHandleErrors:
             analyze()
 
     def test_analysis_error_logged_when_runtime_logging_enabled(self, caplog):
-        @handle_errors("running analysis", include_analysis_errors=True, log_runtime_errors=True)
+        @handle_errors(
+            "running analysis", include_analysis_errors=True, log_runtime_errors=True
+        )
         def analyze() -> "Ok[str] | Err[str]":
             raise AnalysisError("logged analysis error")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             analyze()
         assert any("logged analysis error" in r.message for r in caplog.records)
 
     def test_analysis_error_not_logged_when_runtime_logging_disabled(self, caplog):
-        @handle_errors("running analysis", include_analysis_errors=True, log_runtime_errors=False)
+        @handle_errors(
+            "running analysis", include_analysis_errors=True, log_runtime_errors=False
+        )
         def analyze() -> "Ok[str] | Err[str]":
             raise AnalysisError("silent analysis error")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             analyze()
         assert not any("silent analysis error" in r.message for r in caplog.records)
 
@@ -1110,7 +1154,9 @@ class TestHandleErrorsSync:
         def raise_os_error() -> bool:
             raise OSError("disk problem")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_os_error()
         assert any("disk problem" in r.message for r in caplog.records)
 
@@ -1119,7 +1165,9 @@ class TestHandleErrorsSync:
         def raise_runtime() -> bool:
             raise RuntimeError("silent")
 
-        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"):
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
+        ):
             raise_runtime()
         assert not any("silent" in r.message for r in caplog.records)
 

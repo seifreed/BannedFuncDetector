@@ -2,7 +2,10 @@ import concurrent.futures
 import logging
 
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.application.contracts import AnalysisRuntime, FunctionAnalysisRequest
+from bannedfuncdetector.application.contracts import (
+    AnalysisRuntime,
+    FunctionAnalysisRequest,
+)
 from bannedfuncdetector.domain import BannedFunction
 from bannedfuncdetector.domain.protocols import IDecompilerOrchestrator, IR2Client
 from bannedfuncdetector.domain.result import Result, ok as _ok
@@ -14,7 +17,9 @@ logger = logging.getLogger(__name__)
 
 def log_function_result(detection: BannedFunction, verbose: bool) -> None:
     if verbose:
-        logger.info(f"Insecure function found: {detection.name} at {hex(detection.address)}")
+        logger.info(
+            f"Insecure function found: {detection.name} at {hex(detection.address)}"
+        )
 
 
 def log_parallel_future_error(exc: BaseException, verbose: bool) -> None:

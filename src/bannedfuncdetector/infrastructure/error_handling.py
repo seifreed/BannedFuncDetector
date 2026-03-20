@@ -21,8 +21,8 @@ from bannedfuncdetector.domain.result import Result, err
 logger = logging.getLogger(__name__)
 
 # Type variables for generic type support
-T = TypeVar('T')
-P = ParamSpec('P')
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 # Exception groups by category
@@ -160,20 +160,37 @@ def handle_errors(
             try:
                 return func(*args, **kwargs)
             except EXCEPTION_GROUPS[ErrorCategory.DATA] as e:
-                _log_error(ErrorCategory.DATA, func.__name__, e, logging_flags[ErrorCategory.DATA])
+                _log_error(
+                    ErrorCategory.DATA,
+                    func.__name__,
+                    e,
+                    logging_flags[ErrorCategory.DATA],
+                )
                 return err(_format_error_message(ErrorCategory.DATA, operation_name, e))
             except EXCEPTION_GROUPS[ErrorCategory.RUNTIME] as e:
-                _log_error(ErrorCategory.RUNTIME, func.__name__, e, logging_flags[ErrorCategory.RUNTIME])
-                return err(_format_error_message(ErrorCategory.RUNTIME, operation_name, e))
+                _log_error(
+                    ErrorCategory.RUNTIME,
+                    func.__name__,
+                    e,
+                    logging_flags[ErrorCategory.RUNTIME],
+                )
+                return err(
+                    _format_error_message(ErrorCategory.RUNTIME, operation_name, e)
+                )
             except EXCEPTION_GROUPS[ErrorCategory.IO] as e:
-                _log_error(ErrorCategory.IO, func.__name__, e, logging_flags[ErrorCategory.IO])
+                _log_error(
+                    ErrorCategory.IO, func.__name__, e, logging_flags[ErrorCategory.IO]
+                )
                 return err(_format_error_message(ErrorCategory.IO, operation_name, e))
 
         # If analysis errors should be included, wrap with additional handler
         if include_analysis_errors:
-            return _wrap_with_analysis_errors(wrapper, operation_name, logging_flags, func.__name__)
+            return _wrap_with_analysis_errors(
+                wrapper, operation_name, logging_flags, func.__name__
+            )
 
         return wrapper
+
     return decorator
 
 
@@ -203,7 +220,12 @@ def _wrap_with_analysis_errors(
         try:
             return inner_wrapper(*args, **kwargs)
         except AnalysisError as e:
-            _log_error(ErrorCategory.ANALYSIS, func_name, e, logging_flags[ErrorCategory.ANALYSIS])
+            _log_error(
+                ErrorCategory.ANALYSIS,
+                func_name,
+                e,
+                logging_flags[ErrorCategory.ANALYSIS],
+            )
             return err(_format_error_message(ErrorCategory.ANALYSIS, operation_name, e))
 
     return analysis_wrapper
@@ -237,13 +259,21 @@ def handle_errors_sync(
         ... def check_plugin_available(name: str) -> bool:
         ...     return name in available_plugins
     """
+
     def decorator(func: Callable[P, bool]) -> Callable[P, bool]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> bool:
             try:
                 return func(*args, **kwargs)
-            except (KeyError, AttributeError, TypeError, RuntimeError,
-                    ValueError, OSError, IOError) as e:
+            except (
+                KeyError,
+                AttributeError,
+                TypeError,
+                RuntimeError,
+                ValueError,
+                OSError,
+                IOError,
+            ) as e:
                 if log_errors:
                     logger.error(f"Error in {func.__name__} ({operation_name}): {e}")
                 if reraise:
@@ -251,12 +281,13 @@ def handle_errors_sync(
                 return default_value if default_value is not None else False
 
         return wrapper
+
     return decorator
 
 
 __all__ = [
-    'handle_errors',
-    'handle_errors_sync',
-    'ErrorCategory',
-    'EXCEPTION_GROUPS',
+    "handle_errors",
+    "handle_errors_sync",
+    "ErrorCategory",
+    "EXCEPTION_GROUPS",
 ]

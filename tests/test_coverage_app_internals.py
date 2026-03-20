@@ -22,6 +22,7 @@ from tests.conftest import FakeConfigRepository, FakeDecompilerOrchestrator, Fak
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_closer_ok():
     """Return a closer that always reports successful cleanup."""
     from bannedfuncdetector.domain.result import ok
@@ -288,7 +289,9 @@ class TestSelectionError:
             AnalysisRuntime,
             BinaryAnalysisRequest,
         )
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.domain.result import Err
 
         binary = tmp_path / "target.bin"
@@ -340,8 +343,12 @@ class TestR2BinaryAnalyzer:
         Act: instantiate R2BinaryAnalyzer.
         Assert: ValueError is raised.
         """
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-        from bannedfuncdetector.application.binary_analyzer.service import R2BinaryAnalyzer
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
+        from bannedfuncdetector.application.binary_analyzer.service import (
+            R2BinaryAnalyzer,
+        )
 
         fake_r2 = FakeR2()
         binary_services = BinaryRuntimeServices(
@@ -364,8 +371,12 @@ class TestR2BinaryAnalyzer:
         Assert: result is Ok or Err (not an exception), demonstrating that
         the analyze() method executed the real code path.
         """
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-        from bannedfuncdetector.application.binary_analyzer.service import R2BinaryAnalyzer
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
+        from bannedfuncdetector.application.binary_analyzer.service import (
+            R2BinaryAnalyzer,
+        )
         from bannedfuncdetector.domain.result import Ok, Err
 
         binary = tmp_path / "sample.exe"
@@ -404,7 +415,9 @@ class TestSetupBinaryAnalysis:
     """
 
     def _make_scan_plan(self, tmp_path, *, opener, closer):
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.application.contracts import AnalysisRuntime
         from bannedfuncdetector.application.internal import BinaryScanPlan
 
@@ -449,7 +462,9 @@ class TestSetupBinaryAnalysis:
         # helper objects or types.SimpleNamespace instead.
         import types
 
-        fake_services = types.SimpleNamespace(binary_opener=None, r2_closer=_make_closer_ok())
+        fake_services = types.SimpleNamespace(
+            binary_opener=None, r2_closer=_make_closer_ok()
+        )
         fake_runtime = types.SimpleNamespace(
             config=_base_config(),
             r2_factory=lambda p, flags=None: FakeR2(),
@@ -598,7 +613,9 @@ class TestAnalyzeDirectory:
         Assert: Err with message "file_finder is required".
         """
         from bannedfuncdetector.application.directory_scanner import analyze_directory
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.application.contracts import (
             AnalysisRuntime,
             DirectoryAnalysisRequest,
@@ -643,7 +660,9 @@ class TestDirectoryExecution:
     which raises ValueError inside execute_directory_plan.
     """
 
-    def test_execute_directory_plan_parallel_without_config_factory_raises(self, tmp_path):
+    def test_execute_directory_plan_parallel_without_config_factory_raises(
+        self, tmp_path
+    ):
         """
         Arrange: build a DirectoryScanPlan with parallel=True and
         config_factory=None, provide at least one file.
@@ -653,7 +672,9 @@ class TestDirectoryExecution:
         from bannedfuncdetector.application.internal.directory_execution import (
             execute_directory_plan,
         )
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.application.contracts import AnalysisRuntime
         from bannedfuncdetector.application.internal import DirectoryScanPlan
 
@@ -865,10 +886,20 @@ class TestDirectoryRunners:
       - Line 102: iter_parallel_directory_results with a custom executor factory.
     """
 
-    def _minimal_scan_plan(self, config, fake_r2, *, parallel=False, verbose=False,
-                            worker_entrypoint=None, executor_factory=None,
-                            completed_futures_fn=None):
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+    def _minimal_scan_plan(
+        self,
+        config,
+        fake_r2,
+        *,
+        parallel=False,
+        verbose=False,
+        worker_entrypoint=None,
+        executor_factory=None,
+        completed_futures_fn=None,
+    ):
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.application.contracts import AnalysisRuntime
         from bannedfuncdetector.application.internal import DirectoryScanPlan
 
@@ -899,7 +930,9 @@ class TestDirectoryRunners:
         Act: consume all items from iter_sequential_directory_results.
         Assert: the yielded result for the file is an Err.
         """
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.application.contracts import AnalysisRuntime
         from bannedfuncdetector.application.internal import DirectoryScanPlan
         from bannedfuncdetector.application.internal.directory_runners import (
@@ -948,13 +981,17 @@ class TestDirectoryRunners:
         Act: consume all items from iter_parallel_directory_results.
         Assert: at least one result tuple is emitted without raising.
         """
-        from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
         from bannedfuncdetector.application.contracts import AnalysisRuntime
         from bannedfuncdetector.application.internal import DirectoryScanPlan
         from bannedfuncdetector.application.internal.directory_runners import (
             iter_parallel_directory_results,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryWorkerJob
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryWorkerJob,
+        )
         from bannedfuncdetector.domain.result import Ok, Err, ok
 
         binary = tmp_path / "p_target.bin"
@@ -995,7 +1032,9 @@ class TestDirectoryRunners:
             parallel_executor_factory=concurrent.futures.ThreadPoolExecutor,
         )
 
-        results = list(iter_parallel_directory_results([str(binary)], plan, max_workers=1))
+        results = list(
+            iter_parallel_directory_results([str(binary)], plan, max_workers=1)
+        )
 
         assert len(results) == 1
         _, result = results[0]
@@ -1032,7 +1071,9 @@ class TestDirectoryWorkers:
         with pytest.raises(TypeError, match="must return a dictionary"):
             serialize_config(BadConfig())
 
-    def test_analyze_binary_job_from_worker_payload_reconstructs_and_runs(self, tmp_path):
+    def test_analyze_binary_job_from_worker_payload_reconstructs_and_runs(
+        self, tmp_path
+    ):
         """
         Purpose: Cover lines 65-71 — config_factory is called, binary services
         are built, and analyze_binary_job is invoked.
@@ -1045,7 +1086,9 @@ class TestDirectoryWorkers:
         from bannedfuncdetector.application.internal.directory_workers import (
             analyze_binary_job_from_worker_payload,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryWorkerJob
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryWorkerJob,
+        )
         from bannedfuncdetector.domain.result import Ok, Err
 
         binary = tmp_path / "worker_target.bin"
@@ -1078,7 +1121,9 @@ class TestDirectoryWorkers:
 
         assert isinstance(result, (Ok, Err))
 
-    def test_analyze_binary_job_from_worker_payload_uses_orchestrator_factory(self, tmp_path):
+    def test_analyze_binary_job_from_worker_payload_uses_orchestrator_factory(
+        self, tmp_path
+    ):
         """
         Purpose: Cover the orchestrator_factory branch (line 66) where
         orchestrator_factory is not None.
@@ -1091,7 +1136,9 @@ class TestDirectoryWorkers:
         from bannedfuncdetector.application.internal.directory_workers import (
             analyze_binary_job_from_worker_payload,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryWorkerJob
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryWorkerJob,
+        )
         from bannedfuncdetector.domain.result import Ok, Err
 
         binary = tmp_path / "orch_target.bin"
@@ -1171,7 +1218,7 @@ class TestRuntimeFactories:
         bad_config = {
             "analysis": {
                 "parallel": False,
-                "max_workers": -1,   # invalid: must be positive integer
+                "max_workers": -1,  # invalid: must be positive integer
             }
         }
 

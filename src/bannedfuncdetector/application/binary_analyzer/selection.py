@@ -14,7 +14,9 @@ from .runtime import _validate_binary_input
 logger = logging.getLogger(__name__)
 
 
-def _selection_error(exc: Exception) -> Result[tuple[IDecompilerOrchestrator | None, str], str]:
+def _selection_error(
+    exc: Exception,
+) -> Result[tuple[IDecompilerOrchestrator | None, str], str]:
     if isinstance(exc, BinaryNotFoundError):
         return err(f"Binary not found: {exc}")
     return err(f"Decompiler not available: {exc}")

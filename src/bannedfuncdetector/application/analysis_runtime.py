@@ -5,10 +5,19 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
-    from bannedfuncdetector.domain.protocols import IConfigRepository, IDecompilerOrchestrator, IR2Client
+    from bannedfuncdetector.domain.protocols import (
+        IConfigRepository,
+        IDecompilerOrchestrator,
+        IR2Client,
+    )
     from bannedfuncdetector.domain.result import Result
-    from bannedfuncdetector.application.internal.execution_plans import DirectoryWorkerJob
-    from bannedfuncdetector.application.internal.directory_runners import CompletedFutures, ExecutorFactory
+    from bannedfuncdetector.application.internal.execution_plans import (
+        DirectoryWorkerJob,
+    )
+    from bannedfuncdetector.application.internal.directory_runners import (
+        CompletedFutures,
+        ExecutorFactory,
+    )
     from collections.abc import Callable
     from bannedfuncdetector.application.analysis_error import ExecutionFailure
 
@@ -22,7 +31,7 @@ class BinaryRuntimeServices:
 @dataclass(frozen=True, kw_only=True)
 class DirectoryRuntimeServices:
     file_finder: "Callable[[str, str], list[str]] | None" = None
-    worker_entrypoint: "Callable[[DirectoryWorkerJob], Result[BinaryAnalysisOutcome, ExecutionFailure]] | None" = None
+    worker_entrypoint: "Callable[[DirectoryWorkerJob], Result[BinaryAnalysisOutcome, ExecutionFailure]] | None" = (None)
     executor_factory: "ExecutorFactory | None" = None
     completed_futures: "CompletedFutures | None" = None
 
@@ -33,7 +42,9 @@ class AnalysisRuntime:
     r2_factory: "Callable[[str], IR2Client]"
     config_factory: "Callable[[dict[str, object]], IConfigRepository] | None" = None
     decompiler_orchestrator: "IDecompilerOrchestrator | None" = None
-    orchestrator_factory: "Callable[[IConfigRepository], IDecompilerOrchestrator] | None" = None
+    orchestrator_factory: (
+        "Callable[[IConfigRepository], IDecompilerOrchestrator] | None"
+    ) = None
     binary: BinaryRuntimeServices
     directory: DirectoryRuntimeServices = DirectoryRuntimeServices()
 

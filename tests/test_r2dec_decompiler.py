@@ -14,7 +14,9 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilerType,
     check_decompiler_plugin_available,
 )
-from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import R2DecDecompiler
+from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import (
+    R2DecDecompiler,
+)
 
 
 class TestR2DecAvailability:
@@ -33,7 +35,7 @@ class TestDecompileWithR2Dec:
 
     def test_decompile_with_r2dec_success(self, fake_r2_factory):
         """Test successful decompilation with r2dec."""
-        expected_code = "void main() { printf(\"test\"); }"
+        expected_code = 'void main() { printf("test"); }'
         fake = fake_r2_factory(
             cmdj_map={
                 "afij @ main": {"name": "main", "offset": 4096},
@@ -41,7 +43,7 @@ class TestDecompileWithR2Dec:
             cmd_map={
                 "s 4096": "",
                 "pdd": expected_code,
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()
@@ -60,7 +62,7 @@ class TestDecompileWithR2Dec:
                 "s 4096": "",
                 "pdd": "",  # r2dec fails
                 "pdg": fallback_code,  # r2ghidra succeeds
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()
@@ -77,7 +79,7 @@ class TestDecompileWithR2Dec:
             cmd_map={
                 "s 4096": "",
                 "pdd": "",  # r2dec fails
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()
@@ -94,7 +96,7 @@ class TestDecompileWithR2Dec:
             cmd_map={
                 "s 4096": "",
                 "pdd": "void main() { error_message }",
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()
@@ -142,7 +144,7 @@ class TestR2DecDecompilerClass:
             cmd_map={
                 "s 8192": "",
                 "pdd": expected_code,
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()
@@ -159,7 +161,7 @@ class TestR2DecDecompilerClass:
             cmd_map={
                 "s 4096": "",
                 "pdd": "",  # Empty result
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()
@@ -190,7 +192,7 @@ class TestR2DecDecompilerClass:
             cmd_map={
                 "s 4096": "",
                 "pdd": "x",  # Very short output (likely error)
-            }
+            },
         )
 
         decompiler = R2DecDecompiler()

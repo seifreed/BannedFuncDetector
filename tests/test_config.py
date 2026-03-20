@@ -3,6 +3,7 @@ import json
 
 import bannedfuncdetector.infrastructure.config_repository as config_module
 
+
 def test_load_config_missing_file(tmp_path):
     missing = tmp_path / "missing.json"
     result = config_module.load_config(str(missing))
@@ -42,7 +43,7 @@ def test_load_config_adds_new_subkeys(tmp_path):
             "options": {
                 "default": {"new_option": True},
                 "new_section": {"enabled": True},
-            }
+            },
         }
     }
     cfg_path = tmp_path / "config.json"

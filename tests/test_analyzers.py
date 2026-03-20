@@ -9,7 +9,10 @@ import bannedfuncdetector.application.binary_analyzer.session_setup as analyzer_
 import bannedfuncdetector.application.binary_analyzer.selection as analyzer_selection
 import bannedfuncdetector.application.directory_scanner as directory_scanner
 from bannedfuncdetector.domain.result import Ok, ok
-from bannedfuncdetector.infrastructure.adapters.r2_session import close_r2_client, open_binary_with_r2
+from bannedfuncdetector.infrastructure.adapters.r2_session import (
+    close_r2_client,
+    open_binary_with_r2,
+)
 from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
 from bannedfuncdetector.application.contracts import (
@@ -21,7 +24,11 @@ from bannedfuncdetector.application.contracts import (
 )
 from bannedfuncdetector.application.dto_mappers import function_descriptor_from_dto
 from bannedfuncdetector.factories import create_config_from_dict
-from bannedfuncdetector.runtime_factories import _default_binary_opener, _default_r2_closer, _default_file_finder
+from bannedfuncdetector.runtime_factories import (
+    _default_binary_opener,
+    _default_r2_closer,
+    _default_file_finder,
+)
 from bannedfuncdetector.domain import AnalysisResult, BannedFunction
 from conftest import FakeDecompilerOrchestrator, open_r2pipe_with_retry
 
@@ -162,7 +169,9 @@ def test_analyze_function_decompile_empty():
                 config_factory=create_config_from_dict,
                 r2_factory=fake_r2_factory,
                 binary=_default_binary_services(),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(decompile_result=ok("")),
+                decompiler_orchestrator=FakeDecompilerOrchestrator(
+                    decompile_result=ok("")
+                ),
             ),
             banned_functions={"strcpy"},
         ),
@@ -182,7 +191,9 @@ def test_analyze_binary_and_output(compiled_binary, tmp_path):
         ),
     )
     assert result.is_ok()
-    output_file = output_dir / f"{os.path.basename(compiled_binary)}_banned_functions.json"
+    output_file = (
+        output_dir / f"{os.path.basename(compiled_binary)}_banned_functions.json"
+    )
     assert output_file.exists()
     data = json.loads(output_file.read_text())
     assert data["total_functions"] >= 1
@@ -202,7 +213,9 @@ def test_analyze_binary_verbose_output(compiled_binary, tmp_path):
 
 
 def test_analyze_binary_missing_file(tmp_path):
-    result = analyzers.analyze_binary(str(tmp_path / "missing.bin"), request=make_binary_request())
+    result = analyzers.analyze_binary(
+        str(tmp_path / "missing.bin"), request=make_binary_request()
+    )
     assert result.is_err()
     assert "not found" in str(result.error).lower()
 
@@ -240,7 +253,11 @@ def test_setup_binary_analysis_preserves_extract_error(compiled_binary):
     )
 
     assert result.is_err()
-    assert str(result.error) == "Runtime error for {}: Runtime error extracting functions from binary: boom".format(compiled_binary)
+    assert str(
+        result.error
+    ) == "Runtime error for {}: Runtime error extracting functions from binary: boom".format(
+        compiled_binary
+    )
 
 
 def test_open_binary_with_r2_retries_transient_open_failure(compiled_binary):
@@ -265,7 +282,9 @@ def test_open_binary_with_r2_retries_transient_open_failure(compiled_binary):
     assert attempts["count"] == 2
 
 
-def test_open_binary_with_r2_retries_transient_initial_analysis_failure(compiled_binary):
+def test_open_binary_with_r2_retries_transient_initial_analysis_failure(
+    compiled_binary,
+):
     import errno
 
     class DummyR2:
@@ -295,7 +314,9 @@ def test_open_binary_with_r2_retries_transient_initial_analysis_failure(compiled
     assert attempts["count"] == 2
 
 
-def test_open_binary_with_r2_does_not_retry_non_transient_runtime_error(compiled_binary):
+def test_open_binary_with_r2_does_not_retry_non_transient_runtime_error(
+    compiled_binary,
+):
     attempts = {"count": 0}
 
     def failing_factory(_binary_path):
@@ -394,26 +415,34 @@ def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary):
 
 
 def test_analyze_binary_accepts_runtime(tmp_path):
-    result = analyzers.analyze_binary(str(tmp_path / "missing.bin"), request=make_binary_request())
+    result = analyzers.analyze_binary(
+        str(tmp_path / "missing.bin"), request=make_binary_request()
+    )
     assert result.is_err()
     assert "not found" in str(result.error).lower()
 
 
 def test_analyze_directory_missing(tmp_path):
-    result = analyzers.analyze_directory(str(tmp_path / "missing"), request=make_directory_request())
+    result = analyzers.analyze_directory(
+        str(tmp_path / "missing"), request=make_directory_request()
+    )
     assert result.is_err()
     assert "does not exist" in str(result.error).lower()
 
 
 def test_analyze_directory_accepts_runtime(tmp_path):
-    result = analyzers.analyze_directory(str(tmp_path / "missing"), request=make_directory_request())
+    result = analyzers.analyze_directory(
+        str(tmp_path / "missing"), request=make_directory_request()
+    )
     assert result.is_err()
     assert "does not exist" in str(result.error).lower()
 
 
 def test_analyze_directory_no_pe(tmp_path):
     (tmp_path / "note.txt").write_text("hi")
-    result = analyzers.analyze_directory(str(tmp_path), request=make_directory_request())
+    result = analyzers.analyze_directory(
+        str(tmp_path), request=make_directory_request()
+    )
     assert result.is_err()
     # Error message may say "no pe files" or "no executable files"
     error_lower = str(result.error).lower()
@@ -440,13 +469,17 @@ def test_analyze_directory_verbose_success(tmp_path, pe_file):
     os.rename(pe_file, dest)
 
     def successful_worker(job):
-        return Ok(BinaryAnalysisOutcome(report=AnalysisResult(
-            file_name=os.path.basename(job.executable_file),
-            file_path=job.executable_file,
-            total_functions=1,
-            detected_functions=tuple(),
-            analysis_date="2026-03-11T00:00:00",
-        )))
+        return Ok(
+            BinaryAnalysisOutcome(
+                report=AnalysisResult(
+                    file_name=os.path.basename(job.executable_file),
+                    file_path=job.executable_file,
+                    total_functions=1,
+                    detected_functions=tuple(),
+                    analysis_date="2026-03-11T00:00:00",
+                )
+            )
+        )
 
     result = analyzers.analyze_directory(
         str(tmp_path),
@@ -503,7 +536,9 @@ def test_analyze_function_decompile_match():
                 config_factory=create_config_from_dict,
                 r2_factory=fake_r2_factory,
                 binary=_default_binary_services(),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(decompile_result=ok("strcpy(")),
+                decompiler_orchestrator=FakeDecompilerOrchestrator(
+                    decompile_result=ok("strcpy(")
+                ),
             ),
             banned_functions={"strcpy"},
             verbose=True,
@@ -521,12 +556,16 @@ def test_analyze_binary_no_decompiler(tmp_path):
     class DummyR2:
         def cmd(self, _):
             return None
+
         def cmdj(self, _):
             return None
+
         def quit(self):
             return None
+
         def __enter__(self):
             return self
+
         def __exit__(self, *_args):
             return False
 
@@ -540,7 +579,9 @@ def test_analyze_binary_no_decompiler(tmp_path):
                     binary_opener=lambda path, verbose, r2_factory: r2_factory(path),
                     r2_closer=close_r2_client,
                 ),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(decompile_result=ok("")),
+                decompiler_orchestrator=FakeDecompilerOrchestrator(
+                    decompile_result=ok("")
+                ),
             ),
             decompiler_type="r2ghidra",
             verbose=True,
@@ -558,12 +599,16 @@ def test_analyze_binary_no_functions(tmp_path):
     class DummyR2:
         def cmd(self, _):
             return None
+
         def cmdj(self, _):
             return None
+
         def quit(self):
             return None
+
         def __enter__(self):
             return self
+
         def __exit__(self, *_args):
             return False
 
@@ -577,7 +622,9 @@ def test_analyze_binary_no_functions(tmp_path):
                     binary_opener=lambda path, verbose, r2_factory: r2_factory(path),
                     r2_closer=close_r2_client,
                 ),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(decompile_result=ok("")),
+                decompiler_orchestrator=FakeDecompilerOrchestrator(
+                    decompile_result=ok("")
+                ),
             ),
             verbose=True,
         ),
@@ -642,7 +689,9 @@ def test_analyze_binary_exception(tmp_path):
                     binary_opener=lambda path, verbose, r2_factory: r2_factory(path),
                     r2_closer=close_r2_client,
                 ),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(decompile_result=ok("")),
+                decompiler_orchestrator=FakeDecompilerOrchestrator(
+                    decompile_result=ok("")
+                ),
             ),
         ),
     )
@@ -682,13 +731,17 @@ def test_analyze_directory_default_workers(tmp_path, pe_file):
     os.rename(pe_file, dest)
 
     def successful_worker(job):
-        return Ok(BinaryAnalysisOutcome(report=AnalysisResult(
-            file_name=os.path.basename(job.executable_file),
-            file_path=job.executable_file,
-            total_functions=1,
-            detected_functions=tuple(),
-            analysis_date="2026-03-11T00:00:00",
-        )))
+        return Ok(
+            BinaryAnalysisOutcome(
+                report=AnalysisResult(
+                    file_name=os.path.basename(job.executable_file),
+                    file_path=job.executable_file,
+                    total_functions=1,
+                    detected_functions=tuple(),
+                    analysis_date="2026-03-11T00:00:00",
+                )
+            )
+        )
 
     result = analyzers.analyze_directory(
         str(tmp_path),

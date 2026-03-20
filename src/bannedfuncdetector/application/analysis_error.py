@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .analysis_outcome import OperationalNotice
 
+
 @dataclass(frozen=True)
 class ApplicationExecutionError:
     category: str
@@ -44,6 +45,7 @@ class BinaryExecutionError(ApplicationExecutionError):
 @dataclass(frozen=True)
 class DirectoryExecutionError(ApplicationExecutionError):
     pass
+
 
 __all__ = [
     "ApplicationExecutionError",

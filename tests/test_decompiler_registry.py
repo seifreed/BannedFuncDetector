@@ -15,10 +15,18 @@ from bannedfuncdetector.infrastructure.decompilers.registry import (
     create_decompiler,
 )
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import DecompilerType
-from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
-from bannedfuncdetector.infrastructure.decompilers.default_decompiler import DefaultDecompiler
-from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import R2DecDecompiler
-from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import R2GhidraDecompiler
+from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+    DecAIDecompiler,
+)
+from bannedfuncdetector.infrastructure.decompilers.default_decompiler import (
+    DefaultDecompiler,
+)
+from bannedfuncdetector.infrastructure.decompilers.r2dec_decompiler import (
+    R2DecDecompiler,
+)
+from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import (
+    R2GhidraDecompiler,
+)
 
 
 class TestDecompilerRegistry:

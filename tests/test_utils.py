@@ -2,8 +2,13 @@ import os
 import subprocess
 import sys
 
-from bannedfuncdetector.infrastructure.file_detection import is_executable_file, find_pe_files
-from bannedfuncdetector.infrastructure.adapters.r2ai_server import check_r2ai_server_available
+from bannedfuncdetector.infrastructure.file_detection import (
+    is_executable_file,
+    find_pe_files,
+)
+from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+    check_r2ai_server_available,
+)
 from conftest import start_test_server
 
 
@@ -116,7 +121,9 @@ def test_check_r2ai_server_available_start_with_model(r2ai_server_shim, stdin_st
 def test_check_r2ai_server_available_models_unavailable(r2ai_server_shim, stdin_stream):
     # Replace shim with one that returns empty models list
     script = r2ai_server_shim.parent / "r2ai-server"
-    script.write_text("#!/bin/sh\nif [ \"$1\" = \"-h\" ]; then exit 0; fi\nif [ \"$1\" = \"-m\" ]; then exit 1; fi\nexit 0\n")
+    script.write_text(
+        '#!/bin/sh\nif [ "$1" = "-h" ]; then exit 0; fi\nif [ "$1" = "-m" ]; then exit 1; fi\nexit 0\n'
+    )
     os.chmod(script, 0o755)
 
     original_path = os.environ.get("PATH", "")
@@ -130,7 +137,9 @@ def test_check_r2ai_server_available_models_unavailable(r2ai_server_shim, stdin_
         os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_not_installed_cancel(r2ai_server_fail_shim, stdin_stream):
+def test_check_r2ai_server_available_not_installed_cancel(
+    r2ai_server_fail_shim, stdin_stream
+):
     original_path = os.environ.get("PATH", "")
     os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
@@ -142,7 +151,9 @@ def test_check_r2ai_server_available_not_installed_cancel(r2ai_server_fail_shim,
         os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_install_path(r2ai_server_fail_shim, r2pm_shim, stdin_stream):
+def test_check_r2ai_server_available_install_path(
+    r2ai_server_fail_shim, r2pm_shim, stdin_stream
+):
     original_path = os.environ.get("PATH", "")
     os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}{os.pathsep}{original_path}"
     original_stdin = sys.stdin
@@ -190,6 +201,7 @@ def test_check_r2ai_server_available_models_many():
 
 def test_start_test_server_unknown_path():
     import requests
+
     server_url, server = start_test_server()
     try:
         response = requests.get(f"{server_url}/unknown", timeout=2)
@@ -210,7 +222,9 @@ def test_check_r2ai_server_available_ping_ok_but_models_fail():
 
 def test_launch_server_process_popen_error():
     """Test _launch_server_process handles Popen failure gracefully."""
-    from bannedfuncdetector.infrastructure.adapters.r2ai_server import _launch_server_process
+    from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+        _launch_server_process,
+    )
 
     def raise_error(*_args, **_kwargs):
         raise OSError("boom")
@@ -227,7 +241,9 @@ def test_launch_server_process_popen_error():
     assert launched is False
 
 
-def test_check_r2ai_server_available_start_server_timeout(r2ai_server_no_server_shim, stdin_stream, path_with_shim):
+def test_check_r2ai_server_available_start_server_timeout(
+    r2ai_server_no_server_shim, stdin_stream, path_with_shim
+):
     path_manager = path_with_shim(r2ai_server_no_server_shim)
     original_path = path_manager["original_path"]
     os.environ["PATH"] = path_manager["modified_path"]
@@ -242,7 +258,9 @@ def test_check_r2ai_server_available_start_server_timeout(r2ai_server_no_server_
 
 def test_prompt_install_r2ai_server_run_error():
     """Test _prompt_install_r2ai_server handles install failure gracefully."""
-    from bannedfuncdetector.infrastructure.adapters.r2ai_server import _prompt_install_r2ai_server
+    from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+        _prompt_install_r2ai_server,
+    )
 
     def failing_run(command, *args, **kwargs):
         raise subprocess.CalledProcessError(1, command, "Install failed")

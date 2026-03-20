@@ -9,7 +9,14 @@ from ..domain.result import Err, Ok, Result
 
 logger = logging.getLogger(__name__)
 
-VALID_DECOMPILER_TYPES = ["default", "r2ghidra", "r2dec", "r2ai", "decai", "r2ai-server"]
+VALID_DECOMPILER_TYPES = [
+    "default",
+    "r2ghidra",
+    "r2dec",
+    "r2ai",
+    "decai",
+    "r2ai-server",
+]
 VALID_OUTPUT_FORMATS = ["json", "text", "html"]
 
 
@@ -39,14 +46,18 @@ def validate_banned_functions(functions: list[Any]) -> Result[list[str], str]:
     return Ok(validated)
 
 
-def validate_decompiler_settings(settings: dict[str, Any]) -> Result[dict[str, Any], str]:
+def validate_decompiler_settings(
+    settings: dict[str, Any],
+) -> Result[dict[str, Any], str]:
     """Validate decompiler configuration settings."""
     if not isinstance(settings, dict):
         return Err("Decompiler settings must be a dictionary")
     if "type" not in settings:
         return Err("Decompiler settings missing 'type' field")
     if settings["type"] not in VALID_DECOMPILER_TYPES:
-        return Err(f"Invalid decompiler type '{settings['type']}'. Must be one of: {VALID_DECOMPILER_TYPES}")
+        return Err(
+            f"Invalid decompiler type '{settings['type']}'. Must be one of: {VALID_DECOMPILER_TYPES}"
+        )
     if "options" not in settings or not isinstance(settings["options"], dict):
         return Err("Decompiler settings missing 'options' dictionary")
     return Ok(settings)
@@ -59,7 +70,9 @@ def validate_output_settings(settings: dict[str, Any]) -> Result[dict[str, Any],
     if "directory" not in settings:
         return Err("Output settings missing 'directory' field")
     if "format" in settings and settings["format"] not in VALID_OUTPUT_FORMATS:
-        logger.warning(f"Output format '{settings['format']}' not in: {VALID_OUTPUT_FORMATS}")
+        logger.warning(
+            f"Output format '{settings['format']}' not in: {VALID_OUTPUT_FORMATS}"
+        )
     return Ok(settings)
 
 
@@ -71,7 +84,10 @@ def validate_analysis_settings(settings: dict[str, Any]) -> Result[dict[str, Any
         if not isinstance(settings["max_workers"], int) or settings["max_workers"] <= 0:
             return Err("max_workers must be a positive integer")
     if "timeout" in settings:
-        if not isinstance(settings["timeout"], (int, float)) or settings["timeout"] <= 0:
+        if (
+            not isinstance(settings["timeout"], (int, float))
+            or settings["timeout"] <= 0
+        ):
             return Err("timeout must be a positive number")
     if "parallel" in settings and not isinstance(settings["parallel"], bool):
         return Err("parallel must be a boolean")

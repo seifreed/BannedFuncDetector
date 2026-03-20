@@ -9,7 +9,12 @@ import directly from their respective modules:
     - application.contracts: Runtime wiring and public request objects
 """
 
-from .entities import FunctionDescriptor, BannedFunction, AnalysisResult, DirectoryAnalysisSummary
+from .entities import (
+    FunctionDescriptor,
+    BannedFunction,
+    AnalysisResult,
+    DirectoryAnalysisSummary,
+)
 from .banned_functions import (
     BANNED_FUNCTIONS,
     BANNED_FUNCTIONS_CATEGORIZED,

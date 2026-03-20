@@ -36,7 +36,6 @@ import pytest
 
 from conftest import FakeConfigRepository, FakeR2, start_test_server
 
-
 # =============================================================================
 # GROUP 1 — APPLICATION PATHS
 # =============================================================================
@@ -46,6 +45,7 @@ from conftest import FakeConfigRepository, FakeR2, start_test_server
 # binary_flow_runtime.py line 25: AnalysisError branch in _analysis_error
 # binary_flow_runtime.py line 124: finalize raises an exception
 # ---------------------------------------------------------------------------
+
 
 class TestBinaryFlowRuntime:
     """
@@ -69,11 +69,13 @@ class TestBinaryFlowRuntime:
             return ok(None)
 
         return AnalysisRuntime(
-            config=FakeConfigRepository({
-                "banned_functions": ["strcpy"],
-                "decompiler": {"type": "default", "options": {}},
-                "analysis": {"threshold": 0, "skip_small_functions": False},
-            }),
+            config=FakeConfigRepository(
+                {
+                    "banned_functions": ["strcpy"],
+                    "decompiler": {"type": "default", "options": {}},
+                    "analysis": {"threshold": 0, "skip_small_functions": False},
+                }
+            ),
             r2_factory=lambda path: fake_r2,
             binary=BinaryRuntimeServices(
                 binary_opener=binary_opener,
@@ -117,7 +119,9 @@ class TestBinaryFlowRuntime:
         from bannedfuncdetector.application.binary_analyzer.binary_flow_runtime import (
             run_detection_with_cleanup,
         )
-        from bannedfuncdetector.application.contracts.analysis import BinaryAnalysisRequest
+        from bannedfuncdetector.application.contracts.analysis import (
+            BinaryAnalysisRequest,
+        )
 
         # Use /dev/full on macOS/Linux to force OSError during file writes.
         # If not available we fall back to a path that cannot be created.
@@ -158,6 +162,7 @@ class TestBinaryFlowRuntime:
 # ---------------------------------------------------------------------------
 # directory_preparation.py lines 46-48: except handler for validate_directory
 # ---------------------------------------------------------------------------
+
 
 class TestDirectoryPreparation:
     """
@@ -203,6 +208,7 @@ class TestDirectoryPreparation:
 # directory_runners.py lines 93, 102, 120-121
 # ---------------------------------------------------------------------------
 
+
 class TestDirectoryRunners:
     """
     Purpose: Cover the parallel submit path (line 93) and the sequential
@@ -215,7 +221,9 @@ class TestDirectoryRunners:
             AnalysisRuntime,
             BinaryRuntimeServices,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryScanPlan
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryScanPlan,
+        )
         from bannedfuncdetector.domain.result import ok
 
         def default_opener(path, verbose, r2_factory):
@@ -225,11 +233,13 @@ class TestDirectoryRunners:
             return ok(None)
 
         runtime = AnalysisRuntime(
-            config=FakeConfigRepository({
-                "banned_functions": ["strcpy"],
-                "decompiler": {"type": "default", "options": {}},
-                "analysis": {"threshold": 0, "skip_small_functions": False},
-            }),
+            config=FakeConfigRepository(
+                {
+                    "banned_functions": ["strcpy"],
+                    "decompiler": {"type": "default", "options": {}},
+                    "analysis": {"threshold": 0, "skip_small_functions": False},
+                }
+            ),
             r2_factory=lambda path: fake_r2,
             binary=BinaryRuntimeServices(
                 binary_opener=binary_opener or default_opener,
@@ -259,7 +269,9 @@ class TestDirectoryRunners:
             AnalysisRuntime,
             BinaryRuntimeServices,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryScanPlan
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryScanPlan,
+        )
         from bannedfuncdetector.application.internal.directory_runners import (
             iter_sequential_directory_results,
         )
@@ -307,7 +319,9 @@ class TestDirectoryRunners:
             AnalysisRuntime,
             BinaryRuntimeServices,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryScanPlan
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryScanPlan,
+        )
         from bannedfuncdetector.application.internal.directory_runners import (
             iter_sequential_directory_results,
         )
@@ -319,11 +333,13 @@ class TestDirectoryRunners:
             raise ValueError("deliberate failure to cover line 102")
 
         runtime = AnalysisRuntime(
-            config=FakeConfigRepository({
-                "banned_functions": ["strcpy"],
-                "decompiler": {"type": "default", "options": {}},
-                "analysis": {"threshold": 0, "skip_small_functions": False},
-            }),
+            config=FakeConfigRepository(
+                {
+                    "banned_functions": ["strcpy"],
+                    "decompiler": {"type": "default", "options": {}},
+                    "analysis": {"threshold": 0, "skip_small_functions": False},
+                }
+            ),
             r2_factory=lambda path: fake_r2,
             binary=BinaryRuntimeServices(
                 binary_opener=failing_opener,
@@ -360,7 +376,9 @@ class TestDirectoryRunners:
             AnalysisRuntime,
             BinaryRuntimeServices,
         )
-        from bannedfuncdetector.application.internal.execution_plans import DirectoryScanPlan
+        from bannedfuncdetector.application.internal.execution_plans import (
+            DirectoryScanPlan,
+        )
         from bannedfuncdetector.application.internal.directory_runners import (
             iter_parallel_directory_results,
         )
@@ -373,23 +391,27 @@ class TestDirectoryRunners:
         fake_r2 = FakeR2()
 
         def worker(job):
-            return err(ExecutionFailure(
-                error=BinaryExecutionError(
-                    category="Test",
-                    context=job.executable_file,
-                    message="parallel test job",
+            return err(
+                ExecutionFailure(
+                    error=BinaryExecutionError(
+                        category="Test",
+                        context=job.executable_file,
+                        message="parallel test job",
+                    )
                 )
-            ))
+            )
 
         def fake_config_factory(d):
             return FakeConfigRepository(d)
 
         runtime = AnalysisRuntime(
-            config=FakeConfigRepository({
-                "banned_functions": ["strcpy"],
-                "decompiler": {"type": "default", "options": {}},
-                "analysis": {"threshold": 0, "skip_small_functions": False},
-            }),
+            config=FakeConfigRepository(
+                {
+                    "banned_functions": ["strcpy"],
+                    "decompiler": {"type": "default", "options": {}},
+                    "analysis": {"threshold": 0, "skip_small_functions": False},
+                }
+            ),
             r2_factory=lambda path: fake_r2,
             config_factory=fake_config_factory,
             binary=BinaryRuntimeServices(
@@ -407,13 +429,16 @@ class TestDirectoryRunners:
             parallel_executor_factory=concurrent.futures.ThreadPoolExecutor,
         )
 
-        results = list(iter_parallel_directory_results(["/bin/ls"], plan, max_workers=1))
+        results = list(
+            iter_parallel_directory_results(["/bin/ls"], plan, max_workers=1)
+        )
         assert len(results) == 1
 
 
 # ---------------------------------------------------------------------------
 # bannedfunc.py lines 42-43: result is None → logger.error + return 1
 # ---------------------------------------------------------------------------
+
 
 class TestBannedFuncMain:
     """
@@ -438,8 +463,10 @@ class TestBannedFuncMain:
         try:
             sys.argv = [
                 "bannedfuncdetector",
-                "-f", nonexistent,
-                "-o", str(tmp_path),
+                "-f",
+                nonexistent,
+                "-o",
+                str(tmp_path),
             ]
             ret = bfmod.main()
             # Either 0 (binary not found returns err but result is not None)
@@ -476,8 +503,10 @@ class TestBannedFuncMain:
 
             sys.argv = [
                 "bannedfuncdetector",
-                "-f", "/bin/ls",
-                "-o", str(tmp_path),
+                "-f",
+                "/bin/ls",
+                "-o",
+                str(tmp_path),
             ]
             ret = bfmod.main()
             results_holder.append(ret)
@@ -492,6 +521,7 @@ class TestBannedFuncMain:
 # ---------------------------------------------------------------------------
 # r2_session.py lines 81-82: retry exhaustion (assert last_error + raise)
 # ---------------------------------------------------------------------------
+
 
 class TestR2Session:
     """
@@ -510,7 +540,9 @@ class TestR2Session:
         Act: call open_binary_with_r2.
         Assert: RuntimeError is propagated.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2_session import open_binary_with_r2
+        from bannedfuncdetector.infrastructure.adapters.r2_session import (
+            open_binary_with_r2,
+        )
 
         call_count = [0]
 
@@ -570,6 +602,7 @@ class TestR2Session:
 # orchestrator_dispatch.py lines 35-37: DecompilationError exception path
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorDispatch:
     """
     Purpose: Cover decompile_function lines 35-37 — DecompilationError is
@@ -588,7 +621,9 @@ class TestOrchestratorDispatch:
         Act: call decompile_function.
         Assert: result is Err with "Decompilation error" in the message.
         """
-        from bannedfuncdetector.infrastructure.decompilers import orchestrator_dispatch as od_mod
+        from bannedfuncdetector.infrastructure.decompilers import (
+            orchestrator_dispatch as od_mod,
+        )
         from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
             DecompilationError,
         )
@@ -598,9 +633,11 @@ class TestOrchestratorDispatch:
         def raising_decompile(r2, function_name, decompiler_type_enum, options):
             raise DecompilationError("forced decompilation error")
 
-        config = FakeConfigRepository({
-            "decompiler": {"type": "r2ghidra", "options": {}},
-        })
+        config = FakeConfigRepository(
+            {
+                "decompiler": {"type": "r2ghidra", "options": {}},
+            }
+        )
         fake_r2 = FakeR2()
 
         try:
@@ -622,6 +659,7 @@ class TestOrchestratorDispatch:
 # orchestrator_service.py line 85: verbose warning when no functions
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorServiceNoFunctions:
     """
     Purpose: Cover decompile_with_selected_decompiler line 85 — when verbose
@@ -641,10 +679,12 @@ class TestOrchestratorServiceNoFunctions:
             decompile_with_selected_decompiler,
         )
 
-        config = FakeConfigRepository({
-            "decompiler": {"type": "default", "options": {}},
-            "analysis": {"threshold": 0, "skip_small_functions": False},
-        })
+        config = FakeConfigRepository(
+            {
+                "decompiler": {"type": "default", "options": {}},
+                "analysis": {"threshold": 0, "skip_small_functions": False},
+            }
+        )
         fake_r2 = FakeR2()
 
         result = decompile_with_selected_decompiler(
@@ -661,6 +701,7 @@ class TestOrchestratorServiceNoFunctions:
 # ---------------------------------------------------------------------------
 # registry.py line 85: unknown decompiler type falls back to DEFAULT
 # ---------------------------------------------------------------------------
+
 
 class TestRegistry:
     """
@@ -683,7 +724,9 @@ class TestRegistry:
             DECOMPILER_INSTANCES,
             create_decompiler,
         )
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         # Remove r2ghidra temporarily so its key is absent from the registry
         original = DECOMPILER_INSTANCES.pop("r2ghidra", None)
@@ -699,6 +742,7 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 # selector.py lines 183, 192-193, 237
 # ---------------------------------------------------------------------------
+
 
 class TestSelectorPaths:
     """
@@ -739,7 +783,9 @@ class TestSelectorPaths:
         from bannedfuncdetector.infrastructure.decompilers.selector import (
             _select_best_available,
         )
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         # "unknown_xyz" is not in DECOMPILER_CONFIG so check_decompiler_available
         # returns False for it; DEFAULT is always available but we only pass
@@ -757,11 +803,15 @@ class TestSelectorPaths:
         Act: call select_decompiler with requested="default".
         Assert: returns "default".
         """
-        from bannedfuncdetector.infrastructure.decompilers.selector import select_decompiler
+        from bannedfuncdetector.infrastructure.decompilers.selector import (
+            select_decompiler,
+        )
 
-        config = FakeConfigRepository({
-            "decompiler": {"type": "default", "options": {}},
-        })
+        config = FakeConfigRepository(
+            {
+                "decompiler": {"type": "default", "options": {}},
+            }
+        )
 
         result = select_decompiler(
             requested="default",
@@ -776,6 +826,7 @@ class TestSelectorPaths:
 # ---------------------------------------------------------------------------
 # validators.py
 # ---------------------------------------------------------------------------
+
 
 class TestValidators:
     """
@@ -806,7 +857,9 @@ class TestValidators:
         Act: call _check_single_requirement.
         Assert: returns False.
         """
-        from bannedfuncdetector.infrastructure.validators import _check_single_requirement
+        from bannedfuncdetector.infrastructure.validators import (
+            _check_single_requirement,
+        )
 
         req = {
             "name": "python",
@@ -851,7 +904,9 @@ class TestValidators:
         req dict is missing the 'expected' key a KeyError is caught and False
         is returned.
         """
-        from bannedfuncdetector.infrastructure.validators import _check_single_requirement
+        from bannedfuncdetector.infrastructure.validators import (
+            _check_single_requirement,
+        )
 
         # Missing 'expected' key triggers KeyError inside the try block
         req = {
@@ -871,7 +926,9 @@ class TestValidators:
         Act: call _check_available_decompilers.
         Assert: no exception raised.
         """
-        from bannedfuncdetector.infrastructure.validators import _check_available_decompilers
+        from bannedfuncdetector.infrastructure.validators import (
+            _check_available_decompilers,
+        )
 
         _check_available_decompilers()
 
@@ -928,6 +985,7 @@ class TestValidators:
 # cascade.py lines 86, 96, 109: R2Ghidra, R2Dec, DecAI instance paths
 # ---------------------------------------------------------------------------
 
+
 class TestCascadeDecompilerPaths:
     """
     Purpose: Exercise the R2GhidraDecompiler (line 86), R2DecDecompiler
@@ -944,10 +1002,16 @@ class TestCascadeDecompilerPaths:
         Act: call _decompile_with_instance with DecompilerType.R2GHIDRA.
         Assert: returns ok with decompiled text.
         """
-        from bannedfuncdetector.infrastructure.decompilers.cascade import _decompile_with_instance
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.cascade import (
+            _decompile_with_instance,
+        )
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
-        decompiled_text = "int main() { return 0; } // ghidra decompiled output that is long enough"
+        decompiled_text = (
+            "int main() { return 0; } // ghidra decompiled output that is long enough"
+        )
         fake_r2 = FakeR2(
             cmd_map={
                 "s main": "",
@@ -976,10 +1040,14 @@ class TestCascadeDecompilerPaths:
         Act: call _decompile_with_instance with DecompilerType.R2DEC.
         Assert: does not raise; returns a Result.
         """
-        from bannedfuncdetector.infrastructure.decompilers.cascade import _decompile_with_instance
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.cascade import (
+            _decompile_with_instance,
+        )
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
-        long_output = "void func() { int x = 1; printf(\"%d\", x); } // pdd long output"
+        long_output = 'void func() { int x = 1; printf("%d", x); } // pdd long output'
         fake_r2 = FakeR2(
             cmd_map={
                 "s main": "",
@@ -1007,8 +1075,12 @@ class TestCascadeDecompilerPaths:
         Act: call _decompile_with_instance with DecompilerType.DECAI.
         Assert: does not raise; returns a Result.
         """
-        from bannedfuncdetector.infrastructure.decompilers.cascade import _decompile_with_instance
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.cascade import (
+            _decompile_with_instance,
+        )
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         # Minimal FakeR2 for the DecAI path.  decompile_with_decai will call
         # get_function_info → cmdj("afij @ main") and _get_function_offset,
@@ -1040,6 +1112,7 @@ class TestCascadeDecompilerPaths:
 # base_decompiler.py lines 45-51: BaseR2Decompiler.decompile
 # ---------------------------------------------------------------------------
 
+
 class TestBaseDecompiler:
     """
     Purpose: Cover BaseR2Decompiler.decompile (lines 45-51) by instantiating
@@ -1056,7 +1129,9 @@ class TestBaseDecompiler:
         Act: call decompile.
         Assert: returns "".
         """
-        from bannedfuncdetector.infrastructure.decompilers.base_decompiler import BaseR2Decompiler
+        from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
+            BaseR2Decompiler,
+        )
 
         class SimpleDecompiler(BaseR2Decompiler):
             def __init__(self):
@@ -1076,7 +1151,9 @@ class TestBaseDecompiler:
         Purpose: base_decompiler.BaseR2Decompiler.decompile lines 45-51 —
         when try_decompile_with_command returns content, decompile returns it.
         """
-        from bannedfuncdetector.infrastructure.decompilers.base_decompiler import BaseR2Decompiler
+        from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
+            BaseR2Decompiler,
+        )
 
         class SimpleDecompiler(BaseR2Decompiler):
             def __init__(self):
@@ -1085,7 +1162,9 @@ class TestBaseDecompiler:
             def is_available(self, r2=None):
                 return True
 
-        long_code = "int main() { return 0; } // long enough for MIN_DECOMPILED_CODE_LENGTH"
+        long_code = (
+            "int main() { return 0; } // long enough for MIN_DECOMPILED_CODE_LENGTH"
+        )
         decompiler = SimpleDecompiler()
         fake_r2 = FakeR2(cmd_map={"s *": "", "pdc": long_code})
 
@@ -1096,6 +1175,7 @@ class TestBaseDecompiler:
 # ---------------------------------------------------------------------------
 # decompiler_support.py lines 42-43, 111-113
 # ---------------------------------------------------------------------------
+
 
 class TestDecompilerSupport:
     """
@@ -1178,6 +1258,7 @@ class TestDecompilerSupport:
 # decompiler_availability.py lines 54, 65-70, 83, 86, 90-92
 # ---------------------------------------------------------------------------
 
+
 class TestDecompilerAvailability:
     """
     Purpose: Cover _check_r2_plugin_available (lines 54, 65-70) and
@@ -1247,6 +1328,7 @@ class TestDecompilerAvailability:
 # decai_decompiler.py lines 103, 108-110, 219-224, 240-241, 296-309
 # ---------------------------------------------------------------------------
 
+
 class TestDecAIDecompiler:
     """
     Purpose: Cover DecAIDecompiler error handling paths and the edge cases
@@ -1264,7 +1346,9 @@ class TestDecAIDecompiler:
         Act: call decompiler.decompile(fake_r2, "main").
         Assert: returns "".
         """
-        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+            DecAIDecompiler,
+        )
 
         fake_r2 = FakeR2(
             cmdj_map={"afij @ main": None},  # returns None → FunctionNotFoundError
@@ -1283,7 +1367,9 @@ class TestDecAIDecompiler:
         Act: call decompiler.decompile.
         Assert: returns "".
         """
-        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+            DecAIDecompiler,
+        )
 
         class RaisingR2:
             def cmd(self, command):
@@ -1308,7 +1394,9 @@ class TestDecAIDecompiler:
         Act: call decompiler.decompile.
         Assert: returns "".
         """
-        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+            DecAIDecompiler,
+        )
 
         class AttributeRaisingR2:
             def cmd(self, command):
@@ -1534,7 +1622,9 @@ class TestR2AiServer:
         Act: call _wait_for_server with 1 attempt.
         Assert: returns False.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _wait_for_server
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _wait_for_server,
+        )
 
         result = _wait_for_server(
             "http://127.0.0.1:19999",  # nothing listening
@@ -1548,7 +1638,9 @@ class TestR2AiServer:
         Purpose: r2ai_server._wait_for_server lines 59-61 — OSError from
         a refused connection is caught and loop continues.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _wait_for_server
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _wait_for_server,
+        )
 
         # Port 1 is typically refused (requires no listener and root to bind)
         result = _wait_for_server("http://127.0.0.1:1", attempts=1, timeout=1)
@@ -1599,7 +1691,9 @@ class TestR2AiServer:
         Purpose: r2ai_server._log_available_models lines 204-209 — when
         models endpoint returns empty the "No available models" warning fires.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _log_available_models
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _log_available_models,
+        )
 
         url, server = start_test_server(
             models_status=200,
@@ -1617,7 +1711,9 @@ class TestR2AiServer:
         models returns a non-empty list they are logged.
         """
         import json
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _log_available_models
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _log_available_models,
+        )
 
         payload = json.dumps({"models": ["model-a", "model-b", "model-c"]}).encode()
         url, server = start_test_server(models_status=200, models_payload=payload)
@@ -1683,16 +1779,16 @@ class TestR2AiServer:
         finally:
             os.environ["PATH"] = original_path
 
-    def test_start_r2ai_server_no_models_returns_false(
-        self, shim_path, path_with_shim
-    ):
+    def test_start_r2ai_server_no_models_returns_false(self, shim_path, path_with_shim):
         """
         Purpose: r2ai_server._start_r2ai_server lines 333-338 — when
         _get_models_from_cli returns empty list the function returns False.
 
         Arrange: shim that exits with non-zero for -m flag.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _start_r2ai_server
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _start_r2ai_server,
+        )
         import textwrap
 
         shim = shim_path / "r2ai-server"
@@ -1960,7 +2056,9 @@ class TestCascadeNotProperlyConfigured:
             _decompile_with_instance,
         )
         from bannedfuncdetector.infrastructure.decompilers import cascade as cascade_mod
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         original = cascade_mod.DECOMPILER_INSTANCES.get("decai")
         fake_r2 = FakeR2()
@@ -1968,9 +2066,7 @@ class TestCascadeNotProperlyConfigured:
         try:
             # Put a non-DecAIDecompiler object so isinstance fails
             cascade_mod.DECOMPILER_INSTANCES["decai"] = object()
-            result = _decompile_with_instance(
-                fake_r2, "main", DecompilerType.DECAI, {}
-            )
+            result = _decompile_with_instance(fake_r2, "main", DecompilerType.DECAI, {})
         finally:
             if original is not None:
                 cascade_mod.DECOMPILER_INSTANCES["decai"] = original
@@ -1983,9 +2079,13 @@ class TestCascadeNotProperlyConfigured:
         Purpose: cascade.py line 96 — when DECOMPILER_INSTANCES["r2ghidra"] is
         not an R2GhidraDecompiler instance.
         """
-        from bannedfuncdetector.infrastructure.decompilers.cascade import _decompile_with_instance
+        from bannedfuncdetector.infrastructure.decompilers.cascade import (
+            _decompile_with_instance,
+        )
         from bannedfuncdetector.infrastructure.decompilers import cascade as cascade_mod
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         original = cascade_mod.DECOMPILER_INSTANCES.get("r2ghidra")
         fake_r2 = FakeR2()
@@ -2007,18 +2107,20 @@ class TestCascadeNotProperlyConfigured:
         Purpose: cascade.py line 109 — when DECOMPILER_INSTANCES["r2dec"] is
         not an R2DecDecompiler instance.
         """
-        from bannedfuncdetector.infrastructure.decompilers.cascade import _decompile_with_instance
+        from bannedfuncdetector.infrastructure.decompilers.cascade import (
+            _decompile_with_instance,
+        )
         from bannedfuncdetector.infrastructure.decompilers import cascade as cascade_mod
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         original = cascade_mod.DECOMPILER_INSTANCES.get("r2dec")
         fake_r2 = FakeR2()
 
         try:
             cascade_mod.DECOMPILER_INSTANCES["r2dec"] = object()
-            result = _decompile_with_instance(
-                fake_r2, "main", DecompilerType.R2DEC, {}
-            )
+            result = _decompile_with_instance(fake_r2, "main", DecompilerType.R2DEC, {})
         finally:
             if original is not None:
                 cascade_mod.DECOMPILER_INSTANCES["r2dec"] = original
@@ -2045,8 +2147,12 @@ class TestBinaryFlowRuntimeLine124:
         so we need to bypass setup and call run_detection_with_cleanup with a
         plan already set to have r2_closer=None by patching resolve_analysis_setup.
         """
-        from bannedfuncdetector.application.binary_analyzer import binary_flow_runtime as bfr_mod
-        from bannedfuncdetector.application.contracts.analysis import BinaryAnalysisRequest
+        from bannedfuncdetector.application.binary_analyzer import (
+            binary_flow_runtime as bfr_mod,
+        )
+        from bannedfuncdetector.application.contracts.analysis import (
+            BinaryAnalysisRequest,
+        )
         from bannedfuncdetector.application.analysis_runtime import (
             AnalysisRuntime,
             BinaryRuntimeServices,
@@ -2057,11 +2163,13 @@ class TestBinaryFlowRuntimeLine124:
 
         # Build a plan where r2_closer will be None
         runtime = AnalysisRuntime(
-            config=FakeConfigRepository({
-                "banned_functions": ["strcpy"],
-                "decompiler": {"type": "default", "options": {}},
-                "analysis": {"threshold": 0, "skip_small_functions": False},
-            }),
+            config=FakeConfigRepository(
+                {
+                    "banned_functions": ["strcpy"],
+                    "decompiler": {"type": "default", "options": {}},
+                    "analysis": {"threshold": 0, "skip_small_functions": False},
+                }
+            ),
             r2_factory=lambda path: fake_r2,
             binary=BinaryRuntimeServices(
                 binary_opener=lambda path, verbose, r2_factory: fake_r2,
@@ -2070,7 +2178,10 @@ class TestBinaryFlowRuntimeLine124:
         )
 
         # Patch resolve_analysis_setup to return a plan with r2_closer=None
-        from bannedfuncdetector.application.internal.execution_plans import BinaryScanPlan
+        from bannedfuncdetector.application.internal.execution_plans import (
+            BinaryScanPlan,
+        )
+
         original_resolve = bfr_mod.resolve_analysis_setup
 
         def patched_resolve(binary_path, request):
@@ -2153,7 +2264,9 @@ class TestR2AiServerAdditional:
         Purpose: r2ai_server._resolve_command line 92 — empty args list
         returns immediately.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _resolve_command
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _resolve_command,
+        )
 
         result = _resolve_command([])
         assert result == []
@@ -2163,7 +2276,9 @@ class TestR2AiServerAdditional:
         Purpose: r2ai_server._validate_executable line 102 — empty args
         raises ValueError("Empty command").
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _validate_executable
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _validate_executable,
+        )
 
         with pytest.raises(ValueError, match="Empty command"):
             _validate_executable([])
@@ -2173,7 +2288,9 @@ class TestR2AiServerAdditional:
         Purpose: r2ai_server._wait_for_server — server responds on first
         ping (covers the return True path).
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _wait_for_server
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _wait_for_server,
+        )
 
         url, server = start_test_server(ping_status=200)
         try:
@@ -2188,7 +2305,9 @@ class TestR2AiServerAdditional:
         models list has more than 5 items the truncation log fires.
         """
         import json
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _log_available_models
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _log_available_models,
+        )
 
         models = ["model-" + str(i) for i in range(7)]
         payload = json.dumps({"models": models}).encode()
@@ -2305,7 +2424,9 @@ class TestR2AiServerAdditional:
         Purpose: r2ai_server._start_r2ai_server lines 333-338 — when models
         are available but popen doesn't start a real server, await returns False.
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import _start_r2ai_server
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            _start_r2ai_server,
+        )
 
         path_manager = path_with_shim(r2ai_server_no_server_shim)
         original_path = path_manager["original_path"]
@@ -2345,6 +2466,7 @@ class TestValidatorsAdditional:
         class OldVersionInfo(tuple):
             def __lt__(self, other):
                 return True  # always less than any minimum
+
             def __ge__(self, other):
                 return False
 
@@ -2362,14 +2484,16 @@ class TestValidatorsAdditional:
         subprocess returns non-zero AND has stderr output, both error
         log statements fire.
         """
-        from bannedfuncdetector.infrastructure.validators import _check_single_requirement
+        from bannedfuncdetector.infrastructure.validators import (
+            _check_single_requirement,
+        )
 
         req = {
             "name": "python",
             "command": [
                 "python",
                 "-c",
-                "import sys; sys.stderr.write('error output\\n'); sys.exit(1)"
+                "import sys; sys.stderr.write('error output\\n'); sys.exit(1)",
             ],
             "expected": "should_not_match",
         }
@@ -2416,7 +2540,9 @@ class TestValidatorsAdditional:
         Purpose: validators._check_available_decompilers — the function opens
         an r2 session on /bin/ls and logs decompiler status.
         """
-        from bannedfuncdetector.infrastructure.validators import _check_available_decompilers
+        from bannedfuncdetector.infrastructure.validators import (
+            _check_available_decompilers,
+        )
 
         _check_available_decompilers()
 
@@ -2526,7 +2652,8 @@ class TestDecompilerSupportAdditional:
         # Primary command returns empty → use_alternative=False → returns ""
         fake_r2 = FakeR2(cmd_map={"s main": "", "pdg": "", "pdd": ""})
         result = _try_decompile_pair(
-            fake_r2, "main",
+            fake_r2,
+            "main",
             primary_cmd="pdg",
             fallback_cmd="pdd",
             clean_error_messages=True,
@@ -2585,7 +2712,9 @@ class TestDecAIDecompilerAdditional:
         when decompile_with_decai raises FunctionNotFoundError (lines 103,
         108-110), the DecAIDecompiler.decompile catches it and returns "".
         """
-        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+            DecAIDecompiler,
+        )
 
         # cmdj returns empty list → _normalize_function_info returns None →
         # FunctionNotFoundError is raised in _resolve_function_offset
@@ -2613,10 +2742,12 @@ class TestOrchestratorServiceAdditional:
             decompile_with_selected_decompiler,
         )
 
-        config = FakeConfigRepository({
-            "decompiler": {"type": "default", "options": {}},
-            "analysis": {"threshold": 0, "skip_small_functions": False},
-        })
+        config = FakeConfigRepository(
+            {
+                "decompiler": {"type": "default", "options": {}},
+                "analysis": {"threshold": 0, "skip_small_functions": False},
+            }
+        )
         fake_r2 = FakeR2()
 
         result = decompile_with_selected_decompiler(
@@ -2643,11 +2774,13 @@ class TestOrchestratorServiceAdditional:
         )
         from bannedfuncdetector.factories import create_config_from_dict
 
-        config = create_config_from_dict({
-            "decompiler": {"type": "default", "options": {}},
-            "banned_functions": ["strcpy"],
-            "analysis": {"threshold": 0, "skip_small_functions": False},
-        })
+        config = create_config_from_dict(
+            {
+                "decompiler": {"type": "default", "options": {}},
+                "banned_functions": ["strcpy"],
+                "analysis": {"threshold": 0, "skip_small_functions": False},
+            }
+        )
 
         # FakeR2 that returns decompiled output for default (pdc) command
         long_code = "int main() { return 0; } // decompiled code for test coverage"
@@ -2689,6 +2822,7 @@ class TestRegistryAdditional:
 
         class FakeDecompilerTypeEnum:
             """Non-string object that behaves like an enum with .value."""
+
             value = "default"
 
         result = create_decompiler(FakeDecompilerTypeEnum())
@@ -2703,7 +2837,9 @@ class TestRegistryAdditional:
             DECOMPILER_INSTANCES,
             create_decompiler,
         )
-        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import DecompilerType
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
+            DecompilerType,
+        )
 
         original = DECOMPILER_INSTANCES.pop("r2dec", None)
         try:
@@ -2742,11 +2878,15 @@ class TestSelectorAdditional:
         Act: call select_decompiler.
         Assert: returns "default".
         """
-        from bannedfuncdetector.infrastructure.decompilers.selector import select_decompiler
+        from bannedfuncdetector.infrastructure.decompilers.selector import (
+            select_decompiler,
+        )
 
-        config = FakeConfigRepository({
-            "decompiler": {"type": "default", "options": {}},
-        })
+        config = FakeConfigRepository(
+            {
+                "decompiler": {"type": "default", "options": {}},
+            }
+        )
 
         result = select_decompiler(
             requested="default",
@@ -2777,7 +2917,10 @@ class TestSelectorAdditional:
 
         try:
             sel_mod.check_decompiler_available = always_available
-            from bannedfuncdetector.infrastructure.decompilers.selector import _select_best_available
+            from bannedfuncdetector.infrastructure.decompilers.selector import (
+                _select_best_available,
+            )
+
             result = _select_best_available(["decai"], verbose=True)
             assert result == "decai"
         finally:
@@ -2787,11 +2930,15 @@ class TestSelectorAdditional:
         """
         Purpose: selector.select_decompiler verbose+unavailable path.
         """
-        from bannedfuncdetector.infrastructure.decompilers.selector import select_decompiler
+        from bannedfuncdetector.infrastructure.decompilers.selector import (
+            select_decompiler,
+        )
 
-        config = FakeConfigRepository({
-            "decompiler": {"type": "default", "options": {}},
-        })
+        config = FakeConfigRepository(
+            {
+                "decompiler": {"type": "default", "options": {}},
+            }
+        )
 
         result = select_decompiler(
             requested="unknown_test_decompiler",
@@ -2843,7 +2990,9 @@ class TestAvailabilityPrintMessageBranches:
             check_decompiler_available,
         )
 
-        result = check_decompiler_available("totally_unknown_decompiler", print_message=True)
+        result = check_decompiler_available(
+            "totally_unknown_decompiler", print_message=True
+        )
         assert result is False
 
     def test_check_decompiler_available_r2ai_with_print_logs_message(self):
@@ -2885,7 +3034,9 @@ class TestDecompilerAvailabilityMissingBranches:
             check_decompiler_plugin_available,
         )
 
-        result = check_decompiler_plugin_available("definitely_not_a_real_decompiler_xyz")
+        result = check_decompiler_plugin_available(
+            "definitely_not_a_real_decompiler_xyz"
+        )
         assert result is False
 
     def test_check_r2_plugin_available_exception_returns_false(self):
@@ -2932,10 +3083,13 @@ class TestDecompilerAvailabilityMissingBranches:
         class FakeR2Context:
             def cmd(self, _: str) -> str:
                 return "Unknown command 'decai'"
+
             def cmdj(self, _: str):
                 return None
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *_):
                 pass
 
@@ -3018,6 +3172,7 @@ class TestDecompilerSupportMissingBranches:
         class FakeR2ForOffset:
             def cmd(self, command: str) -> str:
                 return ""
+
             def cmdj(self, command: str):
                 if "sj" in command:
                     return {"offset": 0x1000}
@@ -3043,6 +3198,7 @@ class TestDecompilerSupportMissingBranches:
         class FakeR2StringOffset:
             def cmd(self, command: str) -> str:
                 return ""
+
             def cmdj(self, command: str):
                 if "sj" in command:
                     return {"offset": "0x1000"}
@@ -3156,10 +3312,13 @@ class TestValidatorsNoDecompilersFound:
         class NoOpR2Context:
             def __enter__(self):
                 return self
+
             def __exit__(self, *_):
                 pass
+
             def cmd(self, _: str) -> str:
                 return ""
+
             def cmdj(self, _: str):
                 return None
 
@@ -3262,17 +3421,22 @@ class TestDecompilerAvailabilityRemainingBranches:
                 pass  # suppress output in tests
 
         ollama_server = HTTPServer(("127.0.0.1", 0), OllamaTagsHandler)
-        server_thread = threading.Thread(target=ollama_server.serve_forever, daemon=True)
+        server_thread = threading.Thread(
+            target=ollama_server.serve_forever, daemon=True
+        )
         server_thread.start()
         _host, port = ollama_server.server_address
 
         class FakeR2ContextDecaiAvailable:
             def cmd(self, command: str) -> str:
                 return "Usage: decai [options]\n   -h  show this help"
+
             def cmdj(self, _: str):
                 return None
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *_):
                 pass
 
@@ -3393,11 +3557,13 @@ class TestDecAIDecompilerRemainingBranches:
         )
 
         # One model line that doesn't match any preferred model name
-        fake_r2 = FakeR2(cmd_map={
-            "decai -e api": "",         # no current api
-            "decai -e model": "",       # no current model
-            "!ollama list 2>/dev/null": "totally_unknown_model:latest",  # 1 line, no match
-        })
+        fake_r2 = FakeR2(
+            cmd_map={
+                "decai -e api": "",  # no current api
+                "decai -e model": "",  # no current model
+                "!ollama list 2>/dev/null": "totally_unknown_model:latest",  # 1 line, no match
+            }
+        )
 
         # Should not raise — just logs "Using default decai configuration."
         _configure_decai_model(fake_r2)
@@ -3418,6 +3584,7 @@ class TestDecAIDecompilerRemainingBranches:
         class AttrErrorR2:
             def cmd(self, _: str) -> str:
                 raise AttributeError("simulated attribute error")
+
             def cmdj(self, _: str):
                 return None
 
@@ -3487,7 +3654,9 @@ class TestDecAIDecompilerRemainingBranches:
         Assert: returns "".
         """
         import bannedfuncdetector.infrastructure.decompilers.decai_decompiler as dc_mod
-        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+            DecAIDecompiler,
+        )
 
         original = dc_mod.decompile_with_decai
 
@@ -3513,7 +3682,9 @@ class TestDecAIDecompilerRemainingBranches:
         Assert: returns "".
         """
         import bannedfuncdetector.infrastructure.decompilers.decai_decompiler as dc_mod
-        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import DecAIDecompiler
+        from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
+            DecAIDecompiler,
+        )
 
         original = dc_mod.decompile_with_decai
 
@@ -3558,7 +3729,9 @@ class TestR2AiServerRemainingBranches:
         try:
             r2ai_mod._ping_server = oserror_ping
             r2ai_mod.time.sleep = lambda _: None  # skip actual sleep
-            result = r2ai_mod._wait_for_server("http://localhost:9999", attempts=1, timeout=1)
+            result = r2ai_mod._wait_for_server(
+                "http://localhost:9999", attempts=1, timeout=1
+            )
             assert result is False
         finally:
             r2ai_mod._ping_server = original_ping
@@ -3573,7 +3746,9 @@ class TestR2AiServerRemainingBranches:
         Act: call get_r2ai_models.
         Assert: returns [].
         """
-        from bannedfuncdetector.infrastructure.adapters.r2ai_server import get_r2ai_models
+        from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
+            get_r2ai_models,
+        )
 
         class InvalidJsonHandler(BaseHTTPRequestHandler):
             def do_GET(self):

@@ -73,7 +73,9 @@ class TestCheckDecompilerAvailable:
 
     def test_check_decompiler_available_with_enum_type(self):
         """Test availability check with DecompilerType enum."""
-        result = check_decompiler_available(DecompilerType.R2GHIDRA, print_message=False)
+        result = check_decompiler_available(
+            DecompilerType.R2GHIDRA, print_message=False
+        )
 
         assert isinstance(result, bool)
 
@@ -218,7 +220,9 @@ class TestDecompilerSelectionIntegration:
         test_cases = ["unknown", "custom", "anything"]
 
         for test_case in test_cases:
-            result = select_decompiler(test_case, force=True, verbose=False, config=make_config())
+            result = select_decompiler(
+                test_case, force=True, verbose=False, config=make_config()
+            )
             assert result == test_case
 
     def test_get_available_decompiler_consistency(self):

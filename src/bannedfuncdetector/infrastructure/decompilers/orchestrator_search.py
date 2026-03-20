@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
-from bannedfuncdetector.domain.types import create_detection_result as _create_detection_result
+from bannedfuncdetector.domain.types import (
+    create_detection_result as _create_detection_result,
+)
 from bannedfuncdetector.domain.banned_functions import BANNED_FUNCTIONS
 from bannedfuncdetector.domain.result import Result, err, ok
 from bannedfuncdetector.domain.types import DecompiledCode, search_banned_call_in_text
@@ -25,7 +27,9 @@ def _search_single_banned_function(
     try:
         return search_banned_call_in_text(decompiled_code, insecure_func)
     except (TypeError, ValueError, AttributeError) as exc:
-        logger.debug(f"Error searching for pattern {insecure_func} in {func_name}: {exc}")
+        logger.debug(
+            f"Error searching for pattern {insecure_func} in {func_name}: {exc}"
+        )
         return False
 
 
@@ -46,8 +50,12 @@ def _search_banned_in_decompiled(
 
     if found:
         if verbose:
-            logger.warning(f"Unsafe functions detected in {func_name}: {', '.join(found)}")
-        return ok(_create_detection_result(func_name, func_addr, list(found), "decompilation"))
+            logger.warning(
+                f"Unsafe functions detected in {func_name}: {', '.join(found)}"
+            )
+        return ok(
+            _create_detection_result(func_name, func_addr, list(found), "decompilation")
+        )
 
     return err(f"No banned functions found in decompiled code for {func_name}")
 

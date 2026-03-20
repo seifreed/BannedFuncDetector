@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Report creation and persistence for binary analysis."""
+
 import os
 import json
 import logging
@@ -12,14 +13,19 @@ from bannedfuncdetector.application.result_serializers import analysis_result_to
 
 logger = logging.getLogger(__name__)
 
+
 def _create_analysis_report(
     binary_path: str,
     functions: list[FunctionDescriptor],
-    detected: list[BannedFunction]
+    detected: list[BannedFunction],
 ) -> AnalysisResult:
     """Build the analysis aggregate for one binary."""
     findings = tuple(
-        finding if isinstance(finding, BannedFunction) else detection_entity_from_dto(finding)
+        (
+            finding
+            if isinstance(finding, BannedFunction)
+            else detection_entity_from_dto(finding)
+        )
         for finding in detected
     )
     return AnalysisResult(
@@ -32,16 +38,12 @@ def _create_analysis_report(
 
 
 def _save_analysis_results(
-    report: AnalysisResult,
-    output_dir: str,
-    binary_path: str,
-    verbose: bool = False
+    report: AnalysisResult, output_dir: str, binary_path: str, verbose: bool = False
 ) -> str:
     """Save one analysis aggregate as JSON and return the output path."""
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(
-        output_dir,
-        f"{os.path.basename(binary_path)}_banned_functions.json"
+        output_dir, f"{os.path.basename(binary_path)}_banned_functions.json"
     )
 
     with open(output_file, "w", encoding="utf-8") as handle:

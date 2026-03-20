@@ -29,7 +29,9 @@ def decompile_with_selected_decompiler(
     decompiler_type: str | None = None,
     *,
     config: IConfigRepository,
-    decompile_function_impl: Callable[..., DecompilationResultType] = decompile_function,
+    decompile_function_impl: Callable[
+        ..., DecompilationResultType
+    ] = decompile_function,
 ) -> list[BannedFunction]:
     """Use the selected decompiler to scan all candidate functions."""
     decompiler_type_str = select_decompiler(
@@ -52,7 +54,9 @@ def decompile_with_selected_decompiler(
         config,
         decompile_function_impl,
     )
-    _log_final_summary(len(functions), success_count, error_count, len(detected), verbose)
+    _log_final_summary(
+        len(functions), success_count, error_count, len(detected), verbose
+    )
     return detected
 
 
@@ -82,8 +86,12 @@ class DecompilerOrchestrator:
             decompiler_opts.update(options)
             config_dict.setdefault("decompiler", {})["options"] = decompiler_opts
             merged_config = self._config_factory(config_dict)
-            return decompile_function(r2, function_name, decompiler_type, config=merged_config)
-        return decompile_function(r2, function_name, decompiler_type, config=self._config)
+            return decompile_function(
+                r2, function_name, decompiler_type, config=merged_config
+            )
+        return decompile_function(
+            r2, function_name, decompiler_type, config=self._config
+        )
 
     def select_decompiler(
         self,

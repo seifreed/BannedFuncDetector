@@ -15,13 +15,18 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
-from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome, DirectoryAnalysisOutcome
+from bannedfuncdetector.application.analysis_outcome import (
+    BinaryAnalysisOutcome,
+    DirectoryAnalysisOutcome,
+)
 from bannedfuncdetector.domain import AnalysisResult, BannedFunction
 
 logger = logging.getLogger(__name__)
 
 
-def display_final_results(result: BinaryAnalysisOutcome | DirectoryAnalysisOutcome) -> None:
+def display_final_results(
+    result: BinaryAnalysisOutcome | DirectoryAnalysisOutcome,
+) -> None:
     """
     Displays the final results of the analysis.
 
@@ -41,7 +46,9 @@ def display_final_results(result: BinaryAnalysisOutcome | DirectoryAnalysisOutco
     logger.info(f"Insecure functions found: {total_banned}")
     for notice in result.operational_notices:
         if notice.file_path:
-            logger.warning(f"Operational notice for {notice.file_path}: {notice.message}")
+            logger.warning(
+                f"Operational notice for {notice.file_path}: {notice.message}"
+            )
         else:
             logger.warning(f"Operational notice: {notice.message}")
 
@@ -51,7 +58,9 @@ def display_final_results(result: BinaryAnalysisOutcome | DirectoryAnalysisOutco
             _log_detected_functions(_get_detected_functions(file_result))
 
 
-def _normalize_results(result: BinaryAnalysisOutcome | DirectoryAnalysisOutcome) -> list[AnalysisResult]:
+def _normalize_results(
+    result: BinaryAnalysisOutcome | DirectoryAnalysisOutcome,
+) -> list[AnalysisResult]:
     """Normalize result payload into a list of analysis entities."""
     if isinstance(result, BinaryAnalysisOutcome):
         return [result.report]

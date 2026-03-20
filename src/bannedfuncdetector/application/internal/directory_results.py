@@ -10,7 +10,10 @@ import logging
 import os
 from collections.abc import Callable, Iterator
 
-from bannedfuncdetector.application.analysis_error import DirectoryExecutionError, ExecutionFailure
+from bannedfuncdetector.application.analysis_error import (
+    DirectoryExecutionError,
+    ExecutionFailure,
+)
 from bannedfuncdetector.domain.types import classify_error
 from bannedfuncdetector.application.analysis_outcome import (
     BinaryAnalysisOutcome,
@@ -80,7 +83,15 @@ def handle_directory_future(
     try:
         result = future.result()
         return executable_file, normalize_directory_result(executable_file, result)
-    except (AttributeError, TypeError, KeyError, OSError, IOError, RuntimeError, ValueError) as exc:
+    except (
+        AttributeError,
+        TypeError,
+        KeyError,
+        OSError,
+        IOError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
         return executable_file, error_result_from_exception(
             exc,
             context=executable_file,
@@ -110,7 +121,9 @@ def collect_directory_results(
     return results, tuple(notices)
 
 
-def persist_directory_summary(output_dir: str, summary: DirectoryAnalysisOutcome, verbose: bool = False) -> None:
+def persist_directory_summary(
+    output_dir: str, summary: DirectoryAnalysisOutcome, verbose: bool = False
+) -> None:
     """Persist the directory-analysis aggregate as JSON."""
     summary_file = os.path.join(output_dir, "summary.json")
     with open(summary_file, "w", encoding="utf-8") as handle:

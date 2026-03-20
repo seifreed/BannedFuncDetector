@@ -26,7 +26,9 @@ def decompile_function(
     try:
         decompiler_type_enum = resolve_to_decompiler_type(decompiler_type, config)
         decompiler_options = config["decompiler"].get("options", {})
-        return _decompile_with_instance(r2, function_name, decompiler_type_enum, decompiler_options)
+        return _decompile_with_instance(
+            r2, function_name, decompiler_type_enum, decompiler_options
+        )
     except (KeyError, AttributeError, TypeError) as exc:
         return err(f"Configuration error decompiling {function_name}: {str(exc)}")
     except (RuntimeError, ValueError) as exc:

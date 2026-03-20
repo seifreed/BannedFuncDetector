@@ -7,7 +7,11 @@ from __future__ import annotations
 import logging
 from typing import Any, Protocol, TypeVar
 
-from .application.contracts import AnalysisRuntime, BinaryAnalysisRequest, DirectoryAnalysisRequest
+from .application.contracts import (
+    AnalysisRuntime,
+    BinaryAnalysisRequest,
+    DirectoryAnalysisRequest,
+)
 from .application.types import BinaryAnalysisResultType, DirectoryAnalysisResultType
 from .domain.result import Ok, Result
 from .presentation.error_formatting import format_execution_error

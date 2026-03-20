@@ -22,6 +22,7 @@ def _is_http_ok(response: Any) -> bool:
     except (AttributeError, TypeError):
         return False
 
+
 DECOMPILER_CONFIG: dict[str, dict[str, Any]] = {
     "r2ghidra": {"check_cmd": "Lc", "expected": "r2ghidra"},
     "r2dec": {"check_cmd": "Lc", "expected": ["pdd", "r2dec"]},

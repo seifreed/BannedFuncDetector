@@ -1,8 +1,12 @@
 """Directory-analysis use case boundary."""
+
 from bannedfuncdetector.domain.result import Err, err, ok
 from bannedfuncdetector.application.types import DirectoryAnalysisResultType
 from bannedfuncdetector.application.contracts import DirectoryAnalysisRequest
-from bannedfuncdetector.application.analysis_error import DirectoryExecutionError, ExecutionFailure
+from bannedfuncdetector.application.analysis_error import (
+    DirectoryExecutionError,
+    ExecutionFailure,
+)
 from bannedfuncdetector.application.internal.directory_boundary import (
     directory_scan_plan_from_request,
     log_analysis_result,
@@ -33,7 +37,9 @@ def analyze_directory(
             )
         )
     preparation_result = _prepare_directory_analysis_impl(
-        directory, request.verbose, file_finder=file_finder,
+        directory,
+        request.verbose,
+        file_finder=file_finder,
     )
     if isinstance(preparation_result, Err):
         return preparation_result

@@ -37,7 +37,10 @@ def _is_transient_r2_exception(exc: BaseException) -> bool:
     for candidate in _exception_chain(exc):
         if isinstance(candidate, BrokenPipeError):
             return True
-        if isinstance(candidate, OSError) and getattr(candidate, "errno", None) in _TRANSIENT_ERRNOS:
+        if (
+            isinstance(candidate, OSError)
+            and getattr(candidate, "errno", None) in _TRANSIENT_ERRNOS
+        ):
             return True
     return False
 
@@ -301,7 +304,9 @@ class R2Client(IR2Client):
                 "The connection was closed with quit()."
             )
 
-    def _run_command[T](self, command: str, runner: Callable[[str], T], label: str) -> T:
+    def _run_command[T](
+        self, command: str, runner: Callable[[str], T], label: str
+    ) -> T:
         """
         Execute a radare2 command through the provided runner.
 

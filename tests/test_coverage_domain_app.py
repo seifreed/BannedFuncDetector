@@ -9,6 +9,7 @@ Coverage-gap tests for domain and application layers.
 Each test group targets specific uncovered lines identified by the coverage
 report, exercising real code paths without mocks, monkeypatching, or stubs.
 """
+
 import concurrent.futures
 
 import bannedfuncdetector as root_pkg
@@ -183,6 +184,7 @@ class TestErrMapErr:
 #    We add a regression test to document that custom names compile correctly.
 # ---------------------------------------------------------------------------
 
+
 class TestCompileCallPatternNoDeadCode:
     """
     Verify _compile_call_pattern works for arbitrary inputs.
@@ -214,13 +216,17 @@ class TestCompileCallPatternNoDeadCode:
         assert search_banned_call_in_text(text, custom_name) is True
 
     def test_search_banned_call_custom_name_no_match(self):
-        assert search_banned_call_in_text("safe_function(x)", "my_special_unsafe_func_xyz") is False
+        assert (
+            search_banned_call_in_text("safe_function(x)", "my_special_unsafe_func_xyz")
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
 # 3. application/analysis_error.py — lines 30-31
 #    ExecutionFailure.__str__ with operational_notices present.
 # ---------------------------------------------------------------------------
+
 
 class TestExecutionFailureStr:
     """Lines 30-31 — __str__ when operational_notices is non-empty."""
@@ -231,7 +237,9 @@ class TestExecutionFailureStr:
             context="/path/to/binary",
             message="file not found",
         )
-        notice = OperationalNotice(message="skipped /path/to/binary", file_path="/path/to/binary")
+        notice = OperationalNotice(
+            message="skipped /path/to/binary", file_path="/path/to/binary"
+        )
         failure = ExecutionFailure(error=error, operational_notices=(notice,))
         rendered = str(failure)
         assert "notices:" in rendered
@@ -293,6 +301,7 @@ class TestExecutionFailureStr:
 #    Line 147: _decompile_and_search returns Err when no banned calls found.
 # ---------------------------------------------------------------------------
 
+
 class FakeR2Client:
     """Minimal real IR2Client implementation sufficient for detection tests."""
 
@@ -318,7 +327,9 @@ class DecompilerOrchestratorReturnsOk:
     def __init__(self, decompiled_code: str):
         self._code = decompiled_code
 
-    def decompile_function(self, r2, function_name: str, decompiler_type=None, **kwargs):
+    def decompile_function(
+        self, r2, function_name: str, decompiler_type=None, **kwargs
+    ):
         return ok(self._code)
 
     def select_decompiler(self, requested=None, force=False) -> str:
@@ -331,7 +342,9 @@ class DecompilerOrchestratorReturnsOk:
 class DecompilerOrchestratorReturnsErr:
     """Real orchestrator that always returns an Err result."""
 
-    def decompile_function(self, r2, function_name: str, decompiler_type=None, **kwargs):
+    def decompile_function(
+        self, r2, function_name: str, decompiler_type=None, **kwargs
+    ):
         return err("decompilation engine not available")
 
     def select_decompiler(self, requested=None, force=False) -> str:
@@ -412,7 +425,9 @@ class TestDecompileAndSearch:
             decompiler_orchestrator=None,
         )
         assert isinstance(result, ResultErr)
-        assert "orchestrator" in result.error.lower() or "required" in result.error.lower()
+        assert (
+            "orchestrator" in result.error.lower() or "required" in result.error.lower()
+        )
 
     def test_returns_err_when_decompilation_fails(self):
         # Line 133: decompile_result is Err
@@ -518,6 +533,7 @@ class TestValidateAnalysisInputs:
 #    Line 119: analyze_function catches AnalysisError and routes to error handler
 # ---------------------------------------------------------------------------
 
+
 class TestFunctionAnalysisError:
     """Lines 25-27 — _function_analysis_error with AnalysisError and generic exceptions."""
 
@@ -615,7 +631,7 @@ class TestMergeDetections:
             name="f",
             address=0,
             size=0,
-            banned_calls=("gets",),   # string_input risk weight=10
+            banned_calls=("gets",),  # string_input risk weight=10
             detection_method="name",
             category="string_input",
         )
@@ -640,10 +656,13 @@ class TestAnalyzeFunctionBothDetections:
         # skip_banned=False, skip_analysis=False to run both steps.
         r2 = FakeR2Client()
         # Orchestrator returns code that also has a banned call.
-        orch = DecompilerOrchestratorReturnsOk("void strcpy_impl() { strcpy(dest, src); }")
+        orch = DecompilerOrchestratorReturnsOk(
+            "void strcpy_impl() { strcpy(dest, src); }"
+        )
 
         config_repo = type(
-            "_Cfg", (),
+            "_Cfg",
+            (),
             {
                 "get": lambda self, k, d=None: d,
                 "__getitem__": lambda self, k: (_ for _ in ()).throw(KeyError(k)),
@@ -666,8 +685,8 @@ class TestAnalyzeFunctionBothDetections:
             banned_functions={"strcpy"},
             decompiler_type="default",
             verbose=False,
-            skip_banned=False,   # run name detection
-            skip_analysis=False, # run decompilation detection
+            skip_banned=False,  # run name detection
+            skip_analysis=False,  # run decompilation detection
         )
         # func named "strcpy" -> name detection hits; decompiled code also has strcpy( -> code detection hits
         func = FunctionDescriptor(name="strcpy", address=0x1000, size=20)
@@ -683,7 +702,8 @@ class TestAnalyzeFunctionAnalysisError:
 
     def _make_minimal_request(self) -> FunctionAnalysisRequest:
         config_repo = type(
-            "_Cfg", (),
+            "_Cfg",
+            (),
             {
                 "get": lambda self, k, d=None: d,
                 "__getitem__": lambda self, k: (_ for _ in ()).throw(KeyError(k)),
@@ -716,11 +736,15 @@ class TestAnalyzeFunctionAnalysisError:
         assert result.is_err()
         assert "cannot be None" in result.error
 
-    def _make_request_with_raising_orchestrator(self, exc: Exception) -> FunctionAnalysisRequest:
+    def _make_request_with_raising_orchestrator(
+        self, exc: Exception
+    ) -> FunctionAnalysisRequest:
         """Build a FunctionAnalysisRequest whose orchestrator raises the given exception."""
 
         class RaisingOrchestrator:
-            def decompile_function(self, r2, function_name, decompiler_type=None, **kwargs):
+            def decompile_function(
+                self, r2, function_name, decompiler_type=None, **kwargs
+            ):
                 raise exc
 
             def select_decompiler(self, requested=None, force=False):
@@ -755,14 +779,16 @@ class TestAnalyzeFunctionAnalysisError:
             banned_functions={"strcpy"},
             decompiler_type="default",
             verbose=False,
-            skip_banned=True,   # skip name check so we reach decompile step
+            skip_banned=True,  # skip name check so we reach decompile step
             skip_analysis=False,
         )
 
     def test_analysis_error_is_caught_and_returned_as_err(self):
         r2 = FakeR2Client()
         func = FunctionDescriptor(name="vuln_func", address=0x1000, size=50)
-        request = self._make_request_with_raising_orchestrator(AnalysisError("analysis exploded"))
+        request = self._make_request_with_raising_orchestrator(
+            AnalysisError("analysis exploded")
+        )
         result = analyze_function(r2, func, request=request)
         assert result.is_err()
         assert "Analysis error" in result.error
@@ -785,6 +811,7 @@ class TestAnalyzeFunctionAnalysisError:
 # ---------------------------------------------------------------------------
 # 6. application/binary_analyzer/function_discovery_service.py — lines 17, 20-23
 # ---------------------------------------------------------------------------
+
 
 class TestR2FunctionDiscoveryService:
     """Lines 17, 20-23 — get_functions with Ok and Err results from _extract_functions."""
@@ -841,6 +868,7 @@ class TestR2FunctionDiscoveryService:
 #    log_parallel_future_error with CancelledError (verbose=True path)
 # ---------------------------------------------------------------------------
 
+
 class TestLogParallelFutureErrorCancelledError:
     """Lines 22-24 — CancelledError branch when verbose is True."""
 
@@ -868,6 +896,7 @@ class TestLogParallelFutureErrorCancelledError:
 # 8. application/result_serializers.py — lines 47, 52
 #    directory_summary_to_dict and directory_outcome_to_dict
 # ---------------------------------------------------------------------------
+
 
 def _make_analysis_result(file_path: str = "/tmp/binary") -> AnalysisResult:
     return AnalysisResult(
@@ -960,7 +989,9 @@ class TestDirectoryOutcomeToDict:
             total_files=1,
         )
         notice = OperationalNotice(message="parse failed", file_path="/tmp/bad.bin")
-        outcome = DirectoryAnalysisOutcome(summary=summary, operational_notices=(notice,))
+        outcome = DirectoryAnalysisOutcome(
+            summary=summary, operational_notices=(notice,)
+        )
         result = directory_outcome_to_dict(outcome)
         serialized = result["operational_notices"][0]
         assert serialized["message"] == "parse failed"
@@ -975,9 +1006,11 @@ class TestDirectoryOutcomeToDict:
 #    through a minimal real harness that returns None.
 # ---------------------------------------------------------------------------
 
+
 class _FakeArgs:
     """Minimal args object consumed by dispatch_cli_analysis."""
-    file = None        # cli_dispatch.py checks args.file
+
+    file = None  # cli_dispatch.py checks args.file
     directory = None
     output = "/tmp"
     decompiler = "default"
@@ -1035,6 +1068,7 @@ class TestBannedFuncMainNoneResult:
 #     Lazy __getattr__: load known names, raise AttributeError for unknown.
 # ---------------------------------------------------------------------------
 
+
 class TestApplicationPackageLazyGetattr:
     """Lines 23-29 — application/__init__.py lazy attribute resolution."""
 
@@ -1071,6 +1105,7 @@ class TestApplicationPackageLazyGetattr:
 # 11. __init__.py (root) — lines 36-42
 #     Same lazy __getattr__ pattern at the top-level package.
 # ---------------------------------------------------------------------------
+
 
 class TestRootPackageLazyGetattr:
     """Lines 36-42 — bannedfuncdetector/__init__.py lazy attribute resolution."""

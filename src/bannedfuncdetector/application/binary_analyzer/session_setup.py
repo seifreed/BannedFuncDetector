@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from bannedfuncdetector.application.analysis_error import BinaryExecutionError, ExecutionFailure
+from bannedfuncdetector.application.analysis_error import (
+    BinaryExecutionError,
+    ExecutionFailure,
+)
 from bannedfuncdetector.domain import FunctionDescriptor
 from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
@@ -80,7 +83,15 @@ def setup_binary_analysis(
 
         if isinstance(functions_result, Ok):
             return ok((r2, functions_result.unwrap()))
-        return err(ExecutionFailure(error=BinaryExecutionError(category="Runtime error", context=binary_path, message="Unexpected function extraction response")))
+        return err(
+            ExecutionFailure(
+                error=BinaryExecutionError(
+                    category="Runtime error",
+                    context=binary_path,
+                    message="Unexpected function extraction response",
+                )
+            )
+        )
     except (OSError, IOError, ValueError, RuntimeError) as exc:
         return err(ExecutionFailure(error=_setup_analysis_error(binary_path, exc)))
 

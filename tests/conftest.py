@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import pytest
 import r2pipe
 
-
 # Type aliases for better readability
 CommandHandler = Union[str, Callable[[], str], None]
 CommandJsonHandler = Union[Dict[str, Any], List[Any], Callable[[], Any], None]
@@ -82,8 +81,14 @@ class FakeR2:
 
         # Try pattern matching with '*' suffix
         for key, value in self.cmd_map.items():
-            if isinstance(key, str) and key.endswith("*") and command.startswith(key[:-1]):
-                return value() if callable(value) else (value if value is not None else "")
+            if (
+                isinstance(key, str)
+                and key.endswith("*")
+                and command.startswith(key[:-1])
+            ):
+                return (
+                    value() if callable(value) else (value if value is not None else "")
+                )
 
         return ""
 
@@ -148,11 +153,7 @@ class FakeR2ClientFactory:
         """
         self._fake_client = fake_client
 
-    def create(
-        self,
-        file_path: str,
-        flags: List[str] | None = None
-    ) -> Any:
+    def create(self, file_path: str, flags: List[str] | None = None) -> Any:
         """
         Return the configured fake client.
 
@@ -265,7 +266,9 @@ class FakeDecompilerOrchestrator:
         self._select_result = select_result
         self._available_result = available_result
 
-    def decompile_function(self, r2: Any, function_name: str, decompiler_type: Any = None, **options: Any) -> Any:
+    def decompile_function(
+        self, r2: Any, function_name: str, decompiler_type: Any = None, **options: Any
+    ) -> Any:
         if isinstance(self._decompile_result, Exception):
             raise self._decompile_result
         if callable(self._decompile_result):
@@ -305,11 +308,13 @@ def fake_r2_factory() -> Callable[..., FakeR2]:
                 cmdj_map={"aflj": [{"name": "main"}]}
             )
     """
+
     def _factory(
         cmd_map: Optional[CommandMap] = None,
         cmdj_map: Optional[CommandJsonMap] = None,
     ) -> FakeR2:
         return FakeR2(cmd_map=cmd_map, cmdj_map=cmdj_map)
+
     return _factory
 
 
@@ -456,9 +461,7 @@ def compiled_binary(tmp_path_factory):
     temp_dir = tmp_path_factory.mktemp("bin")
     source_path = temp_dir / "sample.c"
     binary_path = temp_dir / "sample.bin"
-    source_path.write_text(
-        textwrap.dedent(
-            """
+    source_path.write_text(textwrap.dedent("""
             #include <stdio.h>
             #include <string.h>
             const char *global_str = "string";
@@ -470,9 +473,7 @@ def compiled_binary(tmp_path_factory):
             int main(void) {
                 return helper("hi");
             }
-            """
-        )
-    )
+            """))
     subprocess.run(
         ["cc", "-O0", "-g", "-o", str(binary_path), str(source_path)],
         check=True,
@@ -482,7 +483,13 @@ def compiled_binary(tmp_path_factory):
     return str(binary_path)
 
 
-def open_r2pipe_with_retry(binary_path: str, *, flags: list[str] | None = None, attempts: int = 3, delay: float = 0.05):
+def open_r2pipe_with_retry(
+    binary_path: str,
+    *,
+    flags: list[str] | None = None,
+    attempts: int = 3,
+    delay: float = 0.05,
+):
     last_error = None
     for _attempt in range(attempts):
         try:
@@ -520,7 +527,12 @@ def make_executable(path: Any, content: str) -> None:
     os.chmod(path, 0o755)
 
 
-def make_windows_cmd(path: Any, python_one_liner: str, models: str | None = None, usage: str = "usage: r2ai-server") -> None:
+def make_windows_cmd(
+    path: Any,
+    python_one_liner: str,
+    models: str | None = None,
+    usage: str = "usage: r2ai-server",
+) -> None:
     """
     Create a Windows-friendly .cmd wrapper for shim scripts.
 
@@ -537,10 +549,11 @@ def make_windows_cmd(path: Any, python_one_liner: str, models: str | None = None
     if models is not None:
         # Escape carets for cmd output
         models_lines = models.splitlines()
-        models_block = "\n".join(f'if "%1"=="-m" (echo {line} & set EXITED=1)' for line in models_lines)
+        models_block = "\n".join(
+            f'if "%1"=="-m" (echo {line} & set EXITED=1)' for line in models_lines
+        )
         models_block += '\nif "%1"=="-m" (exit /b 0)\n'
-    cmd_content = textwrap.dedent(
-        f"""\
+    cmd_content = textwrap.dedent(f"""\
         @echo off
         setlocal
         if "%~1"=="-h" (
@@ -560,15 +573,13 @@ def make_windows_cmd(path: Any, python_one_liner: str, models: str | None = None
           exit /b 1
         )
         "%PY_BIN%" -c "{python_one_liner}"
-        """
-    )
+        """)
     cmd_path.write_text(cmd_content)
 
 
 @pytest.fixture()
 def r2ai_server_shim(shim_path):
-    script = textwrap.dedent(
-        """
+    script = textwrap.dedent("""
         #!/bin/sh
         if [ "$1" = "-h" ]; then
           echo "usage: r2ai-server"
@@ -582,8 +593,7 @@ def r2ai_server_shim(shim_path):
         # Simulate background server startup
         sleep 0.1
         exit 0
-        """
-    )
+        """)
     path = shim_path / "r2ai-server"
     make_executable(path, script)
     make_windows_cmd(
@@ -596,15 +606,13 @@ def r2ai_server_shim(shim_path):
 
 @pytest.fixture()
 def r2ai_server_fail_shim(shim_path):
-    script = textwrap.dedent(
-        """
+    script = textwrap.dedent("""
         #!/bin/sh
         if [ "$1" = "-h" ]; then
           exit 1
         fi
         exit 1
-        """
-    )
+        """)
     path = shim_path / "r2ai-server"
     make_executable(path, script)
     make_windows_cmd(
@@ -617,8 +625,7 @@ def r2ai_server_fail_shim(shim_path):
 
 @pytest.fixture()
 def r2pm_shim(shim_path):
-    script = textwrap.dedent(
-        """
+    script = textwrap.dedent("""
         #!/bin/sh
 PYTHON_BIN="$(command -v python3 || command -v python)"
 if [ -z "$PYTHON_BIN" ]; then
@@ -651,8 +658,7 @@ time.sleep(3)
 server.shutdown()
 PY
         exit 0
-        """
-    )
+        """)
     path = shim_path / "r2pm"
     make_executable(path, script)
     make_windows_cmd(
@@ -665,7 +671,7 @@ PY
             "            self.send_response(200); self.end_headers(); self.wfile.write(b'pong'); return\n"
             "        if self.path == '/models':\n"
             "            self.send_response(200); self.end_headers(); "
-            "self.wfile.write(b'{\"models\": [\"a\"]}'); return\n"
+            'self.wfile.write(b\'{"models": ["a"]}\'); return\n'
             "        self.send_response(404); self.end_headers()\n"
             "    def log_message(self, *_):\n"
             "        return\n"
@@ -686,8 +692,10 @@ def stdin_stream() -> Callable[[str], io.StringIO]:
     Returns:
         A factory function that creates a StringIO with the given value
     """
+
     def _set(value: str) -> io.StringIO:
         return io.StringIO(value)
+
     return _set
 
 
@@ -900,12 +908,14 @@ def path_with_shim(shim_path: Any) -> Callable[[Any], Any]:
             finally:
                 os.environ["PATH"] = original_path
     """
+
     def _factory(shim_script: Any) -> Dict[str, str]:
         original_path = os.environ.get("PATH", "")
         return {
             "original_path": original_path,
             "modified_path": f"{shim_script.parent}{os.pathsep}{original_path}",
         }
+
     return _factory
 
 
@@ -926,14 +936,14 @@ def fake_config() -> FakeConfigRepository:
         def test_with_fake_config(fake_config):
             assert fake_config.get_output_dir() == "output"
     """
-    return FakeConfigRepository({
-        "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
-        "output": {"directory": "output", "format": "json"},
-        "decompiler": {"type": "default", "options": {}},
-        "analysis": {"parallel": True, "max_workers": 4},
-    })
-
-
+    return FakeConfigRepository(
+        {
+            "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
+            "output": {"directory": "output", "format": "json"},
+            "decompiler": {"type": "default", "options": {}},
+            "analysis": {"parallel": True, "max_workers": 4},
+        }
+    )
 
 
 @pytest.fixture()
@@ -949,6 +959,7 @@ def fake_config_factory() -> Callable[..., FakeConfigRepository]:
             config = fake_config_factory({"banned_functions": ["strcpy"]})
             assert config.get("banned_functions") == ["strcpy"]
     """
+
     def _factory(config: Optional[Dict[str, Any]] = None) -> FakeConfigRepository:
         default_config = {
             "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
@@ -959,9 +970,8 @@ def fake_config_factory() -> Callable[..., FakeConfigRepository]:
         if config:
             default_config.update(config)
         return FakeConfigRepository(default_config)
+
     return _factory
-
-
 
 
 @pytest.fixture()
@@ -980,16 +990,21 @@ def di_config():
             assert di_config.get_output_dir() == "output"
     """
     from bannedfuncdetector.factories import create_config_from_dict
-    return create_config_from_dict({
-        "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
-        "output": {"directory": "output", "format": "json"},
-        "decompiler": {"type": "default", "options": {}},
-        "analysis": {"parallel": True, "max_workers": 4},
-    })
+
+    return create_config_from_dict(
+        {
+            "banned_functions": ["strcpy", "strcat", "gets", "sprintf"],
+            "output": {"directory": "output", "format": "json"},
+            "decompiler": {"type": "default", "options": {}},
+            "analysis": {"parallel": True, "max_workers": 4},
+        }
+    )
 
 
 @pytest.fixture()
-def fake_r2_client_factory(fake_r2_factory: Callable[..., "FakeR2"]) -> Callable[..., FakeR2ClientFactory]:
+def fake_r2_client_factory(
+    fake_r2_factory: Callable[..., "FakeR2"],
+) -> Callable[..., FakeR2ClientFactory]:
     """
     Fixture providing a factory for creating FakeR2ClientFactory instances.
 
@@ -1005,10 +1020,11 @@ def fake_r2_client_factory(fake_r2_factory: Callable[..., "FakeR2"]) -> Callable
             client = factory.create("/any/path")
             assert client.cmdj("aflj")[0]["name"] == "main"
     """
+
     def _factory(
-        cmd_map: Optional[CommandMap] = None,
-        cmdj_map: Optional[CommandJsonMap] = None
+        cmd_map: Optional[CommandMap] = None, cmdj_map: Optional[CommandJsonMap] = None
     ) -> FakeR2ClientFactory:
         fake = fake_r2_factory(cmd_map=cmd_map, cmdj_map=cmdj_map)
         return FakeR2ClientFactory(fake)
+
     return _factory

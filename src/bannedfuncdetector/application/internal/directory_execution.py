@@ -27,7 +27,11 @@ def execute_directory_plan(
     if options.parallel and config_factory is None:
         raise ValueError("config_factory is required for directory analysis")
 
-    max_workers = options.max_workers if options.max_workers is not None else config.get("max_workers", 4)
+    max_workers = (
+        options.max_workers
+        if options.max_workers is not None
+        else config.get("max_workers", 4)
+    )
 
     if options.parallel:
         result_iter = iter_parallel_directory_results(

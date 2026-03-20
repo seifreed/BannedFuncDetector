@@ -17,4 +17,6 @@ def analyze_binary(
         request=request,
         analyze_function_impl=analyze_function,
     )
+
+
 __all__ = ["analyze_function", "analyze_binary"]

@@ -1,4 +1,5 @@
 """Runtime helpers for binary validation and function extraction."""
+
 import logging
 import os
 from typing import Any, cast
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 def _extract_functions_error(exc: Exception) -> Result[list[FunctionDescriptor], str]:
     """Convert function-extraction failures into Result errors."""
     from bannedfuncdetector.domain.error_types import ErrorCategory
+
     category = classify_error(exc)
     message = f"{category} extracting functions from binary: {exc}"
     if category != ErrorCategory.DATA:
@@ -47,7 +49,9 @@ def _validate_binary_input(binary_path: str) -> None:
         raise BinaryNotFoundError(error_msg)
 
 
-def _extract_functions(r2: IR2Client, verbose: bool = False) -> Result[list[FunctionDescriptor], str]:
+def _extract_functions(
+    r2: IR2Client, verbose: bool = False
+) -> Result[list[FunctionDescriptor], str]:
     """Extract discovered functions and convert them into domain entities."""
     try:
         if verbose:
@@ -66,7 +70,15 @@ def _extract_functions(r2: IR2Client, verbose: bool = False) -> Result[list[Func
         raw_functions = cast(list[dict[str, Any]], functions)
         function_list = [function_descriptor_from_dto(func) for func in raw_functions]
         return ok(function_list)
-    except (KeyError, AttributeError, TypeError, RuntimeError, ValueError, OSError, IOError) as exc:
+    except (
+        KeyError,
+        AttributeError,
+        TypeError,
+        RuntimeError,
+        ValueError,
+        OSError,
+        IOError,
+    ) as exc:
         return _extract_functions_error(exc)
 
 

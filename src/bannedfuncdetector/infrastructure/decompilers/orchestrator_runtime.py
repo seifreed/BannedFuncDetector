@@ -116,7 +116,9 @@ def _log_decompilation_progress(
 ) -> None:
     """Log the start of decompilation progress."""
     if verbose:
-        logger.info(f"Decompiling {len(functions)} functions with {decompiler_type_str}...")
+        logger.info(
+            f"Decompiling {len(functions)} functions with {decompiler_type_str}..."
+        )
 
 
 def _get_function_filtering_config(config: IConfigRepository) -> tuple[int, bool]:

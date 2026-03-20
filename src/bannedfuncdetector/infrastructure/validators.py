@@ -97,14 +97,16 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
     """
     try:
         logger.info(f"Checking {req['name']}...")
-        command = req['command']
+        command = req["command"]
         if not command or command[0] not in ALLOWED_REQUIREMENT_EXECUTABLES:
             logger.error(f"Blocked unrecognized command: {command}")
             return False
         result = _run_command(command)
 
-        if result.returncode != 0 or req['expected'] not in result.stdout:
-            logger.error(f"Error: {req['name']} is not installed or not working properly.")
+        if result.returncode != 0 or req["expected"] not in result.stdout:
+            logger.error(
+                f"Error: {req['name']} is not installed or not working properly."
+            )
             logger.error(f"Output: {result.stdout}")
             if result.stderr:
                 logger.error(f"Error: {result.stderr}")
@@ -161,12 +163,16 @@ def _check_available_decompilers() -> None:
             for decompiler in available_decompilers:
                 logger.info(f"Decompiler {decompiler} is available.")
 
-            for decompiler in [d for d in DECOMPILER_TYPES if d not in available_decompilers]:
+            for decompiler in [
+                d for d in DECOMPILER_TYPES if d not in available_decompilers
+            ]:
                 logger.warning(f"Decompiler {decompiler} is not available.")
 
             if not available_decompilers:
                 logger.warning("Warning: No decompilers found.")
-                logger.warning("Analysis will be limited to searching for banned functions by name.")
+                logger.warning(
+                    "Analysis will be limited to searching for banned functions by name."
+                )
 
     except (RuntimeError, ValueError, OSError, IOError) as e:
         # RuntimeError: r2pipe execution failure

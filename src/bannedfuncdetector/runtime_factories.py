@@ -5,7 +5,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from .application.analysis_runtime import AnalysisRuntime, BinaryRuntimeServices, DirectoryRuntimeServices
+from .application.analysis_runtime import (
+    AnalysisRuntime,
+    BinaryRuntimeServices,
+    DirectoryRuntimeServices,
+)
 from .infrastructure.config_storage import ImmutableConfig as DictConfig
 from .domain.protocols import IConfigRepository, IR2Client
 from .infrastructure.adapters.r2_client import R2Client
@@ -51,21 +55,26 @@ def create_config_from_dict(config_dict: dict) -> IConfigRepository:
     return DictConfig(merged)
 
 
-def _default_binary_opener(binary_path: str, verbose: bool, r2_factory: Callable) -> IR2Client:
+def _default_binary_opener(
+    binary_path: str, verbose: bool, r2_factory: Callable
+) -> IR2Client:
     """Top-level picklable adapter for open_binary_with_r2."""
     from .infrastructure.adapters.r2_session import open_binary_with_r2
+
     return open_binary_with_r2(binary_path, verbose, r2_factory=r2_factory)
 
 
 def _default_r2_closer(r2: IR2Client) -> Result[None, str]:
     """Top-level picklable adapter for close_r2_client."""
     from .infrastructure.adapters.r2_session import close_r2_client
+
     return close_r2_client(r2)
 
 
 def _default_file_finder(directory: str, file_type: str = "any") -> list[str]:
     """Top-level picklable adapter for find_executable_files."""
     from .infrastructure.file_detection import find_executable_files
+
     return find_executable_files(directory, file_type=file_type)
 
 
@@ -86,10 +95,12 @@ def create_application_wiring(config_path: str | None = None) -> AnalysisRuntime
         config_factory=create_config_from_dict,
         r2_factory=create_r2_client,
         decompiler_orchestrator=create_decompiler_orchestrator(
-            config, config_factory=create_config_from_dict,
+            config,
+            config_factory=create_config_from_dict,
         ),
         orchestrator_factory=lambda cfg: create_decompiler_orchestrator(
-            cfg, config_factory=create_config_from_dict,
+            cfg,
+            config_factory=create_config_from_dict,
         ),
     )
 

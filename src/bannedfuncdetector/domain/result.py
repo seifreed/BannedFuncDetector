@@ -13,8 +13,8 @@ Author: Marc Rivero | @seifreed
 from typing import Generic, TypeVar, Callable, NoReturn
 from dataclasses import dataclass
 
-T = TypeVar('T')
-E = TypeVar('E')
+T = TypeVar("T")
+E = TypeVar("E")
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,7 @@ class Ok(Generic[T]):
         >>> result.unwrap()
         42
     """
+
     value: T
 
     def is_ok(self) -> bool:
@@ -73,7 +74,7 @@ class Ok(Generic[T]):
         """
         return self.value
 
-    def map(self, fn: 'Callable[[T], T]') -> 'Ok[T]':
+    def map(self, fn: "Callable[[T], T]") -> "Ok[T]":
         """
         Applies a function to the contained value.
 
@@ -89,7 +90,7 @@ class Ok(Generic[T]):
         """
         return Ok(fn(self.value))
 
-    def map_err(self, fn: 'Callable[[E], E]') -> 'Ok[T]':
+    def map_err(self, fn: "Callable[[E], E]") -> "Ok[T]":
         """
         Returns self unchanged (no error to transform).
 
@@ -119,6 +120,7 @@ class Err(Generic[E]):
         >>> result.unwrap_or("default")
         'default'
     """
+
     error: E
 
     def is_ok(self) -> bool:
@@ -159,7 +161,7 @@ class Err(Generic[E]):
         """
         return default
 
-    def map(self, fn: 'Callable[[T], T]') -> 'Err[E]':
+    def map(self, fn: "Callable[[T], T]") -> "Err[E]":
         """
         Returns self unchanged (no value to transform).
 
@@ -171,7 +173,7 @@ class Err(Generic[E]):
         """
         return self
 
-    def map_err(self, fn: 'Callable[[E], E]') -> 'Err[E]':
+    def map_err(self, fn: "Callable[[E], E]") -> "Err[E]":
         """
         Applies a function to the contained error.
 
@@ -228,9 +230,9 @@ def err(error: E) -> Err[E]:
 
 
 __all__ = [
-    'Ok',
-    'Err',
-    'Result',
-    'ok',
-    'err',
+    "Ok",
+    "Err",
+    "Result",
+    "ok",
+    "err",
 ]
