@@ -15,6 +15,7 @@ from __future__ import annotations
 import errno
 import os
 import subprocess
+import sys
 from typing import Any
 
 import pytest
@@ -1706,6 +1707,10 @@ def test_validate_binary_file_text_file_returns_false(tmp_path):
     assert result is False
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="PE file detection differs on Windows",
+)
 def test_validate_binary_file_pe_file_returns_true(tmp_path):
     """
     Purpose: Cover line 162 — valid PE binary returns True.

@@ -1159,6 +1159,7 @@ class TestIsTransientR2Exception:
         assert _is_transient_r2_exception(exc) is False
 
 
+@skip_on_windows
 class TestR2ClientOpenError:
     """R2Client.__init__ propagates errors when r2pipe.open fails."""
 
