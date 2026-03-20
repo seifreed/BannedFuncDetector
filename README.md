@@ -175,3 +175,4 @@ If you find BannedFuncDetector useful, consider supporting its development:
 <p align="center">
   <sub>Made with dedication for the reverse engineering community</sub>
 </p>
+
