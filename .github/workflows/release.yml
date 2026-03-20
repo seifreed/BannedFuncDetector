@@ -5,6 +5,9 @@ on:
     tags:
       - "v[0-9]*"   # e.g. v2.1.0, v3.0.0-rc1
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build distribution
