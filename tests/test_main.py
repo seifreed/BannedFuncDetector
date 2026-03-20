@@ -59,6 +59,12 @@ def _default_binary_services():
     )
 
 
+skip_in_ci = pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true",
+    reason="r2pipe communication hangs in GitHub Actions CI environment",
+)
+
+
 skip_on_windows = pytest.mark.skipif(
     sys.platform == "win32",
     reason="Test uses Unix-specific paths or behavior",

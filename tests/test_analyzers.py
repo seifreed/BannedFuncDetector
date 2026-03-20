@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 
 import pytest
 import bannedfuncdetector.application.binary_analyzer as analyzers
@@ -33,9 +32,9 @@ from bannedfuncdetector.runtime_factories import (
 from bannedfuncdetector.domain import AnalysisResult, BannedFunction
 from conftest import FakeDecompilerOrchestrator, open_r2pipe_with_retry
 
-skip_on_windows = pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="r2pipe command communication hangs on Windows due to stdout pipe issues",
+skip_in_ci = pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true",
+    reason="r2pipe communication hangs in GitHub Actions CI environment",
 )
 
 analyzers.analyze_directory = directory_scanner.analyze_directory
@@ -143,7 +142,7 @@ def test_analyze_function_detect_by_name():
     assert result.unwrap().detection_method == "name"
 
 
-@skip_on_windows
+@skip_in_ci
 def test_analyze_function_decompile_no_match(compiled_binary):
     r2 = open_r2pipe_with_retry(compiled_binary, flags=["-2"])
     try:
@@ -457,7 +456,7 @@ def test_analyze_directory_no_pe(tmp_path):
     assert "no pe files" in error_lower or "no executable" in error_lower
 
 
-@skip_on_windows
+@skip_in_ci
 def test_analyze_directory_with_pe(pe_file, tmp_path):
     # Move PE file into directory
     dest = tmp_path / "sample.exe"
@@ -473,7 +472,7 @@ def test_analyze_directory_with_pe(pe_file, tmp_path):
     assert result.unwrap().summary.total_files == 1
 
 
-@skip_on_windows
+@skip_in_ci
 def test_analyze_directory_verbose_success(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
@@ -709,7 +708,7 @@ def test_analyze_binary_exception(tmp_path):
     assert result.is_err()
 
 
-@skip_on_windows
+@skip_in_ci
 def test_analyze_directory_verbose_error(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
@@ -737,7 +736,7 @@ def test_analyze_directory_verbose_error(tmp_path, pe_file):
     assert result.unwrap().summary.total_files == 1
 
 
-@skip_on_windows
+@skip_in_ci
 def test_analyze_directory_default_workers(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
@@ -774,7 +773,7 @@ def test_analyze_directory_default_workers(tmp_path, pe_file):
     assert result.unwrap().summary.total_files == 1
 
 
-@skip_on_windows
+@skip_in_ci
 def test_analyze_directory_parallel_serializes_config(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
