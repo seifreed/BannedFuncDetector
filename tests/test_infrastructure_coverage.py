@@ -438,30 +438,51 @@ class TestDeepMerge:
 
 
 class TestLoadConfigFromFile:
-    """Tests for load_config_from_file (file read + JSON parse, no merging)."""
+    """Tests for reading raw JSON from disk."""
 
-    def test_missing_file_returns_none(self, tmp_path):
-        missing = tmp_path / "missing.json"
+    def test_returns_none_when_file_does_not_exist(self, tmp_path):
+        missing = tmp_path / "nonexistent.json"
         result = load_config_from_file(str(missing))
         assert result is None
 
-    def test_valid_json_returns_dict(self, tmp_path):
+    def test_returns_dict_for_valid_json_file(self, tmp_path):
         cfg_path = tmp_path / "config.json"
-        cfg_path.write_text(json.dumps({"a": 1, "b": 2}))
+        data = {"key": "value"}
+        cfg_path.write_text(json.dumps(data))
         result = load_config_from_file(str(cfg_path))
-        assert result == {"a": 1, "b": 2}
+        assert result == data
 
-    def test_invalid_json_returns_none(self, tmp_path):
+    def test_raises_json_decode_error_for_invalid_json(self, tmp_path):
         cfg_path = tmp_path / "bad.json"
-        cfg_path.write_text("{ invalid json")
-        result = load_config_from_file(str(cfg_path))
-        assert result is None
+        cfg_path.write_text("{not valid json")
+        with pytest.raises(json.JSONDecodeError):
+            load_config_from_file(str(cfg_path))
+
+    def test_accepts_path_object(self, tmp_path):
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({"hello": "world"}))
+        result = load_config_from_file(cfg_path)
+        assert result == {"hello": "world"}
 
     @pytest.mark.skipif(
         sys.platform == "win32",
         reason="Windows file permissions work differently",
     )
     def test_returns_none_when_file_exists_but_is_unreadable(self, tmp_path):
+        # Create a file that exists on disk but has no read permission,
+        # triggering the OSError branch (lines 32-34).
+        import os
+
+        cfg_path = tmp_path / "no_read.json"
+        cfg_path.write_text(json.dumps({"x": 1}))
+        original_mode = cfg_path.stat().st_mode
+        try:
+            os.chmod(str(cfg_path), 0o000)
+            result = load_config_from_file(str(cfg_path))
+            assert result is None
+        finally:
+            # Restore permissions so tmp_path cleanup succeeds.
+            os.chmod(str(cfg_path), original_mode)
         # Create a file that exists on disk but has no read permission,
         # triggering the OSError branch (lines 32-34).
         import os
