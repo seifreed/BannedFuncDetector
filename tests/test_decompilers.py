@@ -1,3 +1,7 @@
+import sys
+
+import pytest
+
 import bannedfuncdetector.infrastructure.decompilers.base_decompiler as decompilers
 import bannedfuncdetector.infrastructure.decompilers.base_decompiler as decompiler_base
 import bannedfuncdetector.infrastructure.decompilers.orchestrator as decompiler_orchestrator
@@ -9,6 +13,11 @@ from bannedfuncdetector.factories import create_config_from_dict
 from bannedfuncdetector.domain import FunctionDescriptor
 from bannedfuncdetector.application.dto_mappers import function_descriptor_from_dto
 from conftest import FakeR2, open_r2pipe_with_retry
+
+skip_on_windows = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="r2pipe command communication hangs on Windows due to stdout pipe issues",
+)
 
 
 def make_config():
@@ -170,6 +179,7 @@ def test_decompile_function_clean_error_messages_false():
     assert "warning" in result.unwrap()
 
 
+@skip_on_windows
 def test_decompile_function_default_fallback_to_asm(compiled_binary):
     r2 = open_r2pipe_with_retry(compiled_binary, flags=["-2"])
     try:
@@ -193,6 +203,7 @@ def test_decompile_function_unknown_type():
     assert "int main" in result.unwrap()
 
 
+@skip_on_windows
 def test_decompile_with_selected_decompiler(compiled_binary):
     r2 = open_r2pipe_with_retry(compiled_binary, flags=["-2"])
     try:
@@ -329,6 +340,7 @@ def test_decompile_with_selected_decompiler_error():
     assert result == []
 
 
+@skip_on_windows
 def test_get_function_info(compiled_binary):
     r2 = open_r2pipe_with_retry(compiled_binary, flags=["-2"])
     try:

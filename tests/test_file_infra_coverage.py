@@ -17,10 +17,16 @@ or pragma-exclusions are used.
 
 import errno
 import os
+import sys
 import tempfile
 
 import pytest
 from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
+
+skip_on_windows = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="r2pipe command communication hangs on Windows due to stdout pipe issues",
+)
 
 # ---------------------------------------------------------------------------
 # Helpers: write binary files with specific magic-byte headers
@@ -1219,6 +1225,7 @@ class TestR2ClientOpenError:
             r2_client_mod.r2pipe = original_r2pipe
 
 
+@skip_on_windows
 class TestR2ClientWithRealBinary:
     """
     R2Client full lifecycle tested against a real compiled binary.

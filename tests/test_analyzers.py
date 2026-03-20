@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 import pytest
 import bannedfuncdetector.application.binary_analyzer as analyzers
@@ -31,6 +32,11 @@ from bannedfuncdetector.runtime_factories import (
 )
 from bannedfuncdetector.domain import AnalysisResult, BannedFunction
 from conftest import FakeDecompilerOrchestrator, open_r2pipe_with_retry
+
+skip_on_windows = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="r2pipe command communication hangs on Windows due to stdout pipe issues",
+)
 
 analyzers.analyze_directory = directory_scanner.analyze_directory
 
@@ -137,6 +143,7 @@ def test_analyze_function_detect_by_name():
     assert result.unwrap().detection_method == "name"
 
 
+@skip_on_windows
 def test_analyze_function_decompile_no_match(compiled_binary):
     r2 = open_r2pipe_with_retry(compiled_binary, flags=["-2"])
     try:
@@ -253,10 +260,11 @@ def test_setup_binary_analysis_preserves_extract_error(compiled_binary):
     )
 
     assert result.is_err()
-    assert str(
-        result.error
-    ) == "Runtime error for {}: Runtime error extracting functions from binary: boom".format(
-        compiled_binary
+    assert (
+        str(result.error)
+        == "Runtime error for {}: Runtime error extracting functions from binary: boom".format(
+            compiled_binary
+        )
     )
 
 
