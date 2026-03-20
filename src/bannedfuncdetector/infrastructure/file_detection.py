@@ -21,17 +21,35 @@ from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
 
 _magic: Any | None = None
 
-try:
-    import magic as _magic
-except (ImportError, OSError):
-    _magic = None
 
-magic: Any | None = _magic
+def _try_import_magic() -> Any | None:
+    """Try to import magic module, handling Windows access violations."""
+    try:
+        import magic
+
+        magic.from_file(__file__)
+        return magic
+    except Exception:
+        return None
+
+
+magic: Any | None = None
+try:
+    magic = _try_import_magic()
+except Exception:
+    magic = None
 
 
 def _load_magic_module() -> Any | None:
     """Load ``python-magic`` lazily to avoid hard failures when libmagic is absent."""
-    return magic
+    if magic is not None:
+        try:
+            magic.from_file(__file__)
+            return magic
+        except Exception:
+            return None
+    return None
+
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -49,6 +67,7 @@ def _validate_executable_type(file_type: str) -> None:
         raise ValueError(
             f"Invalid file_type '{file_type}'. Must be one of: {VALID_EXECUTABLE_TYPES}"
         )
+
 
 TYPE_MARKERS = {
     "pe": ("PE32", "PE32+"),
@@ -96,20 +115,21 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
     if file_type == "any":
         for exec_type, markers in TYPE_MARKERS.items():
             if any(marker in detected_type for marker in markers):
-                logger.debug("Detected %s executable: %s", TYPE_LABELS[exec_type], file_path)
+                logger.debug(
+                    "Detected %s executable: %s", TYPE_LABELS[exec_type], file_path
+                )
                 return True
     else:
         if any(marker in detected_type for marker in TYPE_MARKERS[file_type]):
-            logger.debug("Detected %s executable: %s", TYPE_LABELS[file_type], file_path)
+            logger.debug(
+                "Detected %s executable: %s", TYPE_LABELS[file_type], file_path
+            )
             return True
 
     return False
 
 
-def is_executable_file(
-    file_path: str,
-    file_type: str = "pe"
-) -> bool:
+def is_executable_file(file_path: str, file_type: str = "pe") -> bool:
     """
     Check if a file is an executable of the specified type.
 
@@ -145,13 +165,15 @@ def is_executable_file(
     except (OSError, IOError) as e:
         logger.warning(
             "File access error for %s, falling back to magic bytes: %s",
-            file_path, str(e)
+            file_path,
+            str(e),
         )
         return _check_magic_bytes(file_path, file_type)
     except (RuntimeError, ValueError, TypeError) as e:
         logger.warning(
             "Magic detection failed for %s, falling back to magic bytes: %s",
-            file_path, str(e)
+            file_path,
+            str(e),
         )
         return _check_magic_bytes(file_path, file_type)
 
@@ -183,8 +205,7 @@ def _check_magic_bytes(file_path: str, file_type: str) -> bool:
             for magic_bytes in magic_bytes_list:
                 if header.startswith(magic_bytes):
                     logger.debug(
-                        "Magic bytes match for %s type: %s",
-                        check_type, file_path
+                        "Magic bytes match for %s type: %s", check_type, file_path
                     )
                     return True
 
@@ -203,6 +224,7 @@ def _check_magic_bytes(file_path: str, file_type: str) -> bool:
 # =============================================================================
 # FILE DISCOVERY
 # =============================================================================
+
 
 def find_pe_files(directory: str) -> list[str]:
     """
@@ -226,14 +248,11 @@ def find_pe_files(directory: str) -> list[str]:
         directory=directory,
         file_type="pe",
         debug_label="PE file",
-        summary_label="PE files"
+        summary_label="PE files",
     )
 
 
-def find_executable_files(
-    directory: str,
-    file_type: str = "any"
-) -> list[str]:
+def find_executable_files(directory: str, file_type: str = "any") -> list[str]:
     """
     Find all executable files of a specified type in a directory recursively.
 
@@ -259,15 +278,12 @@ def find_executable_files(
         directory=directory,
         file_type=file_type,
         debug_label=f"{file_type} executable",
-        summary_label=f"{file_type} executables"
+        summary_label=f"{file_type} executables",
     )
 
 
 def _find_executables(
-    directory: str,
-    file_type: str,
-    debug_label: str,
-    summary_label: str
+    directory: str, file_type: str, debug_label: str, summary_label: str
 ) -> list[str]:
     """
     Find executable files of a specified type in a directory recursively.
@@ -276,7 +292,9 @@ def _find_executables(
         raise ValueError(f"Directory does not exist: {directory}")
 
     executable_files: list[str] = []
-    visited_dirs: set[tuple[int, int]] = set()  # (device, inode) pairs for cycle detection
+    visited_dirs: set[tuple[int, int]] = (
+        set()
+    )  # (device, inode) pairs for cycle detection
 
     for root, dirs, files in os.walk(directory, followlinks=True):
         # Detect symlink cycles by tracking real directory identities

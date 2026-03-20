@@ -56,10 +56,6 @@ jobs:
           python -m pip install -r requirements-dev.txt
           python -m pip install ruff pip-audit
 
-      - name: Install python-magic-bin (Windows)
-        if: matrix.os == 'windows-latest'
-        run: python -m pip install python-magic-bin
-
       - name: Lint
         run: |
           ruff check src tests
