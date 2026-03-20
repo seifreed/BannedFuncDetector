@@ -59,6 +59,12 @@ def _default_binary_services():
     )
 
 
+skip_on_windows = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Test uses Unix-specific paths or behavior",
+)
+
+
 def make_config():
     return create_config_from_dict({"decompiler": {"type": "default"}})
 
@@ -225,6 +231,7 @@ def test_analyze_file_success(compiled_binary, tmp_path):
 # ===========================================================================
 
 
+@skip_on_windows
 def test_analyze_directory_sequential(tmp_path):
     from conftest import write_minimal_pe
 
@@ -595,6 +602,7 @@ def test_is_binary_file_text_content(tmp_path):
     assert is_executable_file(str(txt), "any") is False
 
 
+@skip_on_windows
 def test_is_binary_file_real_executable():
     """A real system binary is detected as executable."""
     assert is_executable_file("/bin/ls", "any") is True

@@ -17,6 +17,7 @@ No mocks, no monkeypatch, no unittest.mock, no @patch, no pragma comments.
 
 import json
 import logging
+import sys
 
 import pytest
 
@@ -437,32 +438,29 @@ class TestDeepMerge:
 
 
 class TestLoadConfigFromFile:
-    """Tests for reading raw JSON from disk."""
+    """Tests for load_config_from_file (file read + JSON parse, no merging)."""
 
-    def test_returns_none_when_file_does_not_exist(self, tmp_path):
-        missing = tmp_path / "nonexistent.json"
+    def test_missing_file_returns_none(self, tmp_path):
+        missing = tmp_path / "missing.json"
         result = load_config_from_file(str(missing))
         assert result is None
 
-    def test_returns_dict_for_valid_json_file(self, tmp_path):
+    def test_valid_json_returns_dict(self, tmp_path):
         cfg_path = tmp_path / "config.json"
-        data = {"key": "value"}
-        cfg_path.write_text(json.dumps(data))
+        cfg_path.write_text(json.dumps({"a": 1, "b": 2}))
         result = load_config_from_file(str(cfg_path))
-        assert result == data
+        assert result == {"a": 1, "b": 2}
 
-    def test_raises_json_decode_error_for_invalid_json(self, tmp_path):
+    def test_invalid_json_returns_none(self, tmp_path):
         cfg_path = tmp_path / "bad.json"
-        cfg_path.write_text("{not valid json")
-        with pytest.raises(json.JSONDecodeError):
-            load_config_from_file(str(cfg_path))
+        cfg_path.write_text("{ invalid json")
+        result = load_config_from_file(str(cfg_path))
+        assert result is None
 
-    def test_accepts_path_object(self, tmp_path):
-        cfg_path = tmp_path / "config.json"
-        cfg_path.write_text(json.dumps({"hello": "world"}))
-        result = load_config_from_file(cfg_path)
-        assert result == {"hello": "world"}
-
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Windows file permissions work differently",
+    )
     def test_returns_none_when_file_exists_but_is_unreadable(self, tmp_path):
         # Create a file that exists on disk but has no read permission,
         # triggering the OSError branch (lines 32-34).

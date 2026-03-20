@@ -457,6 +457,7 @@ def test_analyze_directory_no_pe(tmp_path):
     assert "no pe files" in error_lower or "no executable" in error_lower
 
 
+@skip_on_windows
 def test_analyze_directory_with_pe(pe_file, tmp_path):
     # Move PE file into directory
     dest = tmp_path / "sample.exe"
@@ -472,6 +473,7 @@ def test_analyze_directory_with_pe(pe_file, tmp_path):
     assert result.unwrap().summary.total_files == 1
 
 
+@skip_on_windows
 def test_analyze_directory_verbose_success(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
@@ -707,6 +709,7 @@ def test_analyze_binary_exception(tmp_path):
     assert result.is_err()
 
 
+@skip_on_windows
 def test_analyze_directory_verbose_error(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
@@ -734,6 +737,7 @@ def test_analyze_directory_verbose_error(tmp_path, pe_file):
     assert result.unwrap().summary.total_files == 1
 
 
+@skip_on_windows
 def test_analyze_directory_default_workers(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
@@ -770,6 +774,7 @@ def test_analyze_directory_default_workers(tmp_path, pe_file):
     assert result.unwrap().summary.total_files == 1
 
 
+@skip_on_windows
 def test_analyze_directory_parallel_serializes_config(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)

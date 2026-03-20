@@ -109,7 +109,10 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
     if magic_module is None:
         return None
 
-    detected_type = magic_module.from_file(file_path)
+    try:
+        detected_type = magic_module.from_file(file_path)
+    except Exception:
+        return None
 
     if file_type == "any":
         for exec_type, markers in TYPE_MARKERS.items():
@@ -125,7 +128,7 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
             )
             return True
 
-    return False
+    return None
 
 
 def is_executable_file(file_path: str, file_type: str = "pe") -> bool:

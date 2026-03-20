@@ -1779,6 +1779,10 @@ class TestR2AiServer:
         finally:
             os.environ["PATH"] = original_path
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Shells scripts not portable to Windows",
+    )
     def test_start_r2ai_server_no_models_returns_false(self, shim_path, path_with_shim):
         """
         Purpose: r2ai_server._start_r2ai_server lines 333-338 — when
@@ -1792,14 +1796,16 @@ class TestR2AiServer:
         import textwrap
 
         shim = shim_path / "r2ai-server"
-        shim.write_text(textwrap.dedent("""\
+        shim.write_text(
+            textwrap.dedent("""\
             #!/bin/sh
             if [ "$1" = "-h" ]; then
               echo "usage"
               exit 0
             fi
             exit 1
-        """))
+        """)
+        )
         os.chmod(shim, 0o755)
 
         path_manager = path_with_shim(shim)
@@ -1851,10 +1857,12 @@ class TestR2AiServer:
         )
 
         r2pm = shim_path / "r2pm"
-        r2pm.write_text(textwrap.dedent("""\
+        r2pm.write_text(
+            textwrap.dedent("""\
             #!/bin/sh
             exit 1
-        """))
+        """)
+        )
         os.chmod(r2pm, 0o755)
 
         path_manager = path_with_shim(r2pm)

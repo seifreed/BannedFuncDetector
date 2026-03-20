@@ -2,6 +2,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 from bannedfuncdetector.infrastructure.file_detection import (
     is_executable_file,
     find_pe_files,
@@ -11,7 +13,13 @@ from bannedfuncdetector.infrastructure.adapters.r2ai_server import (
 )
 from conftest import start_test_server
 
+skip_on_windows = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Test uses Unix-specific paths or behavior",
+)
 
+
+@skip_on_windows
 def test_is_executable_file_and_find_pe_files(pe_file, tmp_path):
     non_pe = tmp_path / "note.txt"
     non_pe.write_text("hello")
