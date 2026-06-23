@@ -23,7 +23,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # conftest imports (used directly, not via fixtures, for readability)
 # ---------------------------------------------------------------------------
-from tests.conftest import (
+from conftest import (
     FakeConfigRepository,
     FakeR2,
     make_executable,

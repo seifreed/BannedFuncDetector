@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from tests.conftest import FakeConfigRepository, FakeDecompilerOrchestrator, FakeR2
+from conftest import FakeConfigRepository, FakeDecompilerOrchestrator, FakeR2
 
 # ---------------------------------------------------------------------------
 # Shared helpers
