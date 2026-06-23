@@ -40,6 +40,21 @@ skip_in_ci = pytest.mark.skipif(
 analyzers.analyze_directory = directory_scanner.analyze_directory
 
 
+def _successful_worker(job):
+    """Directory worker stub that returns a successful single-function outcome."""
+    return Ok(
+        BinaryAnalysisOutcome(
+            report=AnalysisResult(
+                file_name=os.path.basename(job.executable_file),
+                file_path=job.executable_file,
+                total_functions=1,
+                detected_functions=tuple(),
+                analysis_date="2026-03-11T00:00:00",
+            )
+        )
+    )
+
+
 def _default_binary_services():
     return BinaryRuntimeServices(
         binary_opener=_default_binary_opener,
@@ -461,19 +476,6 @@ def test_analyze_directory_verbose_success(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
 
-    def successful_worker(job):
-        return Ok(
-            BinaryAnalysisOutcome(
-                report=AnalysisResult(
-                    file_name=os.path.basename(job.executable_file),
-                    file_path=job.executable_file,
-                    total_functions=1,
-                    detected_functions=tuple(),
-                    analysis_date="2026-03-11T00:00:00",
-                )
-            )
-        )
-
     result = analyzers.analyze_directory(
         str(tmp_path),
         request=make_directory_request(
@@ -483,7 +485,7 @@ def test_analyze_directory_verbose_success(tmp_path, pe_file):
             runtime=make_runtime(
                 directory=DirectoryRuntimeServices(
                     file_finder=_default_file_finder,
-                    worker_entrypoint=successful_worker,
+                    worker_entrypoint=_successful_worker,
                     executor_factory=ImmediateProcessPoolExecutor,
                     completed_futures=identity_completed_futures,
                 ),
@@ -725,19 +727,6 @@ def test_analyze_directory_default_workers(tmp_path, pe_file):
     dest = tmp_path / "sample.exe"
     os.rename(pe_file, dest)
 
-    def successful_worker(job):
-        return Ok(
-            BinaryAnalysisOutcome(
-                report=AnalysisResult(
-                    file_name=os.path.basename(job.executable_file),
-                    file_path=job.executable_file,
-                    total_functions=1,
-                    detected_functions=tuple(),
-                    analysis_date="2026-03-11T00:00:00",
-                )
-            )
-        )
-
     result = analyzers.analyze_directory(
         str(tmp_path),
         request=make_directory_request(
@@ -746,7 +735,7 @@ def test_analyze_directory_default_workers(tmp_path, pe_file):
             runtime=make_runtime(
                 directory=DirectoryRuntimeServices(
                     file_finder=_default_file_finder,
-                    worker_entrypoint=successful_worker,
+                    worker_entrypoint=_successful_worker,
                     executor_factory=ImmediateProcessPoolExecutor,
                     completed_futures=identity_completed_futures,
                 ),
