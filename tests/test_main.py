@@ -296,14 +296,8 @@ def test_analyze_directory_parallel_no_executables(tmp_path):
     )
 
 
-def test_analyze_directory_missing(tmp_path):
-    result = analyzers.analyze_directory(
-        str(tmp_path / "missing"), request=make_directory_request()
-    )
-    assert result.is_err()
-    assert "does not exist" in str(result.error).lower()
-
-
+# test_analyze_directory_missing (sequential) lives in test_analyzers.py; only
+# the parallel directory_scanner variant is exercised here.
 def test_analyze_directory_parallel_missing(tmp_path):
     result = directory_scanner.analyze_directory(
         str(tmp_path / "missing"), request=make_directory_request()
