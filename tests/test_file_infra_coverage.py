@@ -395,91 +395,33 @@ class TestIsExecutableFileFallbackPaths:
             finally:
                 os.chmod(path, stat_mod.S_IRUSR | stat_mod.S_IWUSR)
 
-    def test_os_error_in_magic_falls_back_to_check_magic_bytes(self) -> None:
-        """
-        Cover lines 130-135 via a different trigger: manipulate the module-level
-        magic binding to an object whose from_file raises OSError, exercising
-        the except (OSError, IOError) handler in is_executable_file.
-        """
+    @pytest.mark.parametrize(
+        "exc, make_file, file_type",
+        [
+            (OSError(errno.EIO, "I/O error reading magic"), _pe_file, "pe"),
+            (RuntimeError("libmagic internal failure"), _elf_file, "elf"),
+            (ValueError("unexpected magic value"), _macho_le64_file, "macho"),
+            (TypeError("wrong type passed to libmagic"), _pe_file, "any"),
+        ],
+    )
+    def test_magic_exception_falls_back_to_magic_bytes(
+        self, exc, make_file, file_type
+    ) -> None:
+        """When python-magic raises, is_executable_file falls back to magic bytes
+        (covers the except (OSError, IOError) / (RuntimeError, ValueError,
+        TypeError) handlers); the fixture file's magic header yields True."""
         import bannedfuncdetector.infrastructure.file_detection as fd_mod
 
-        class _OsErrorMagic:
+        class _RaisingMagic:
             @staticmethod
             def from_file(path: str) -> str:
-                raise OSError(errno.EIO, "I/O error reading magic")
+                raise exc
 
         original_magic = fd_mod.magic
         try:
-            fd_mod.magic = _OsErrorMagic()
+            fd_mod.magic = _RaisingMagic()
             with tempfile.TemporaryDirectory() as tmpdir:
-                path = _pe_file(tmpdir)
-                result = fd_mod.is_executable_file(path, "pe")
-                # Falls back to _check_magic_bytes; MZ header present → True
-                assert result is True
-        finally:
-            fd_mod.magic = original_magic
-
-    def test_runtime_error_in_magic_falls_back_to_check_magic_bytes(self) -> None:
-        """
-        Cover lines 136-141: when python-magic raises RuntimeError (e.g., libmagic
-        internal failure), is_executable_file falls back to _check_magic_bytes.
-        """
-        import bannedfuncdetector.infrastructure.file_detection as fd_mod
-
-        class _RuntimeErrorMagic:
-            @staticmethod
-            def from_file(path: str) -> str:
-                raise RuntimeError("libmagic internal failure")
-
-        original_magic = fd_mod.magic
-        try:
-            fd_mod.magic = _RuntimeErrorMagic()
-            with tempfile.TemporaryDirectory() as tmpdir:
-                path = _elf_file(tmpdir)
-                result = fd_mod.is_executable_file(path, "elf")
-                assert result is True
-        finally:
-            fd_mod.magic = original_magic
-
-    def test_value_error_in_magic_falls_back_to_check_magic_bytes(self) -> None:
-        """
-        Cover lines 136-141 via ValueError: when python-magic raises ValueError,
-        is_executable_file falls back to _check_magic_bytes.
-        """
-        import bannedfuncdetector.infrastructure.file_detection as fd_mod
-
-        class _ValueErrorMagic:
-            @staticmethod
-            def from_file(path: str) -> str:
-                raise ValueError("unexpected magic value")
-
-        original_magic = fd_mod.magic
-        try:
-            fd_mod.magic = _ValueErrorMagic()
-            with tempfile.TemporaryDirectory() as tmpdir:
-                path = _macho_le64_file(tmpdir)
-                result = fd_mod.is_executable_file(path, "macho")
-                assert result is True
-        finally:
-            fd_mod.magic = original_magic
-
-    def test_type_error_in_magic_falls_back_to_check_magic_bytes(self) -> None:
-        """
-        Cover lines 136-141 via TypeError.
-        """
-        import bannedfuncdetector.infrastructure.file_detection as fd_mod
-
-        class _TypeErrorMagic:
-            @staticmethod
-            def from_file(path: str) -> str:
-                raise TypeError("wrong type passed to libmagic")
-
-        original_magic = fd_mod.magic
-        try:
-            fd_mod.magic = _TypeErrorMagic()
-            with tempfile.TemporaryDirectory() as tmpdir:
-                path = _pe_file(tmpdir)
-                result = fd_mod.is_executable_file(path, "any")
+                result = fd_mod.is_executable_file(make_file(tmpdir), file_type)
                 assert result is True
         finally:
             fd_mod.magic = original_magic
