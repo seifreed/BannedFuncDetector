@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Removed dead legacy flat modules (`main.py`, `detector.py`, `analyzers.py`,
+  `config.py`, `decompilers.py`, `utils.py`) that duplicated the package;
+  restores a single source of truth (~1000 lines removed)
+- Collapsed the 6-file decompiler `orchestrator` cluster into one cohesive
+  module, removing facade-on-facade indirection and cross-module sharing of
+  private helpers
+- Centralized banned-function pattern matching in the domain layer
+  (`find_banned_calls_in_text`, `find_banned_names_in_text`), eliminating the
+  duplicate regex cache in `binary_analyzer/detection.py`
+- Removed redundant shebangs and UTF-8 coding cookies from imported library
+  modules (kept only on real entry points)
+
 ## [3.0.1] - 2026-03-20
 
 ### Fixed
