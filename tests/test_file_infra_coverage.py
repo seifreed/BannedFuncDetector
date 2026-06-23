@@ -25,8 +25,22 @@ from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
 
 import bannedfuncdetector.infrastructure as _infra_mod
 import bannedfuncdetector.infrastructure.adapters as _adapters_mod
+
 _INFRA_ALL = _infra_mod.__all__
 _ADAPTERS_ALL = _adapters_mod.__all__
+
+
+def _make_r2_client_with_inner(compiled_binary: str, inner: object) -> R2Client:
+    """Open a real R2Client, then swap in a controlled inner r2 object.
+
+    Opens a genuine connection so __init__ succeeds, closes the real r2pipe,
+    installs ``inner`` and resets ``_is_closed`` so ``_ensure_open`` passes.
+    """
+    client = R2Client(compiled_binary)
+    client._r2.quit()
+    client._r2 = inner
+    client._is_closed = False
+    return client
 
 skip_in_ci = pytest.mark.skipif(
     os.environ.get("GITHUB_ACTIONS") == "true",
@@ -1197,18 +1211,8 @@ class TestR2ClientRunCommandErrorPaths:
         def quit(self) -> None:
             pass
 
-    def _make_client_with_inner(self, compiled_binary: str, inner) -> R2Client:
-        # Open a real connection so __init__ succeeds, then swap the inner r2
-        client = R2Client(compiled_binary)
-        # Close the real r2pipe connection cleanly before swapping
-        client._r2.quit()
-        # Install our controlled inner object; reset _is_closed so _ensure_open passes
-        client._r2 = inner
-        client._is_closed = False
-        return client
-
     def test_type_error_in_cmd_raises_runtime_error(self, compiled_binary: str) -> None:
-        client = self._make_client_with_inner(compiled_binary, self._TypeErrorR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._TypeErrorR2())
         try:
             with pytest.raises(RuntimeError, match="Invalid command"):
                 client.cmd("irrelevant")
@@ -1218,7 +1222,7 @@ class TestR2ClientRunCommandErrorPaths:
     def test_type_error_in_cmdj_raises_runtime_error(
         self, compiled_binary: str
     ) -> None:
-        client = self._make_client_with_inner(compiled_binary, self._TypeErrorR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._TypeErrorR2())
         try:
             with pytest.raises(RuntimeError, match="Invalid command"):
                 client.cmdj("irrelevant")
@@ -1228,7 +1232,7 @@ class TestR2ClientRunCommandErrorPaths:
     def test_attribute_error_in_cmd_raises_runtime_error(
         self, compiled_binary: str
     ) -> None:
-        client = self._make_client_with_inner(compiled_binary, self._AttributeErrorR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._AttributeErrorR2())
         try:
             with pytest.raises(RuntimeError, match="r2pipe in invalid state"):
                 client.cmd("irrelevant")
@@ -1238,7 +1242,7 @@ class TestR2ClientRunCommandErrorPaths:
     def test_attribute_error_in_cmdj_raises_runtime_error(
         self, compiled_binary: str
     ) -> None:
-        client = self._make_client_with_inner(compiled_binary, self._AttributeErrorR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._AttributeErrorR2())
         try:
             with pytest.raises(RuntimeError, match="r2pipe in invalid state"):
                 client.cmdj("irrelevant")
@@ -1275,17 +1279,10 @@ class TestR2ClientTransientErrorPromotion:
         def quit(self) -> None:
             pass
 
-    def _make_client_with_inner(self, compiled_binary: str, inner) -> R2Client:
-        client = R2Client(compiled_binary)
-        client._r2.quit()
-        client._r2 = inner
-        client._is_closed = False
-        return client
-
     def test_epipe_in_cmd_raises_transient_error(self, compiled_binary: str) -> None:
         from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 
-        client = self._make_client_with_inner(compiled_binary, self._EpipeR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._EpipeR2())
         try:
             with pytest.raises(TransientR2Error):
                 client.cmd("irrelevant")
@@ -1295,7 +1292,7 @@ class TestR2ClientTransientErrorPromotion:
     def test_epipe_in_cmdj_raises_transient_error(self, compiled_binary: str) -> None:
         from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 
-        client = self._make_client_with_inner(compiled_binary, self._EpipeR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._EpipeR2())
         try:
             with pytest.raises(TransientR2Error):
                 client.cmdj("irrelevant")
@@ -1306,7 +1303,7 @@ class TestR2ClientTransientErrorPromotion:
         self, compiled_binary: str
     ) -> None:
         """Cover line 323: non-transient error must propagate as the original OSError."""
-        client = self._make_client_with_inner(compiled_binary, self._EaccesR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._EaccesR2())
         try:
             with pytest.raises(OSError) as exc_info:
                 client.cmd("irrelevant")
@@ -1318,7 +1315,7 @@ class TestR2ClientTransientErrorPromotion:
         self, compiled_binary: str
     ) -> None:
         """Cover line 323 via cmdj path."""
-        client = self._make_client_with_inner(compiled_binary, self._EaccesR2())
+        client = _make_r2_client_with_inner(compiled_binary, self._EaccesR2())
         try:
             with pytest.raises(OSError) as exc_info:
                 client.cmdj("irrelevant")
