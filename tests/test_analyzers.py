@@ -421,23 +421,7 @@ def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary):
     assert result.unwrap().operational_notices[0].file_path == compiled_binary
 
 
-def test_analyze_binary_accepts_runtime(tmp_path):
-    result = analyzers.analyze_binary(
-        str(tmp_path / "missing.bin"), request=make_binary_request()
-    )
-    assert result.is_err()
-    assert "not found" in str(result.error).lower()
-
-
 def test_analyze_directory_missing(tmp_path):
-    result = analyzers.analyze_directory(
-        str(tmp_path / "missing"), request=make_directory_request()
-    )
-    assert result.is_err()
-    assert "does not exist" in str(result.error).lower()
-
-
-def test_analyze_directory_accepts_runtime(tmp_path):
     result = analyzers.analyze_directory(
         str(tmp_path / "missing"), request=make_directory_request()
     )
