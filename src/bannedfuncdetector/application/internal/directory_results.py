@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Result collection and persistence helpers for directory analysis."""
 
 from __future__ import annotations

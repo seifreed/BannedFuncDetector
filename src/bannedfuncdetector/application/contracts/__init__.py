@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Public contracts for application use cases."""
 
 from .analysis import (

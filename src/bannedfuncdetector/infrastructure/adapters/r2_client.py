@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 R2Client - r2pipe wrapper implementing IR2Client.
 

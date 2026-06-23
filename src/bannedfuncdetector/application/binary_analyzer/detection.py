@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Detection helpers for banned-function analysis."""
 
 import logging

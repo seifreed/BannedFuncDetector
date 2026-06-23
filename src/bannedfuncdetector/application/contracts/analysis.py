@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Public request contracts for analysis use cases."""
 
 from dataclasses import dataclass

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Validators module for BannedFuncDetector - Input validation functions.
 Author: Marc Rivero | @seifreed

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Internal execution structures and helpers for application use cases."""
 
 from .directory_preparation import (

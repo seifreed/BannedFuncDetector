@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Reporting module for BannedFuncDetector - Report generation and display.
 

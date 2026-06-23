@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """DTOs used at integration and adapter boundaries."""
 
 from typing import TypedDict

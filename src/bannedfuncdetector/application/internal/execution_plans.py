@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Internal execution plans for analysis use cases."""
 
 from dataclasses import dataclass

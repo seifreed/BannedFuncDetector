@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Worker creation and rehydration helpers for directory analysis."""
 
 from __future__ import annotations

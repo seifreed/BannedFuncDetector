@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 CLI module for BannedFuncDetector - Command line argument parsing.
 Author: Marc Rivero | @seifreed

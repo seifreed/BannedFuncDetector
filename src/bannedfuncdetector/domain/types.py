@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Type aliases and shared domain utilities.
 
@@ -153,6 +151,8 @@ __all__ = [
     "BannedFunction",
     "classify_error",
     "search_banned_call_in_text",
+    "find_banned_calls_in_text",
+    "find_banned_names_in_text",
     "safe_parse_address",
     "create_detection_result",
 ]
