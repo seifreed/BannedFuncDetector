@@ -101,7 +101,12 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
         file_type: Type of executable to check for.
 
     Returns:
-        True if executable detected, False if not detected, None if magic failed.
+        True if libmagic confirms the requested type, otherwise None. None is
+        returned both when magic is unavailable/errors AND when magic ran but
+        did not confirm the type, so the caller always falls back to magic-byte
+        sniffing — this is deliberate, so packed/obfuscated executables that
+        libmagic reports as plain "data" are still caught by their header. It
+        never returns False.
     """
     magic_module = _load_magic_module()
     if magic_module is None:

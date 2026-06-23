@@ -81,6 +81,7 @@ def open_binary_with_r2(
             OSError,
             IOError,
             RuntimeError,
+            ValueError,
         ) as exc:
             last_error = exc
             if r2 is not None:
