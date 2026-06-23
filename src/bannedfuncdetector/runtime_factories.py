@@ -11,7 +11,11 @@ from .application.analysis_runtime import (
     DirectoryRuntimeServices,
 )
 from .infrastructure.config_storage import ImmutableConfig as DictConfig
-from .domain.protocols import IConfigRepository, IR2Client
+from .domain.protocols import (
+    IConfigRepository,
+    IDecompilerOrchestrator,
+    IR2Client,
+)
 from .infrastructure.adapters.r2_client import R2Client
 from .domain.result import Result
 
@@ -78,6 +82,25 @@ def _default_file_finder(directory: str, file_type: str = "any") -> list[str]:
     return find_executable_files(directory, file_type=file_type)
 
 
+def _default_orchestrator_factory(
+    config: IConfigRepository,
+) -> IDecompilerOrchestrator:
+    """Top-level adapter that rebuilds the decompiler orchestrator.
+
+    Parallel directory analysis serializes the worker job (including this
+    factory) to send it to a ProcessPoolExecutor, so it must be a top-level
+    function rather than a closure/lambda, which cannot be serialized.
+    """
+    from .infrastructure.decompilers.orchestrator import (
+        create_decompiler_orchestrator,
+    )
+
+    return create_decompiler_orchestrator(
+        config,
+        config_factory=create_config_from_dict,
+    )
+
+
 def create_application_wiring(config_path: str | None = None) -> AnalysisRuntime:
     """Build the explicit wiring used by outer-layer entry points."""
     from .infrastructure.decompilers.orchestrator import create_decompiler_orchestrator
@@ -98,10 +121,7 @@ def create_application_wiring(config_path: str | None = None) -> AnalysisRuntime
             config,
             config_factory=create_config_from_dict,
         ),
-        orchestrator_factory=lambda cfg: create_decompiler_orchestrator(
-            cfg,
-            config_factory=create_config_from_dict,
-        ),
+        orchestrator_factory=_default_orchestrator_factory,
     )
 
 
