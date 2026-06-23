@@ -22,6 +22,7 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
 )
 from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
     _get_function_offset,
+    sanitize_r2_query_text,
 )
 
 # Configure logging
@@ -141,10 +142,13 @@ def _try_decai_decompilation(r2: IR2Client, function_name: str) -> str | None:
     if is_valid_result(decompiled_code):
         return decompiled_code
 
-    # Third attempt: direct query
+    # Third attempt: direct query.
+    # The disassembly comes from the untrusted binary, and r2pipe is
+    # line-oriented, so the query text is flattened to a single line with all
+    # r2/shell metacharacters stripped before being embedded in the command.
     logger.info("Previous methods unsuccessful, trying direct query...")
     asm_code = r2.cmd("pdf")
-    query = f"Decompile this assembly code to C:\n{asm_code}"
+    query = sanitize_r2_query_text(f"Decompile this assembly code to C: {asm_code}")
     decompiled_code = r2.cmd(f"decai -q '{query}'")
     if is_valid_result(decompiled_code):
         return decompiled_code

@@ -28,6 +28,28 @@ def is_safe_r2_name(name: str) -> bool:
     """Return True if ``name`` is safe to interpolate into an r2 command."""
     return bool(name) and _SAFE_R2_NAME.fullmatch(name) is not None
 
+
+# Characters radare2 interprets specially on a command line: ';' and newlines
+# are command separators (the r2pipe protocol itself treats '\n' as a command
+# boundary, before any quoting applies), '!' escapes to the shell, backticks
+# substitute command output, '|' pipes to the shell, '@' is a temp-seek, '~'
+# greps, '$' is a variable, '>'/'<' redirect, '(' defines a macro, and quotes
+# delimit arguments. Free text embedded in `decai -q` originates from the
+# analyzed (untrusted) binary's disassembly, so every one of these is removed
+# before the text reaches an r2 command string.
+_R2_QUERY_FORBIDDEN = "\n\r;@~|`'\"!$><(){}#&"
+_R2_QUERY_TRANSLATION = {ord(ch): " " for ch in _R2_QUERY_FORBIDDEN}
+
+
+def sanitize_r2_query_text(text: str) -> str:
+    """Flatten free text into a single line safe to embed in an r2 command.
+
+    Newlines and every r2/shell command metacharacter are replaced with
+    spaces and whitespace runs are collapsed, so untrusted disassembly text
+    cannot break out of an `decai -q '...'` query into a separate r2 command.
+    """
+    return " ".join(text.translate(_R2_QUERY_TRANSLATION).split())
+
 ERROR_SKIP_PATTERNS: frozenset[str] = frozenset(
     [
         "error:",
@@ -176,5 +198,6 @@ __all__ = [
     "is_safe_r2_name",
     "is_small_function",
     "is_valid_result",
+    "sanitize_r2_query_text",
     "try_decompile_with_command",
 ]

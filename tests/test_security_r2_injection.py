@@ -124,3 +124,55 @@ def test_default_cascade_asm_fallback_refuses_unsafe_name() -> None:
     )
     assert isinstance(result, Err)
     assert all("foo;!id" not in command for command in r2.commands)
+
+
+class TestSanitizeR2QueryText:
+    """sanitize_r2_query_text neutralizes injection in `decai -q` query text."""
+
+    def test_newlines_are_flattened(self) -> None:
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+            sanitize_r2_query_text,
+        )
+
+        out = sanitize_r2_query_text("line1\nline2\r\nline3")
+        assert "\n" not in out and "\r" not in out
+        assert out == "line1 line2 line3"
+
+    def test_r2_and_shell_metacharacters_are_removed(self) -> None:
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+            sanitize_r2_query_text,
+        )
+
+        payload = "mov eax, 1\n!touch /tmp/pwn; i~system | `id` $(whoami) > /tmp/x"
+        out = sanitize_r2_query_text(payload)
+
+        for forbidden in "\n\r;@~|`'\"!$><(){}#&":
+            assert forbidden not in out
+
+    def test_query_is_safe_to_embed_in_decai_command(self) -> None:
+        """The exact command built in _try_decai_decompilation is single-line
+        and quote-safe for any disassembly content."""
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+            sanitize_r2_query_text,
+        )
+
+        malicious_asm = "push rbp\n'; !id #\nmov rax, `whoami`"
+        query = sanitize_r2_query_text(
+            f"Decompile this assembly code to C: {malicious_asm}"
+        )
+        command = f"decai -q '{query}'"
+
+        # Single r2pipe command (no embedded newline) and the wrapping quotes
+        # cannot be broken (no inner single quote survives).
+        assert "\n" not in command
+        assert command.count("'") == 2
+        assert command.startswith("decai -q '") and command.endswith("'")
+
+    def test_legitimate_asm_text_is_preserved(self) -> None:
+        from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+            sanitize_r2_query_text,
+        )
+
+        out = sanitize_r2_query_text("mov eax, dword [rbp-0x8]")
+        # Operand punctuation that is not r2-special stays intact.
+        assert out == "mov eax, dword [rbp-0x8]"
