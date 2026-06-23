@@ -355,21 +355,6 @@ class TestDecAIDecompilerClass:
         # DecAIDecompiler.decompile now returns str (extends BaseR2Decompiler)
         assert result == expected_code
 
-    def test_decai_decompiler_decompile_function_not_found(self, fake_r2_factory):
-        """Test decompile method returns empty string for missing function."""
-        fake = fake_r2_factory(
-            cmdj_map={
-                "afij @ missing": None,
-            }
-        )
-
-        decompiler = DecAIDecompiler()
-        result = decompiler.decompile(fake, "missing")
-
-        # DecAIDecompiler.decompile now returns str (extends BaseR2Decompiler)
-        # Returns empty string on failure
-        assert result == ""
-
     def test_decai_decompiler_decompile_decompilation_error(self, fake_r2_factory):
         """Test decompile method returns empty string for decompilation failure."""
         fake = fake_r2_factory(

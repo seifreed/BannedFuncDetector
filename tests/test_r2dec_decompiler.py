@@ -145,20 +145,6 @@ class TestR2DecDecompilerClass:
 
         assert result == ""
 
-    def test_r2dec_decompiler_decompile_function_not_found(self, fake_r2_factory):
-        """Test decompile method when function not found."""
-        fake = fake_r2_factory(
-            cmdj_map={
-                "afij @ missing": None,
-            }
-        )
-
-        decompiler = R2DecDecompiler()
-        result = decompiler.decompile(fake, "missing")
-
-        # Should return empty string when function not found
-        assert result == ""
-
     def test_r2dec_decompiler_decompile_short_output(self, fake_r2_factory):
         """Test decompile method filters out very short output."""
         fake = fake_r2_factory(

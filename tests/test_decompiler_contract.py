@@ -58,3 +58,9 @@ class TestDecompilerContract:
         decompiler = cls()
         for method in ("decompile", "is_available", "get_name"):
             assert callable(getattr(decompiler, method))
+
+    def test_decompile_missing_function_returns_empty(
+        self, cls, name, command, fake_r2_factory
+    ):
+        fake = fake_r2_factory(cmdj_map={"afij @ missing": None})
+        assert cls().decompile(fake, "missing") == ""
