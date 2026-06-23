@@ -26,6 +26,9 @@ from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     check_decompiler_plugin_available,
     try_decompile_with_command,
 )
+from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+    is_safe_r2_name,
+)
 from bannedfuncdetector.infrastructure.decompilers.registry import DECOMPILER_INSTANCES
 from bannedfuncdetector.infrastructure.decompilers.r2ghidra_decompiler import (
     R2GhidraDecompiler,
@@ -180,6 +183,8 @@ def _decompile_with_default_cascade(
 
     # Fall back to assembly if enabled
     if fallback_to_asm:
+        if not is_safe_r2_name(function_name):
+            return err(f"Refusing to seek unsafe function name: {function_name!r}")
         # Seek to function and verify the seek succeeded before disassembly
         r2.cmd(f"s {function_name}")
         current_addr = r2.cmd("s").strip()
