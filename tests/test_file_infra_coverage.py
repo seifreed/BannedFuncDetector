@@ -218,84 +218,52 @@ class TestDetectExecutableWithMagic:
     reliably classify.
     """
 
-    def test_elf_file_detected_for_elf_type(self) -> None:
+    @pytest.mark.parametrize(
+        "make_file, file_type, allowed",
+        [
+            (_elf_file, "elf", (True, False, None)),
+            (_text_file, "pe", (False, None)),  # text cannot be PE
+            (_text_file, "any", (False, None)),
+            (_elf_file, "any", (True, False, None)),
+        ],
+    )
+    def test_detect_executable_with_magic(self, make_file, file_type, allowed) -> None:
         from bannedfuncdetector.infrastructure.file_detection import (
             _detect_executable_with_magic,
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = _elf_file(tmpdir)
-            result = _detect_executable_with_magic(path, "elf")
-            # python-magic may return True or fall back gracefully
-            assert result in (True, False, None)
-
-    def test_text_file_returns_false_for_pe_type(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import (
-            _detect_executable_with_magic,
-        )
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _text_file(tmpdir)
-            result = _detect_executable_with_magic(path, "pe")
-            # A text file cannot be classified as PE
-            assert result in (False, None)
-
-    def test_any_type_with_text_file(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import (
-            _detect_executable_with_magic,
-        )
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _text_file(tmpdir)
-            result = _detect_executable_with_magic(path, "any")
-            assert result in (False, None)
-
-    def test_elf_detected_for_any_type(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import (
-            _detect_executable_with_magic,
-        )
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _elf_file(tmpdir)
-            result = _detect_executable_with_magic(path, "any")
-            assert result in (True, False, None)
+            result = _detect_executable_with_magic(make_file(tmpdir), file_type)
+            assert result in allowed
 
 
 class TestIsExecutableFile:
     """is_executable_file integrates magic detection with magic-bytes fallback."""
 
-    def test_pe_file_detected(self) -> None:
+    @pytest.mark.parametrize(
+        "make_file, file_type",
+        [
+            (_pe_file, "pe"),
+            (_elf_file, "elf"),
+            (_macho_le64_file, "macho"),
+            (_pe_file, "any"),
+            (_elf_file, "any"),
+        ],
+    )
+    def test_executable_returns_bool(self, make_file, file_type) -> None:
+        # python-magic may or may not classify a minimal stub; either code path
+        # (magic match or magic-bytes fallback) must return a bool.
         from bannedfuncdetector.infrastructure.file_detection import is_executable_file
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = _pe_file(tmpdir)
-            # python-magic may or may not classify a minimal stub as PE32,
-            # but either path through the code must return a bool.
-            result = is_executable_file(path, "pe")
-            assert isinstance(result, bool)
+            assert isinstance(is_executable_file(make_file(tmpdir), file_type), bool)
 
-    def test_elf_file_detected(self) -> None:
+    @pytest.mark.parametrize("make_file", [_text_file, _empty_file])
+    def test_non_executable_returns_false(self, make_file) -> None:
         from bannedfuncdetector.infrastructure.file_detection import is_executable_file
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = _elf_file(tmpdir)
-            result = is_executable_file(path, "elf")
-            assert isinstance(result, bool)
-
-    def test_macho_file_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import is_executable_file
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_le64_file(tmpdir)
-            result = is_executable_file(path, "macho")
-            assert isinstance(result, bool)
-
-    def test_text_file_not_pe(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import is_executable_file
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _text_file(tmpdir)
-            assert is_executable_file(path, "pe") is False
+            assert is_executable_file(make_file(tmpdir), "pe") is False
 
     def test_nonexistent_file_returns_false(self) -> None:
         from bannedfuncdetector.infrastructure.file_detection import is_executable_file
@@ -317,58 +285,7 @@ class TestIsExecutableFile:
             with pytest.raises(ValueError):
                 is_executable_file(path, "zip")
 
-    def test_any_type_with_pe_file(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import is_executable_file
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _pe_file(tmpdir)
-            result = is_executable_file(path, "any")
-            assert isinstance(result, bool)
-
-    def test_any_type_with_elf_file(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import is_executable_file
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _elf_file(tmpdir)
-            result = is_executable_file(path, "any")
-            assert isinstance(result, bool)
-
-    def test_empty_file_returns_false(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import is_executable_file
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _empty_file(tmpdir)
-            assert is_executable_file(path, "pe") is False
-
-    def test_magic_error_falls_back_to_magic_bytes(self) -> None:
-        """
-        Force the RuntimeError fallback path in is_executable_file by passing
-        a file path that will cause python-magic to raise.  We construct a path
-        that exists on disk (so the os.path.isfile guard passes) but contains a
-        null byte in its name, causing python-magic to raise RuntimeError or
-        similar.  We write a PE stub so the magic-bytes fallback can return True.
-
-        Because null bytes in file paths are rejected by the OS on POSIX, we
-        instead use a completely valid file and provoke the ValueError branch by
-        creating a subclass of str that makes magic.from_file raise ValueError
-        on the first call only, then falls back normally.
-
-        The simplest authentic approach: create a file, verify is_executable_file
-        returns a bool regardless of what python-magic does.  The fallback paths
-        are tested implicitly whenever python-magic classification disagrees with
-        magic bytes — this still executes _check_magic_bytes.
-        """
-        from bannedfuncdetector.infrastructure.file_detection import is_executable_file
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _pe_file(tmpdir)
-            # Calling with "pe" type hits the normal detection path.
-            # If magic returns False (minimal stub not classified as PE32),
-            # _check_magic_bytes is called as the "result is not None but False"
-            # branch returns directly — the fallback is only activated by
-            # exceptions.  We verify the function completes without error.
-            result = is_executable_file(path, "pe")
-            assert isinstance(result, bool)
 
 
 class TestIsExecutableFileFallbackPaths:
