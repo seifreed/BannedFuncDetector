@@ -89,19 +89,19 @@ from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
 from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
     DecompilerType as DType,
 )
-from bannedfuncdetector.infrastructure.decompilers.orchestrator_dispatch import (
+from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
     decompile_function,
 )
-from bannedfuncdetector.infrastructure.decompilers.orchestrator_progress import (
+from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
     _handle_processing_exception,
 )
-from bannedfuncdetector.infrastructure.decompilers.orchestrator_runtime import (
+from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
     _process_single_function,
 )
-from bannedfuncdetector.infrastructure.decompilers.orchestrator_search import (
+from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
     _search_single_banned_function,
 )
-from bannedfuncdetector.infrastructure.decompilers.orchestrator_service import (
+from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
     DecompilerOrchestrator,
     decompile_with_selected_decompiler,
 )

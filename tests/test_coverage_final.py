@@ -622,7 +622,7 @@ class TestOrchestratorDispatch:
         Assert: result is Err with "Decompilation error" in the message.
         """
         from bannedfuncdetector.infrastructure.decompilers import (
-            orchestrator_dispatch as od_mod,
+            orchestrator as od_mod,
         )
         from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
             DecompilationError,
@@ -675,7 +675,7 @@ class TestOrchestratorServiceNoFunctions:
         Act: call with verbose=True and [].
         Assert: returns [].
         """
-        from bannedfuncdetector.infrastructure.decompilers.orchestrator_service import (
+        from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
             decompile_with_selected_decompiler,
         )
 
@@ -2746,7 +2746,7 @@ class TestOrchestratorServiceAdditional:
         Purpose: orchestrator_service.decompile_with_selected_decompiler —
         verbose=False + empty functions returns [] without logging.
         """
-        from bannedfuncdetector.infrastructure.decompilers.orchestrator_service import (
+        from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
             decompile_with_selected_decompiler,
         )
 
@@ -2777,7 +2777,7 @@ class TestOrchestratorServiceAdditional:
         Act: call decompile_function with no extra options.
         Assert: returns a Result.
         """
-        from bannedfuncdetector.infrastructure.decompilers.orchestrator_service import (
+        from bannedfuncdetector.infrastructure.decompilers.orchestrator import (
             DecompilerOrchestrator,
         )
         from bannedfuncdetector.factories import create_config_from_dict
