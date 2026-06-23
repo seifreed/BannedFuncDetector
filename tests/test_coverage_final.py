@@ -3419,8 +3419,9 @@ class TestAvailabilityRemainingBranches:
     """
     Purpose: Cover availability.py lines 47, 67, 123.
 
-    Line 161 is confirmed dead code — 'default' is always_available, so the
-    loop in get_available_decompiler always returns before reaching it.
+    The "default" decompiler is the explicit guaranteed fallback in
+    get_available_decompiler (returned when no non-default decompiler is
+    available), so every line of that function is reachable by real inputs.
     """
 
     def test_check_service_decompiler_available_logs_info(self):

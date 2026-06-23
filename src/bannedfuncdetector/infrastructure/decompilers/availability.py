@@ -140,26 +140,26 @@ def get_available_decompiler(
     if isinstance(preferred, DecompilerType):
         preferred = preferred.value
 
-    alternatives = [
-        DecompilerType.R2GHIDRA.value,
-        DecompilerType.R2DEC.value,
-        DecompilerType.DEFAULT.value,
-    ]
+    default = DecompilerType.DEFAULT.value
 
-    if preferred in alternatives:
-        alternatives.remove(preferred)
-        alternatives.insert(0, preferred)
+    # "default" is always available, so it is the guaranteed fallback rather
+    # than a loop candidate. If the caller explicitly prefers it, return it
+    # without probing the alternatives.
+    if preferred == default:
+        return default
+
+    candidates = [DecompilerType.R2GHIDRA.value, DecompilerType.R2DEC.value]
+    if preferred in candidates:
+        candidates.remove(preferred)
+        candidates.insert(0, preferred)
     elif preferred != "r2ai":  # Don't add r2ai as it's not a decompiler
-        alternatives.insert(0, preferred)
+        candidates.insert(0, preferred)
 
-    for alt in alternatives:
+    for alt in candidates:
         if check_decompiler_available(alt, print_message=False):
             return alt
 
-    # "default" is always in the alternatives list and always available,
-    # so the loop above always returns. This line exists only as a type-system
-    # guarantee that the function always returns str.
-    return DecompilerType.DEFAULT.value
+    return default
 
 
 # =============================================================================

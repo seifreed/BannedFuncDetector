@@ -92,7 +92,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-q --tb=short --cov=. --cov-report=term-missing --cov-fail-under=90 --timeout=300"
+addopts = "-q --tb=short --cov=src --cov-report=term-missing --cov-fail-under=100 --timeout=300"
 pythonpath = ["src"]
 filterwarnings = ["ignore::DeprecationWarning"]
 

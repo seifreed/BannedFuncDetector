@@ -10,31 +10,31 @@ to magic bytes analysis when needed.
 Author: Marc Rivero | @seifreed
 """
 
+import importlib
 import logging
 import os
 from typing import Any
 
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
 
-_magic: Any | None = None
 
+def _try_import_magic(module_name: str = "magic") -> Any | None:
+    """Import the libmagic wrapper, returning ``None`` when it is unavailable.
 
-def _try_import_magic() -> Any | None:
-    """Try to import magic module, handling Windows access violations."""
+    The module name is a parameter so the optional-dependency-missing branch
+    can be exercised with a genuinely absent module, rather than monkeypatching
+    the import machinery. A smoke ``from_file`` call also guards against the
+    Windows access violations seen with some libmagic builds.
+    """
     try:
-        import magic
-
-        magic.from_file(__file__)
-        return magic
+        module = importlib.import_module(module_name)
+        module.from_file(__file__)
+        return module
     except Exception:
         return None
 
 
-magic: Any | None = None
-try:
-    magic = _try_import_magic()
-except Exception:
-    magic = None
+magic: Any | None = _try_import_magic()
 
 
 def _load_magic_module() -> Any | None:
