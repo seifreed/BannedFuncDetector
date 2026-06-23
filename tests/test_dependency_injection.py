@@ -9,6 +9,8 @@ for testing components with fake dependencies.
 Author: Marc Rivero | @seifreed
 """
 
+import pytest
+
 from bannedfuncdetector.factories import (
     DEFAULT_R2_FLAGS,
     DictConfig,
@@ -52,39 +54,40 @@ def _default_binary_services():
 # =============================================================================
 
 
-class TestFakeConfigRepository:
-    """Tests for FakeConfigRepository."""
+@pytest.mark.parametrize("config_cls", [FakeConfigRepository, DictConfig])
+class TestConfigMappingContract:
+    """Both the FakeConfigRepository test double and the production DictConfig
+    must satisfy the same read-only mapping contract."""
 
-    def test_get_returns_configured_value(self):
-        """Test that get() returns configured values."""
-        config = FakeConfigRepository({"banned_functions": ["strcpy"]})
+    def test_get_returns_configured_value(self, config_cls):
+        config = config_cls({"banned_functions": ["strcpy"]})
         assert config.get("banned_functions") == ["strcpy"]
 
-    def test_get_returns_default_for_missing_key(self):
-        """Test that get() returns default for missing keys."""
-        config = FakeConfigRepository({})
+    def test_get_returns_default_for_missing_key(self, config_cls):
+        config = config_cls({})
         assert config.get("missing", "default") == "default"
 
-    def test_getitem_returns_configured_value(self):
-        """Test that bracket notation works."""
-        config = FakeConfigRepository({"output": {"directory": "/tmp"}})
+    def test_getitem_returns_configured_value(self, config_cls):
+        config = config_cls({"output": {"directory": "/tmp"}})
         assert config["output"]["directory"] == "/tmp"
 
-    def test_get_output_dir_returns_directory(self):
-        """Test get_output_dir() returns the configured directory."""
-        config = FakeConfigRepository({"output": {"directory": "/custom/output"}})
+    def test_get_output_dir_returns_directory(self, config_cls):
+        config = config_cls({"output": {"directory": "/custom/output"}})
         assert config.get_output_dir() == "/custom/output"
 
-    def test_get_output_dir_returns_default(self):
-        """Test get_output_dir() returns default when not configured."""
-        config = FakeConfigRepository({})
+    def test_get_output_dir_returns_default(self, config_cls):
+        config = config_cls({})
         assert config.get_output_dir() == "output"
 
-    def test_contains_check(self):
-        """Test 'in' operator works correctly."""
-        config = FakeConfigRepository({"key": "value"})
+    def test_contains_check(self, config_cls):
+        config = config_cls({"key": "value"})
         assert "key" in config
         assert "missing" not in config
+
+
+class TestFakeConfigRepository:
+    """FakeConfigRepository-specific behaviour (shared mapping contract lives in
+    TestConfigMappingContract)."""
 
     def test_to_dict_returns_copy(self):
         """Test to_dict() returns the configuration."""
@@ -188,38 +191,8 @@ class TestCreateBinaryAnalyzer:
 
 
 class TestDictConfig:
-    """Tests for DictConfig class."""
-
-    def test_get_returns_configured_value(self):
-        """Test that get() returns configured values."""
-        config = DictConfig({"banned_functions": ["strcpy"]})
-        assert config.get("banned_functions") == ["strcpy"]
-
-    def test_get_returns_default_for_missing_key(self):
-        """Test that get() returns default for missing keys."""
-        config = DictConfig({})
-        assert config.get("missing", "default") == "default"
-
-    def test_getitem_returns_configured_value(self):
-        """Test that bracket notation works."""
-        config = DictConfig({"output": {"directory": "/tmp"}})
-        assert config["output"]["directory"] == "/tmp"
-
-    def test_get_output_dir_returns_directory(self):
-        """Test get_output_dir() returns the configured directory."""
-        config = DictConfig({"output": {"directory": "/custom/output"}})
-        assert config.get_output_dir() == "/custom/output"
-
-    def test_get_output_dir_returns_default(self):
-        """Test get_output_dir() returns default when not configured."""
-        config = DictConfig({})
-        assert config.get_output_dir() == "output"
-
-    def test_contains_check(self):
-        """Test 'in' operator works correctly."""
-        config = DictConfig({"key": "value"})
-        assert "key" in config
-        assert "missing" not in config
+    """DictConfig-specific behaviour (shared mapping contract lives in
+    TestConfigMappingContract)."""
 
     def test_to_dict_returns_copy(self):
         """Test to_dict() returns a deep copy of the configuration."""
