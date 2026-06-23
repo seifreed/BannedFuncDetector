@@ -23,6 +23,11 @@ import tempfile
 import pytest
 from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
 
+import bannedfuncdetector.infrastructure as _infra_mod
+import bannedfuncdetector.infrastructure.adapters as _adapters_mod
+_INFRA_ALL = _infra_mod.__all__
+_ADAPTERS_ALL = _adapters_mod.__all__
+
 skip_in_ci = pytest.mark.skipif(
     os.environ.get("GITHUB_ACTIONS") == "true",
     reason="r2pipe communication hangs in GitHub Actions CI environment",
@@ -830,201 +835,38 @@ class TestFindExecutablesWithSymlinks:
 
 
 class TestInfrastructureInitLazyImport:
-    """
-    Verify that every name declared in infrastructure.__all__ can be
-    resolved through the lazy __getattr__ mechanism, and that accessing
-    a nonexistent attribute raises AttributeError.
-    """
+    """Every name in infrastructure.__all__ resolves via the lazy __getattr__;
+    an unknown name raises AttributeError."""
 
-    def test_handle_errors_lazy_import(self) -> None:
+    @pytest.mark.parametrize("name", _INFRA_ALL)
+    def test_all_names_resolve(self, name: str) -> None:
         import bannedfuncdetector.infrastructure as infra
 
-        # Accessing the attribute must trigger lazy resolution and return
-        # a callable (the decorator/async context manager).
-        attr = infra.handle_errors
-        assert callable(attr)
-
-    def test_handle_errors_sync_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.handle_errors_sync
-        assert callable(attr)
-
-    def test_error_category_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.ErrorCategory
-        assert attr is not None
-
-    def test_exception_groups_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.EXCEPTION_GROUPS
-        # Should be a dict or similar container
-        assert attr is not None
-
-    def test_check_python_version_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.check_python_version
-        assert callable(attr)
-
-    def test_check_requirements_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.check_requirements
-        assert callable(attr)
-
-    def test_validate_binary_file_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_binary_file
-        assert callable(attr)
-
-    def test_immutable_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.ImmutableConfig
-        assert attr is not None
-
-    def test_decompiler_option_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.DecompilerOption
-        assert attr is not None
-
-    def test_app_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.AppConfig
-        assert attr is not None
-
-    def test_load_config_from_file_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.load_config_from_file
-        assert callable(attr)
-
-    def test_load_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.load_config
-        assert callable(attr)
-
-    def test_deep_merge_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.deep_merge
-        assert callable(attr)
-
-    def test_default_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.DEFAULT_CONFIG
-        assert attr is not None
-
-    def test_default_decompiler_options_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.DEFAULT_DECOMPILER_OPTIONS
-        assert attr is not None
-
-    def test_default_app_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.DEFAULT_APP_CONFIG
-        assert attr is not None
-
-    def test_valid_decompiler_types_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.VALID_DECOMPILER_TYPES
-        assert attr is not None
-
-    def test_valid_output_formats_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.VALID_OUTPUT_FORMATS
-        assert attr is not None
-
-    def test_validate_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_config
-        assert callable(attr)
-
-    def test_validate_banned_functions_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_banned_functions
-        assert callable(attr)
-
-    def test_validate_decompiler_settings_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_decompiler_settings
-        assert callable(attr)
-
-    def test_validate_output_settings_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_output_settings
-        assert callable(attr)
-
-    def test_validate_analysis_settings_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_analysis_settings
-        assert callable(attr)
-
-    def test_validate_full_config_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure as infra
-
-        attr = infra.validate_full_config
-        assert callable(attr)
+        assert getattr(infra, name) is not None
 
     def test_unknown_attribute_raises_attribute_error(self) -> None:
         import bannedfuncdetector.infrastructure as infra
 
-        # Reach the "name not in _EXPORTS" branch of __getattr__
         with pytest.raises(AttributeError, match="has no attribute"):
             _ = infra.this_name_does_not_exist_in_exports
 
 
-# ===========================================================================
-# Tests for bannedfuncdetector.infrastructure.adapters lazy __getattr__
-# ===========================================================================
-
-
 class TestAdaptersInitLazyImport:
-    """
-    Verify that every name in adapters.__all__ resolves through __getattr__,
-    and that an unknown name raises AttributeError.
-    """
+    """Every name in adapters.__all__ resolves via the lazy __getattr__;
+    an unknown name raises AttributeError."""
 
-    def test_detection_result_dto_lazy_import(self) -> None:
+    @pytest.mark.parametrize("name", _ADAPTERS_ALL)
+    def test_all_names_resolve(self, name: str) -> None:
         import bannedfuncdetector.infrastructure.adapters as adapters
 
-        attr = adapters.DetectionResultDTO
-        assert attr is not None
-
-    def test_function_info_dto_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure.adapters as adapters
-
-        attr = adapters.FunctionInfoDTO
-        assert attr is not None
-
-    def test_r2_client_lazy_import(self) -> None:
-        import bannedfuncdetector.infrastructure.adapters as adapters
-
-        attr = adapters.R2Client
-        assert attr is not None
+        assert getattr(adapters, name) is not None
 
     def test_unknown_attribute_raises_attribute_error(self) -> None:
         import bannedfuncdetector.infrastructure.adapters as adapters
 
         with pytest.raises(AttributeError, match="has no attribute"):
             _ = adapters.attribute_that_is_not_registered_in_exports
+
 
 
 # ===========================================================================

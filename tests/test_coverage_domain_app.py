@@ -1070,77 +1070,30 @@ class TestBannedFuncMainNoneResult:
 
 
 class TestApplicationPackageLazyGetattr:
-    """Lines 23-29 — application/__init__.py lazy attribute resolution."""
+    """application/__init__.py lazy resolution: every __all__ name resolves and
+    unknown names raise AttributeError; resolved values are cached."""
 
-    def test_analyze_binary_is_callable(self):
-        # Accessing the attribute triggers __getattr__ -> import_module -> getattr
-        fn = application_pkg.analyze_binary
-        assert callable(fn)
-
-    def test_analyze_function_is_callable(self):
-        fn = application_pkg.analyze_function
-        assert callable(fn)
-
-    def test_analyze_directory_is_callable(self):
-        fn = application_pkg.analyze_directory
-        assert callable(fn)
-
-    def test_r2_binary_analyzer_is_class(self):
-        cls = application_pkg.R2BinaryAnalyzer
-        assert isinstance(cls, type)
+    @pytest.mark.parametrize("name", application_pkg.__all__)
+    def test_all_names_resolve(self, name):
+        assert getattr(application_pkg, name) is not None
 
     def test_unknown_attribute_raises_attribute_error(self):
         with pytest.raises(AttributeError, match="has no attribute"):
             _ = application_pkg.this_does_not_exist_xyz  # type: ignore[attr-defined]
 
     def test_second_access_uses_cached_value(self):
-        # After first access the value is inserted into globals(); second access
-        # must return the same object without re-importing.
         first = application_pkg.analyze_binary
         second = application_pkg.analyze_binary
         assert first is second
 
 
-# ---------------------------------------------------------------------------
-# 11. __init__.py (root) — lines 36-42
-#     Same lazy __getattr__ pattern at the top-level package.
-# ---------------------------------------------------------------------------
-
-
 class TestRootPackageLazyGetattr:
-    """Lines 36-42 — bannedfuncdetector/__init__.py lazy attribute resolution."""
+    """bannedfuncdetector/__init__.py lazy resolution: every __all__ name
+    resolves and unknown names raise AttributeError; values are cached."""
 
-    def test_analyze_binary_resolves(self):
-        fn = root_pkg.analyze_binary
-        assert callable(fn)
-
-    def test_analyze_directory_resolves(self):
-        fn = root_pkg.analyze_directory
-        assert callable(fn)
-
-    def test_create_application_wiring_resolves(self):
-        fn = root_pkg.create_application_wiring
-        assert callable(fn)
-
-    def test_create_binary_analyzer_resolves(self):
-        fn = root_pkg.create_binary_analyzer
-        assert callable(fn)
-
-    def test_create_config_from_file_resolves(self):
-        fn = root_pkg.create_config_from_file
-        assert callable(fn)
-
-    def test_create_config_from_dict_resolves(self):
-        fn = root_pkg.create_config_from_dict
-        assert callable(fn)
-
-    def test_banned_function_class_resolves(self):
-        cls = root_pkg.BannedFunction
-        assert isinstance(cls, type)
-
-    def test_analysis_result_class_resolves(self):
-        cls = root_pkg.AnalysisResult
-        assert isinstance(cls, type)
+    @pytest.mark.parametrize("name", root_pkg.__all__)
+    def test_all_names_resolve(self, name):
+        assert getattr(root_pkg, name) is not None
 
     def test_unknown_attribute_raises_attribute_error(self):
         with pytest.raises(AttributeError, match="has no attribute"):
