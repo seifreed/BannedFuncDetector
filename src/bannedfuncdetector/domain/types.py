@@ -52,6 +52,25 @@ def _ensure_call_pattern_cache() -> dict[str, re.Pattern[str]]:
     return _CALL_PATTERN_CACHE
 
 
+def _compile_name_pattern(func_name: str) -> re.Pattern[str]:
+    """Compile a word-boundary regex pattern matching a bare function name."""
+    return re.compile(r"\b" + re.escape(func_name) + r"\b", re.IGNORECASE)
+
+
+# Pre-compiled word-boundary patterns, built lazily like the call-site cache.
+_NAME_PATTERN_CACHE: dict[str, re.Pattern[str]] = {}
+
+
+def _ensure_name_pattern_cache() -> dict[str, re.Pattern[str]]:
+    """Lazily build the name-pattern cache on first use (avoids circular import)."""
+    if not _NAME_PATTERN_CACHE:
+        from .banned_functions import BANNED_FUNCTIONS
+
+        for f in BANNED_FUNCTIONS:
+            _NAME_PATTERN_CACHE[f] = _compile_name_pattern(f)
+    return _NAME_PATTERN_CACHE
+
+
 def search_banned_call_in_text(text: str, func_name: str) -> bool:
     """Check if a banned function call pattern exists in text.
 
@@ -63,6 +82,26 @@ def search_banned_call_in_text(text: str, func_name: str) -> bool:
     if pattern is None:
         pattern = _compile_call_pattern(func_name)
     return bool(pattern.search(text))
+
+
+def find_banned_calls_in_text(text: str, banned_functions: set[str]) -> list[str]:
+    """Return every banned function whose call site (``name(``) appears in text."""
+    cache = _ensure_call_pattern_cache()
+    return [
+        banned
+        for banned in banned_functions
+        if (cache.get(banned) or _compile_call_pattern(banned)).search(text)
+    ]
+
+
+def find_banned_names_in_text(text: str, banned_functions: set[str]) -> list[str]:
+    """Return every banned function whose bare name appears in text (word-boundary)."""
+    cache = _ensure_name_pattern_cache()
+    return [
+        banned
+        for banned in banned_functions
+        if (cache.get(banned) or _compile_name_pattern(banned)).search(text)
+    ]
 
 
 def safe_parse_address(addr: Any) -> int:

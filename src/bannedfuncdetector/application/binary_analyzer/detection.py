@@ -3,7 +3,6 @@
 """Detection helpers for banned-function analysis."""
 
 import logging
-import re
 from typing import Any
 
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
@@ -12,62 +11,21 @@ from bannedfuncdetector.domain.result import Result, Err, ok, err
 from bannedfuncdetector.domain.banned_functions import BANNED_FUNCTIONS
 from bannedfuncdetector.domain.types import (
     create_detection_result as _create_detection_result,
+    find_banned_calls_in_text,
+    find_banned_names_in_text,
 )
 
 logger = logging.getLogger(__name__)
 
 
-# Pre-compiled regex caches keyed on the canonical BANNED_FUNCTIONS set.
-# Patterns are built once at module load so neither _find_banned_in_name nor
-# _find_banned_in_code pays re.compile() overhead on every analyzed function.
-def _build_name_patterns(funcs: set[str]) -> dict[str, re.Pattern[str]]:
-    return {f: re.compile(r"\b" + re.escape(f) + r"\b", re.IGNORECASE) for f in funcs}
-
-
-def _build_call_patterns(funcs: set[str]) -> dict[str, re.Pattern[str]]:
-    return {
-        f: re.compile(r"\b" + re.escape(f) + r"\s*\(", re.IGNORECASE) for f in funcs
-    }
-
-
-_NAME_PATTERNS: dict[str, re.Pattern[str]] = _build_name_patterns(BANNED_FUNCTIONS)
-_CALL_PATTERNS: dict[str, re.Pattern[str]] = _build_call_patterns(BANNED_FUNCTIONS)
-
-
 def _find_banned_in_name(text: str, banned_functions: set[str]) -> list[str]:
-    """Return banned function names matching the function name using word boundary.
-
-    Uses pre-compiled patterns from the module-level cache when the caller passes
-    the canonical BANNED_FUNCTIONS set; falls back to on-demand compilation for
-    any custom set supplied at runtime.
-    """
-    found: list[str] = []
-    use_cache = banned_functions is BANNED_FUNCTIONS
-    for banned in banned_functions:
-        pattern = _NAME_PATTERNS.get(banned) if use_cache else None
-        if pattern is None:
-            pattern = re.compile(r"\b" + re.escape(banned) + r"\b", re.IGNORECASE)
-        if pattern.search(text):
-            found.append(banned)
-    return found
+    """Return banned functions matching ``text`` by bare name (word-boundary)."""
+    return find_banned_names_in_text(text, banned_functions)
 
 
 def _find_banned_in_code(text: str, banned_functions: set[str]) -> list[str]:
-    """Return banned function names found in decompiled code using call-site matching.
-
-    Uses pre-compiled patterns from the module-level cache when the caller passes
-    the canonical BANNED_FUNCTIONS set; falls back to on-demand compilation for
-    any custom set supplied at runtime.
-    """
-    found: list[str] = []
-    use_cache = banned_functions is BANNED_FUNCTIONS
-    for banned in banned_functions:
-        pattern = _CALL_PATTERNS.get(banned) if use_cache else None
-        if pattern is None:
-            pattern = re.compile(r"\b" + re.escape(banned) + r"\s*\(", re.IGNORECASE)
-        if pattern.search(text):
-            found.append(banned)
-    return found
+    """Return banned functions found in decompiled code by call site."""
+    return find_banned_calls_in_text(text, banned_functions)
 
 
 def _validate_analysis_inputs(
