@@ -11,7 +11,6 @@ from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     BaseR2Decompiler,
     DecompilerType,
-    try_decompile_with_command,
 )
 
 
@@ -38,24 +37,7 @@ class DefaultDecompiler(BaseR2Decompiler):
         """Initialize the Default decompiler."""
         super().__init__(name=DecompilerType.DEFAULT.value, command="pdc")
 
-    def decompile(self, r2: IR2Client, function_name: str) -> str:
-        """
-        Decompile a function using radare2's built-in pdc command.
-
-        Args:
-            r2: An active r2pipe instance connected to the binary being analyzed.
-            function_name: The name or address of the function to decompile.
-
-        Returns:
-            str: The decompiled pseudocode. Returns empty string if decompilation fails.
-        """
-        decompiled = try_decompile_with_command(
-            r2=r2,
-            command=self.command,
-            function_name=function_name,
-            clean_error_messages=True,
-        )
-        return decompiled if decompiled else ""
+    # decompile() is inherited from BaseR2Decompiler (pdc via the configured command).
 
     def is_available(self, r2: IR2Client | None = None) -> bool:
         """

@@ -849,7 +849,7 @@ def test_decompiler_orchestrator_check_decompiler_available():
 
 
 # ===========================================================================
-# 7. infrastructure/decompilers/orchestrator_dispatch.py — lines 31, 35-37
+# 7. infrastructure/decompilers/orchestrator.py — lines 31, 35-37
 # ===========================================================================
 
 

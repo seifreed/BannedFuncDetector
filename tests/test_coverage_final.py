@@ -11,7 +11,7 @@ Covers the remaining uncovered lines across:
 - directory_runners.py (lines 93, 102, 120-121)
 - bannedfunc.py (lines 42-43)
 - r2_session.py (lines 81-82)
-- orchestrator_dispatch.py (lines 35-37)
+- orchestrator.py (lines 35-37)
 - orchestrator_service.py (line 85)
 - registry.py (line 85)
 - selector.py (lines 183, 192-193, 237)
@@ -599,7 +599,7 @@ class TestR2Session:
 
 
 # ---------------------------------------------------------------------------
-# orchestrator_dispatch.py lines 35-37: DecompilationError exception path
+# orchestrator.py lines 35-37: DecompilationError exception path
 # ---------------------------------------------------------------------------
 
 
@@ -611,12 +611,12 @@ class TestOrchestratorDispatch:
 
     def test_decompilation_error_returns_err(self):
         """
-        Purpose: orchestrator_dispatch.decompile_function lines 35-37 —
+        Purpose: orchestrator.decompile_function lines 35-37 —
         when _decompile_with_instance raises DecompilationError the handler
         returns Err containing "Decompilation error".
 
         Arrange: replace the _decompile_with_instance function in the
-        orchestrator_dispatch module's imported cascade reference so that it
+        orchestrator module's imported cascade reference so that it
         raises DecompilationError directly, bypassing cascade's own handler.
         Act: call decompile_function.
         Assert: result is Err with "Decompilation error" in the message.
