@@ -1211,41 +1211,25 @@ class TestR2ClientRunCommandErrorPaths:
         def quit(self) -> None:
             pass
 
-    def test_type_error_in_cmd_raises_runtime_error(self, compiled_binary: str) -> None:
+    @pytest.mark.parametrize("method", ["cmd", "cmdj"])
+    def test_type_error_raises_runtime_error(
+        self, compiled_binary: str, method: str
+    ) -> None:
         client = _make_r2_client_with_inner(compiled_binary, self._TypeErrorR2())
         try:
             with pytest.raises(RuntimeError, match="Invalid command"):
-                client.cmd("irrelevant")
+                getattr(client, method)("irrelevant")
         finally:
             client._is_closed = True  # prevent real quit on already-closed inner
 
-    def test_type_error_in_cmdj_raises_runtime_error(
-        self, compiled_binary: str
-    ) -> None:
-        client = _make_r2_client_with_inner(compiled_binary, self._TypeErrorR2())
-        try:
-            with pytest.raises(RuntimeError, match="Invalid command"):
-                client.cmdj("irrelevant")
-        finally:
-            client._is_closed = True
-
-    def test_attribute_error_in_cmd_raises_runtime_error(
-        self, compiled_binary: str
+    @pytest.mark.parametrize("method", ["cmd", "cmdj"])
+    def test_attribute_error_raises_runtime_error(
+        self, compiled_binary: str, method: str
     ) -> None:
         client = _make_r2_client_with_inner(compiled_binary, self._AttributeErrorR2())
         try:
             with pytest.raises(RuntimeError, match="r2pipe in invalid state"):
-                client.cmd("irrelevant")
-        finally:
-            client._is_closed = True
-
-    def test_attribute_error_in_cmdj_raises_runtime_error(
-        self, compiled_binary: str
-    ) -> None:
-        client = _make_r2_client_with_inner(compiled_binary, self._AttributeErrorR2())
-        try:
-            with pytest.raises(RuntimeError, match="r2pipe in invalid state"):
-                client.cmdj("irrelevant")
+                getattr(client, method)("irrelevant")
         finally:
             client._is_closed = True
 
@@ -1279,46 +1263,28 @@ class TestR2ClientTransientErrorPromotion:
         def quit(self) -> None:
             pass
 
-    def test_epipe_in_cmd_raises_transient_error(self, compiled_binary: str) -> None:
+    @pytest.mark.parametrize("method", ["cmd", "cmdj"])
+    def test_epipe_raises_transient_error(
+        self, compiled_binary: str, method: str
+    ) -> None:
         from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 
         client = _make_r2_client_with_inner(compiled_binary, self._EpipeR2())
         try:
             with pytest.raises(TransientR2Error):
-                client.cmd("irrelevant")
+                getattr(client, method)("irrelevant")
         finally:
             client._is_closed = True
 
-    def test_epipe_in_cmdj_raises_transient_error(self, compiled_binary: str) -> None:
-        from bannedfuncdetector.analyzer_exceptions import TransientR2Error
-
-        client = _make_r2_client_with_inner(compiled_binary, self._EpipeR2())
-        try:
-            with pytest.raises(TransientR2Error):
-                client.cmdj("irrelevant")
-        finally:
-            client._is_closed = True
-
-    def test_non_transient_os_error_in_cmd_is_reraised(
-        self, compiled_binary: str
+    @pytest.mark.parametrize("method", ["cmd", "cmdj"])
+    def test_non_transient_os_error_is_reraised(
+        self, compiled_binary: str, method: str
     ) -> None:
-        """Cover line 323: non-transient error must propagate as the original OSError."""
+        """Non-transient error must propagate as the original OSError (line 323)."""
         client = _make_r2_client_with_inner(compiled_binary, self._EaccesR2())
         try:
             with pytest.raises(OSError) as exc_info:
-                client.cmd("irrelevant")
-            assert exc_info.value.errno == errno.EACCES
-        finally:
-            client._is_closed = True
-
-    def test_non_transient_os_error_in_cmdj_is_reraised(
-        self, compiled_binary: str
-    ) -> None:
-        """Cover line 323 via cmdj path."""
-        client = _make_r2_client_with_inner(compiled_binary, self._EaccesR2())
-        try:
-            with pytest.raises(OSError) as exc_info:
-                client.cmdj("irrelevant")
+                getattr(client, method)("irrelevant")
             assert exc_info.value.errno == errno.EACCES
         finally:
             client._is_closed = True
