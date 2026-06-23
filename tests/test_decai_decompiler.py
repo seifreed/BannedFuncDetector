@@ -328,31 +328,8 @@ class TestDecAIDecompilation:
 
 
 class TestDecAIDecompilerClass:
-    """Test suite for DecAIDecompiler class."""
-
-    def test_decai_decompiler_init(self):
-        """Test DecAIDecompiler initialization."""
-        decompiler = DecAIDecompiler()
-
-        assert decompiler.name == "decai"
-        assert decompiler.get_name() == "decai"
-
-    def test_decai_decompiler_is_available(self):
-        """Test is_available method."""
-        decompiler = DecAIDecompiler()
-
-        result = decompiler.is_available()
-
-        # Result depends on system configuration
-        assert isinstance(result, bool)
-
-    def test_decai_decompiler_is_available_with_r2(self, fake_r2):
-        """Test is_available method with r2 parameter (not used)."""
-        decompiler = DecAIDecompiler()
-
-        result = decompiler.is_available(fake_r2)
-
-        assert isinstance(result, bool)
+    """DecAI-specific behaviour. The shared IDecompiler contract (init,
+    is_available) is covered in test_decompiler_contract.py."""
 
     def test_decai_decompiler_decompile_success(self, fake_r2_factory):
         """Test decompile method success path."""

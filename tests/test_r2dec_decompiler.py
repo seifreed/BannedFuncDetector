@@ -107,32 +107,8 @@ class TestDecompileWithR2Dec:
 
 
 class TestR2DecDecompilerClass:
-    """Test suite for R2DecDecompiler class."""
-
-    def test_r2dec_decompiler_init(self):
-        """Test R2DecDecompiler initialization."""
-        decompiler = R2DecDecompiler()
-
-        assert decompiler.name == "r2dec"
-        assert decompiler.command == "pdd"
-        assert decompiler.get_name() == "r2dec"
-
-    def test_r2dec_decompiler_is_available(self):
-        """Test is_available method."""
-        decompiler = R2DecDecompiler()
-
-        result = decompiler.is_available()
-
-        # Result depends on system configuration
-        assert isinstance(result, bool)
-
-    def test_r2dec_decompiler_is_available_with_r2(self, fake_r2):
-        """Test is_available method with r2 parameter (not used)."""
-        decompiler = R2DecDecompiler()
-
-        result = decompiler.is_available(fake_r2)
-
-        assert isinstance(result, bool)
+    """R2Dec-specific behaviour. The shared IDecompiler contract (init,
+    is_available, protocol methods) is covered in test_decompiler_contract.py."""
 
     def test_r2dec_decompiler_decompile_success(self, fake_r2_factory):
         """Test decompile method success path."""
@@ -202,27 +178,5 @@ class TestR2DecDecompilerClass:
         assert result == ""
 
 
-class TestR2DecIntegration:
-    """Integration tests for R2Dec decompiler."""
-
-    def test_r2dec_decompiler_protocol_compliance(self):
-        """Test that R2DecDecompiler implements IDecompiler protocol."""
-        decompiler = R2DecDecompiler()
-
-        # Check required methods exist
-        assert hasattr(decompiler, "decompile")
-        assert callable(decompiler.decompile)
-        assert hasattr(decompiler, "is_available")
-        assert callable(decompiler.is_available)
-        assert hasattr(decompiler, "get_name")
-        assert callable(decompiler.get_name)
-
-    def test_r2dec_decompiler_get_name_returns_string(self):
-        """Test get_name returns non-empty string."""
-        decompiler = R2DecDecompiler()
-
-        name = decompiler.get_name()
-
-        assert isinstance(name, str)
-        assert len(name) > 0
-        assert name == "r2dec"
+# Protocol compliance and get_name() are covered for every backend in
+# test_decompiler_contract.py.
