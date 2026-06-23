@@ -1,7 +1,6 @@
 """External adapter exports."""
 
-from importlib import import_module
-from typing import Any
+from ..._lazy import lazy_exports
 
 __all__ = [
     "DetectionResultDTO",
@@ -27,12 +26,4 @@ _EXPORTS: dict[str, tuple[str, str]] = {
 }
 
 
-def __getattr__(name: str) -> Any:
-    """Resolve adapter exports lazily."""
-    if name not in _EXPORTS:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module_name, attribute = _EXPORTS[name]
-    module = import_module(module_name)
-    value = getattr(module, attribute)
-    globals()[name] = value
-    return value
+__getattr__ = lazy_exports(__name__, _EXPORTS, globals())
