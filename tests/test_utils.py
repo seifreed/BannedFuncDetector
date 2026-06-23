@@ -78,55 +78,46 @@ def test_check_r2ai_server_available_ping_fail():
         server.shutdown()
 
 
-def test_check_r2ai_server_available_start_cancel(r2ai_server_shim, stdin_stream):
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("n\n")
-    try:
+def test_check_r2ai_server_available_start_cancel(
+    r2ai_server_shim, path_with_shim, mock_stdin
+):
+    with path_with_shim(r2ai_server_shim), mock_stdin("n\n"):
         assert check_r2ai_server_available("http://127.0.0.1:9") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_start_success(r2ai_server_shim, stdin_stream):
+def test_check_r2ai_server_available_start_success(
+    r2ai_server_shim, path_with_shim, mock_stdin
+):
     server_url, server = start_test_server(
         ping_status=200,
         models_status=200,
         models_payload=b'{"models": ["a"]}',
     )
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\n\n")
     try:
-        assert check_r2ai_server_available(server_url) is True
+        with path_with_shim(r2ai_server_shim), mock_stdin("y\n\n"):
+            assert check_r2ai_server_available(server_url) is True
     finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
         server.shutdown()
 
 
-def test_check_r2ai_server_available_start_with_model(r2ai_server_shim, stdin_stream):
+def test_check_r2ai_server_available_start_with_model(
+    r2ai_server_shim, path_with_shim, mock_stdin
+):
     server_url, server = start_test_server(
         ping_status=200,
         models_status=200,
         models_payload=b'{"models": ["a"]}',
     )
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\ncustom-model\n")
     try:
-        assert check_r2ai_server_available(server_url) is True
+        with path_with_shim(r2ai_server_shim), mock_stdin("y\ncustom-model\n"):
+            assert check_r2ai_server_available(server_url) is True
     finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
         server.shutdown()
 
 
-def test_check_r2ai_server_available_models_unavailable(r2ai_server_shim, stdin_stream):
+def test_check_r2ai_server_available_models_unavailable(
+    r2ai_server_shim, path_with_shim, mock_stdin
+):
     # Replace shim with one that returns empty models list
     script = r2ai_server_shim.parent / "r2ai-server"
     script.write_text(
@@ -134,55 +125,32 @@ def test_check_r2ai_server_available_models_unavailable(r2ai_server_shim, stdin_
     )
     os.chmod(script, 0o755)
 
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_shim.parent}{os.pathsep}{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\n\n")
-    try:
+    with path_with_shim(r2ai_server_shim), mock_stdin("y\n\n"):
         assert check_r2ai_server_available("http://127.0.0.1:9") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
 
 
 def test_check_r2ai_server_available_not_installed_cancel(
-    r2ai_server_fail_shim, stdin_stream
+    r2ai_server_fail_shim, path_with_shim, mock_stdin
 ):
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}{os.pathsep}{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("n\n")
-    try:
+    with path_with_shim(r2ai_server_fail_shim), mock_stdin("n\n"):
         assert check_r2ai_server_available("http://127.0.0.1:9") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
 
 
 def test_check_r2ai_server_available_install_path(
-    r2ai_server_fail_shim, r2pm_shim, stdin_stream
+    r2ai_server_fail_shim, r2pm_shim, path_with_shim, mock_stdin
 ):
-    original_path = os.environ.get("PATH", "")
-    os.environ["PATH"] = f"{r2ai_server_fail_shim.parent}{os.pathsep}{original_path}"
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\nn\n")
-    try:
+    with path_with_shim(r2ai_server_fail_shim), mock_stdin("y\nn\n"):
         assert check_r2ai_server_available("http://127.0.0.1:18081") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
 
 
-def test_check_r2ai_server_available_subprocess_error(stdin_stream, tmp_path):
-    # Ensure r2ai-server is not found in PATH
+def test_check_r2ai_server_available_subprocess_error(mock_stdin, tmp_path):
+    # Ensure r2ai-server is not found in PATH (replace PATH entirely)
     original_path = os.environ.get("PATH", "")
     os.environ["PATH"] = str(tmp_path)
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("n\n")
     try:
-        assert check_r2ai_server_available("http://127.0.0.1:9") is False
+        with mock_stdin("n\n"):
+            assert check_r2ai_server_available("http://127.0.0.1:9") is False
     finally:
-        sys.stdin = original_stdin
         os.environ["PATH"] = original_path
 
 
@@ -250,18 +218,10 @@ def test_launch_server_process_popen_error():
 
 
 def test_check_r2ai_server_available_start_server_timeout(
-    r2ai_server_no_server_shim, stdin_stream, path_with_shim
+    r2ai_server_no_server_shim, path_with_shim, mock_stdin
 ):
-    path_manager = path_with_shim(r2ai_server_no_server_shim)
-    original_path = path_manager["original_path"]
-    os.environ["PATH"] = path_manager["modified_path"]
-    original_stdin = sys.stdin
-    sys.stdin = stdin_stream("y\n\n")
-    try:
+    with path_with_shim(r2ai_server_no_server_shim), mock_stdin("y\n\n"):
         assert check_r2ai_server_available("http://127.0.0.1:18083") is False
-    finally:
-        sys.stdin = original_stdin
-        os.environ["PATH"] = original_path
 
 
 def test_prompt_install_r2ai_server_run_error():

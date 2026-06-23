@@ -2,9 +2,11 @@ import copy
 import io
 import os
 import subprocess
+import sys
 import textwrap
 import threading
 import time
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -697,6 +699,27 @@ def stdin_stream() -> Callable[[str], io.StringIO]:
         return io.StringIO(value)
 
     return _set
+
+
+@pytest.fixture()
+def mock_stdin() -> Callable[[str], Any]:
+    """Factory returning a context manager that feeds ``text`` to sys.stdin.
+
+    Replaces ``sys.stdin`` with a StringIO for the duration of the ``with``
+    block and restores the original on exit, removing the manual
+    save/assign/try-finally dance repeated across the r2ai-server tests.
+    """
+
+    @contextmanager
+    def _cm(text: str) -> Any:
+        original = sys.stdin
+        sys.stdin = io.StringIO(text)
+        try:
+            yield
+        finally:
+            sys.stdin = original
+
+    return _cm
 
 
 @pytest.fixture()
