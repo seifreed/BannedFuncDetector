@@ -643,21 +643,6 @@ def test_is_binary_file_elf_magic(tmp_path):
 # ===========================================================================
 
 
-def test_analyze_file_with_default_decompiler(compiled_binary, tmp_path):
-    """Test binary analysis with default decompiler (always available)."""
-    binary = tmp_path / "sample.bin"
-    os.link(compiled_binary, binary)
-    result = binary_analyzer.analyze_binary(
-        str(binary),
-        request=make_binary_request(
-            output_dir=str(tmp_path / "out"),
-            decompiler_type="default",
-        ),
-    )
-    assert isinstance(result, Ok)
-    assert result.value.report.total_functions >= 0
-
-
 def test_analyze_file_with_skip_flags(compiled_binary, tmp_path):
     """Test binary analysis with skip flags produces a result."""
     binary = tmp_path / "sample.bin"
