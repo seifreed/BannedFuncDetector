@@ -87,7 +87,7 @@ def test_apply_swallows_r2_errors() -> None:
 
 
 def test_orchestrator_applies_decai_config_when_selected() -> None:
-    config = create_config_from_dict({})  # decai default is gemini
+    config = create_config_from_dict({})  # decai default is OpenCode Zen (openai-compatible)
     r2 = _RecordingR2()
 
     original = selector_mod.check_decompiler_available
@@ -102,7 +102,7 @@ def test_orchestrator_applies_decai_config_when_selected() -> None:
         selector_mod.check_decompiler_available = original
 
     assert result == []
-    assert "decai -e api=gemini" in r2.cmds
+    assert "decai -e api=openai" in r2.cmds
 
 
 def test_apply_decai_config_from_noop_without_decai_options() -> None:

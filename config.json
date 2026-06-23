@@ -43,10 +43,11 @@
                 "enabled": true,
                 "command": "decai -d",
                 "description": "AI-based decompiler (decai)",
-                "api": "gemini",
-                "model": "gemini-2.0-flash",
+                "api": "openai",
+                "model": "big-pickle",
+                "host": "https://opencode.ai/zen",
                 "prompt": "Rewrite this function and respond ONLY with code, NO explanations, NO markdown, Change 'goto' into if/else/for/while, Simplify as much as possible, use better variable names, take function arguments and strings from comments like 'string:'",
-                "_comment": "Default backend is Gemini (free tier; needs a one-time free Google API key via 'decai -K'). For local/offline use set api=ollama, host=http://localhost, port=11434, model=<local-model>."
+                "_comment": "Default backend is OpenCode Zen's free 'big-pickle' model (OpenAI-compatible). Needs a free OpenCode Zen key in the openai slot via 'decai -K'. For local/offline: set api=ollama, host=http://localhost, port=11434, model=<local-model>."
             },
             "r2ai-server": {
                 "enabled": true,

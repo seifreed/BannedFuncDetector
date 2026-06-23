@@ -60,12 +60,15 @@ DEFAULT_DECOMPILER_OPTIONS: dict[str, DecompilerOption] = {
         enabled=True,
         command="decai -d",
         description="AI-based decompiler (decai)",
-        # Default to Gemini: the most generous genuinely-free cloud tier decai
-        # supports natively. Needs a one-time free Google API key (decai -K).
-        # For fully local/offline use set api=ollama, host=http://localhost,
-        # port=11434 and a local model.
-        api="gemini",
-        model="gemini-2.0-flash",
+        # Default to OpenCode Zen's free "big-pickle" model via its
+        # OpenAI-compatible endpoint. decai builds the request URL as
+        # host + "/v1/chat/completions", so host is the Zen base. Needs a free
+        # OpenCode Zen key in the "openai" slot (decai -K). For fully
+        # local/offline use set api=ollama, host=http://localhost, port=11434
+        # and a local model.
+        api="openai",
+        model="big-pickle",
+        host="https://opencode.ai/zen",
         prompt=(
             "Rewrite this function and respond ONLY with code, NO explanations, "
             "NO markdown, Change 'goto' into if/else/for/while, Simplify as much "

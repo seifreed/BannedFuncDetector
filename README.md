@@ -126,34 +126,39 @@ The `decai` decompiler uses an AI backend through the radare2 `decai` plugin.
 The backend is driven entirely by the `decompiler.options.decai` section of
 `config.json`, so you can switch providers without touching code.
 
-**Default backend: Gemini (free tier).** It is the most generous genuinely-free
-cloud option `decai` supports natively. It needs a one-time free Google API key:
+**Default backend: OpenCode Zen — free `big-pickle` model.** Zen exposes free
+models (`big-pickle`, `deepseek-v4-flash-free`, …) over an OpenAI-compatible
+endpoint, so `decai` reaches them with `api=openai`. The models are free of
+charge but Zen still requires a **free** key (there is no anonymous access):
 
 ```bash
-# 1. Get a free key at https://aistudio.google.com/apikey
-# 2. Store it for decai (opens apikeys.txt):
-r2 -qc 'decai -K' /bin/ls
+# 1. Sign up and copy your key at https://opencode.ai/auth
+# 2. Store it in decai's "openai" slot (Zen is OpenAI-compatible):
+r2 -qc 'decai -K' /bin/ls        # add a line:  openai=<your-zen-key>
+#    or export it:  export OPENAI_API_KEY=<your-zen-key>
 ```
 
-> ⚠️ **Privacy note for malware analysis.** A cloud backend uploads the
+> ⚠️ **Privacy note for malware analysis.** Any cloud backend uploads the
 > disassembly of the analyzed sample to a third party. For sensitive or
-> classified samples, use a local backend (below) so nothing leaves the host.
+> classified samples, use the local Ollama backend (below) so nothing leaves
+> the host — it is the only key-free, fully private option.
 
 **Switch backend** by editing `config.json` → `decompiler.options.decai`:
 
 ```jsonc
-// Local / offline (private) — requires Ollama + a local model:
+// Local / offline (private, no key) — requires Ollama + a local model:
 "decai": { "api": "ollama", "model": "qwen2.5-coder:7b",
            "host": "http://localhost", "port": 11434 }
 
-// Any OpenAI-compatible endpoint (self-hosted gateway, etc.):
-"decai": { "api": "openai", "model": "<model>", "host": "http://localhost:4000" }
+// OpenCode Zen (default) — free models, free key:
+"decai": { "api": "openai", "model": "big-pickle", "host": "https://opencode.ai/zen" }
 ```
 
 `api`, `model` and the `host`(+`port`)-derived base URL are applied to the
-plugin automatically when `--decompiler decai` runs. Providers supported by
-decai: `gemini`, `ollama`, `ollamacloud`, `openai`, `anthropic`, `claude`,
-`mistral`, `xai`, `deepseek`, `lmstudio`.
+plugin automatically when `--decompiler decai` runs (decai builds the request
+URL as `host` + `/v1/chat/completions`). Providers supported by decai:
+`openai` (incl. OpenCode Zen), `ollama`, `ollamacloud`, `gemini`, `anthropic`,
+`claude`, `mistral`, `xai`, `deepseek`, `lmstudio`.
 
 > If you see `ABI mismatch` warnings for `r2ai.dylib`, rebuild the backend
 > plugin for your radare2 version: `r2pm -ci r2ai`.
