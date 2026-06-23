@@ -26,6 +26,27 @@ from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
 from bannedfuncdetector.domain.result import Ok, Err
 
 
+def _ok_future(value):
+    """A completed Future resolving to Ok(value)."""
+    future = concurrent.futures.Future()
+    future.set_result(Ok(value))
+    return future
+
+
+def _err_future(error):
+    """A completed Future resolving to Err(error)."""
+    future = concurrent.futures.Future()
+    future.set_result(Err(error))
+    return future
+
+
+def _exception_future(exc=None):
+    """A Future that raises (defaults to RuntimeError("Analysis failed"))."""
+    future = concurrent.futures.Future()
+    future.set_exception(exc or RuntimeError("Analysis failed"))
+    return future
+
+
 class FakeConfig:
     """Fake configuration for testing."""
 
@@ -48,17 +69,11 @@ class TestProcessParallelResults:
     def test_process_parallel_results_all_ok(self):
         """Test processing results where all futures return Ok."""
 
-        # Create futures that return Ok results
-        def make_future(value):
-            future = concurrent.futures.Future()
-            future.set_result(Ok(value))
-            return future
-
         detections = [
             {"name": "func1", "address": "0x1000"},
             {"name": "func2", "address": "0x2000"},
         ]
-        futures = [make_future(d) for d in detections]
+        futures = [_ok_future(d) for d in detections]
 
         results = process_parallel_results(futures, verbose=False)
 
@@ -72,20 +87,10 @@ class TestProcessParallelResults:
     def test_process_parallel_results_mixed_ok_err(self):
         """Test processing results with mix of Ok and Err."""
 
-        def make_ok_future(value):
-            future = concurrent.futures.Future()
-            future.set_result(Ok(value))
-            return future
-
-        def make_err_future(error):
-            future = concurrent.futures.Future()
-            future.set_result(Err(error))
-            return future
-
         futures = [
-            make_ok_future({"name": "func1", "address": "0x1000"}),
-            make_err_future("No banned functions"),
-            make_ok_future({"name": "func2", "address": "0x2000"}),
+            _ok_future({"name": "func1", "address": "0x1000"}),
+            _err_future("No banned functions"),
+            _ok_future({"name": "func2", "address": "0x2000"}),
         ]
 
         results = process_parallel_results(futures, verbose=False)
@@ -100,14 +105,10 @@ class TestProcessParallelResults:
     def test_process_parallel_results_all_err(self):
         """Test processing results where all futures return Err."""
 
-        def make_err_future(error):
-            future = concurrent.futures.Future()
-            future.set_result(Err(error))
-            return future
 
         futures = [
-            make_err_future("No banned"),
-            make_err_future("Clean function"),
+            _err_future("No banned"),
+            _err_future("Clean function"),
         ]
 
         results = process_parallel_results(futures, verbose=False)
@@ -117,20 +118,10 @@ class TestProcessParallelResults:
     def test_process_parallel_results_with_exception(self):
         """Test processing results handles future exceptions."""
 
-        def make_exception_future():
-            future = concurrent.futures.Future()
-            future.set_exception(RuntimeError("Analysis failed"))
-            return future
-
-        def make_ok_future(value):
-            future = concurrent.futures.Future()
-            future.set_result(Ok(value))
-            return future
-
         futures = [
-            make_ok_future({"name": "func1", "address": "0x1000"}),
-            make_exception_future(),
-            make_ok_future({"name": "func2", "address": "0x2000"}),
+            _ok_future({"name": "func1", "address": "0x1000"}),
+            _exception_future(),
+            _ok_future({"name": "func2", "address": "0x2000"}),
         ]
 
         results = process_parallel_results(futures, verbose=False)
@@ -141,13 +132,9 @@ class TestProcessParallelResults:
     def test_process_parallel_results_verbose_mode(self):
         """Test processing results with verbose logging."""
 
-        def make_ok_future(value):
-            future = concurrent.futures.Future()
-            future.set_result(Ok(value))
-            return future
 
         futures = [
-            make_ok_future({"name": "func1", "address": "0x1000"}),
+            _ok_future({"name": "func1", "address": "0x1000"}),
         ]
 
         results = process_parallel_results(futures, verbose=True)
