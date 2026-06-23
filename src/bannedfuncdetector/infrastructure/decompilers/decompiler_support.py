@@ -143,6 +143,43 @@ def _normalize_function_info(function_info: Any) -> dict[str, Any] | None:
     return None
 
 
+def _coerce_offset(value: Any) -> int | None:
+    """Coerce a radare2 offset value to int, or None if it is not numeric.
+
+    Uses an explicit None check (not truthiness) so a valid address of 0 is
+    preserved rather than discarded.
+    """
+    if isinstance(value, bool):
+        return None
+    return int(value) if isinstance(value, (int, float)) else None
+
+
+def _offset_from_entry(entry: dict[str, Any]) -> int | None:
+    """Read the offset (or addr) from a function/seek info dict."""
+    offset = _coerce_offset(entry.get("offset"))
+    if offset is not None:
+        return offset
+    return _coerce_offset(entry.get("addr"))
+
+
+def _current_seek_entry(addr_info: Any) -> dict[str, Any] | None:
+    """Return the active entry from radare2's `sj` output.
+
+    `sj` returns the seek history as a list of entries; the active position is
+    the one flagged ``current`` (falling back to the last entry). Older builds
+    may return a single dict, which is passed through unchanged.
+    """
+    if isinstance(addr_info, dict):
+        return addr_info
+    if isinstance(addr_info, list) and addr_info:
+        for entry in addr_info:
+            if isinstance(entry, dict) and entry.get("current"):
+                return entry
+        last = addr_info[-1]
+        return last if isinstance(last, dict) else None
+    return None
+
+
 def _get_function_offset(
     r2: IR2Client,
     function_name: str,
@@ -151,19 +188,17 @@ def _get_function_offset(
     """Get the function offset from function info or by seeking."""
     function_info = _normalize_function_info(function_info)
     if function_info:
-        offset = function_info.get("offset") or function_info.get("addr")
+        offset = _offset_from_entry(function_info)
         if offset is not None:
-            return int(offset) if isinstance(offset, (int, float)) else None
+            return offset
 
     if not is_safe_r2_name(function_name):
         logger.warning("Refusing to seek unsafe function name: %r", function_name)
         return None
     r2.cmd(f"s {function_name}")
-    addr_info = r2.cmdj("sj")
-    if addr_info and isinstance(addr_info, dict):
-        offset = addr_info.get("offset") or addr_info.get("addr")
-        if offset is not None:
-            return int(offset) if isinstance(offset, (int, float)) else None
+    entry = _current_seek_entry(r2.cmdj("sj"))
+    if entry is not None:
+        return _offset_from_entry(entry)
     return None
 
 

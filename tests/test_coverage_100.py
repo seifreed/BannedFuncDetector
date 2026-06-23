@@ -948,19 +948,26 @@ class TestGetAvailableDecompilerDefaultFallback:
     """Cover availability.get_available_decompiler explicit default fallback."""
 
     def test_unavailable_preference_falls_back_to_default(self):
-        """When the preferred non-default decompiler is unavailable, the
-        function returns 'default' via the final guaranteed fallback."""
-        from bannedfuncdetector.infrastructure.decompilers.availability import (
-            get_available_decompiler,
-        )
+        """When no non-default decompiler is available, the function returns
+        'default' via the final guaranteed fallback."""
+        import bannedfuncdetector.infrastructure.decompilers.availability as av_mod
         from bannedfuncdetector.infrastructure.decompilers.decompiler_types import (
             DecompilerType,
         )
 
-        # r2dec/r2ghidra plugins are absent in the test environment, so the
-        # loop probes them, finds nothing, and returns the default fallback.
-        assert get_available_decompiler("r2dec") == DecompilerType.DEFAULT.value
-        assert get_available_decompiler("unknown") == DecompilerType.DEFAULT.value
+        # Make every probe report unavailable so the result does not depend on
+        # which r2 plugins happen to be installed on the test host.
+        original_check = av_mod.check_decompiler_available
+        try:
+            av_mod.check_decompiler_available = lambda name, print_message=False: False
+            assert av_mod.get_available_decompiler("r2dec") == (
+                DecompilerType.DEFAULT.value
+            )
+            assert av_mod.get_available_decompiler("unknown") == (
+                DecompilerType.DEFAULT.value
+            )
+        finally:
+            av_mod.check_decompiler_available = original_check
 
     def test_explicit_default_preference_returns_default(self):
         """Preferring 'default' returns it without probing alternatives."""
