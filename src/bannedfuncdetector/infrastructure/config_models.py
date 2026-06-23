@@ -60,16 +60,18 @@ DEFAULT_DECOMPILER_OPTIONS: dict[str, DecompilerOption] = {
         enabled=True,
         command="decai -d",
         description="AI-based decompiler (decai)",
-        api="ollama",
-        model="qwen2:5b-coder",
+        # Default to Gemini: the most generous genuinely-free cloud tier decai
+        # supports natively. Needs a one-time free Google API key (decai -K).
+        # For fully local/offline use set api=ollama, host=http://localhost,
+        # port=11434 and a local model.
+        api="gemini",
+        model="gemini-2.0-flash",
         prompt=(
             "Rewrite this function and respond ONLY with code, NO explanations, "
             "NO markdown, Change 'goto' into if/else/for/while, Simplify as much "
             "as possible, use better variable names, take function arguments and "
             "strings from comments like 'string:'"
         ),
-        host="http://localhost",
-        port=11434,
     ),
     "r2ai-server": DecompilerOption(
         enabled=True,

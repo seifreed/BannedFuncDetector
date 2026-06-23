@@ -297,6 +297,16 @@ def _get_function_filtering_config(config: IConfigRepository) -> tuple[int, bool
 # --------------------------------------------------------------------------- #
 # Multi-function decompilation entrypoint
 # --------------------------------------------------------------------------- #
+def _apply_decai_config_from(config: IConfigRepository, r2: IR2Client) -> None:
+    """Push the configured decai backend settings to the plugin, if any."""
+    from .decai_decompiler import apply_decai_backend_config
+
+    options = config["decompiler"].get("options", {})
+    decai_config = options.get("decai")
+    if isinstance(decai_config, dict):
+        apply_decai_backend_config(r2, decai_config)
+
+
 def decompile_with_selected_decompiler(
     r2: IR2Client,
     functions: list[FunctionDescriptor],
@@ -312,6 +322,8 @@ def decompile_with_selected_decompiler(
     decompiler_type_str = select_decompiler(
         requested=decompiler_type, force=False, verbose=verbose, config=config
     )
+    if decompiler_type_str == DecompilerType.DECAI.value:
+        _apply_decai_config_from(config, r2)
     if not functions:
         if verbose:
             logger.warning("No functions found to decompile")

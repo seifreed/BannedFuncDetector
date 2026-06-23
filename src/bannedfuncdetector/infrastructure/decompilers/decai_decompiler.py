@@ -8,6 +8,7 @@ Author: Marc Rivero | @seifreed
 """
 
 import logging
+from typing import Any
 
 from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
@@ -32,6 +33,45 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # DECAI HELPER FUNCTIONS
 # =============================================================================
+
+# Characters that would break out of a `decai -e key=value` command into a
+# separate r2 command. Backend values come from the (trusted) config file, but
+# rejecting these keeps a malformed config from corrupting the r2 session.
+_DECAI_VALUE_FORBIDDEN = set(";\n\r`|!~@$<>'\"")
+
+
+def _safe_decai_value(value: object) -> str | None:
+    """Return a stripped string value safe for `decai -e`, or None if unusable."""
+    text = str(value).strip()
+    if not text or any(ch in _DECAI_VALUE_FORBIDDEN for ch in text):
+        return None
+    return text
+
+
+def apply_decai_backend_config(r2: IR2Client, decai_config: dict[str, Any]) -> None:
+    """Apply the configured decai backend (api/model/base URL) to the plugin.
+
+    This makes config.json the source of truth for which AI backend decai
+    uses. Values are applied only when present and safe; a base URL is derived
+    from ``host`` (and optional ``port``) for self-hosted backends like Ollama.
+    Cloud backends (e.g. gemini) need only ``api`` and ``model`` — leave
+    ``host`` empty so decai keeps its built-in endpoint.
+    """
+    api = _safe_decai_value(decai_config.get("api", ""))
+    model = _safe_decai_value(decai_config.get("model", ""))
+    host = _safe_decai_value(decai_config.get("host", ""))
+    port = decai_config.get("port")
+
+    try:
+        if api:
+            r2.cmd(f"decai -e api={api}")
+        if model:
+            r2.cmd(f"decai -e model={model}")
+        if host:
+            base_url = f"{host}:{port}" if isinstance(port, int) and port else host
+            r2.cmd(f"decai -e baseurl={base_url}")
+    except (RuntimeError, ValueError, OSError, AttributeError) as exc:
+        logger.warning("Could not apply decai backend config: %s", exc)
 
 
 def _configure_decai_model(r2: IR2Client) -> None:

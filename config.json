@@ -43,11 +43,10 @@
                 "enabled": true,
                 "command": "decai -d",
                 "description": "AI-based decompiler (decai)",
-                "api": "ollama",
-                "model": "qwen2:5b-coder",
+                "api": "gemini",
+                "model": "gemini-2.0-flash",
                 "prompt": "Rewrite this function and respond ONLY with code, NO explanations, NO markdown, Change 'goto' into if/else/for/while, Simplify as much as possible, use better variable names, take function arguments and strings from comments like 'string:'",
-                "host": "http://localhost",
-                "port": 11434
+                "_comment": "Default backend is Gemini (free tier; needs a one-time free Google API key via 'decai -K'). For local/offline use set api=ollama, host=http://localhost, port=11434, model=<local-model>."
             },
             "r2ai-server": {
                 "enabled": true,

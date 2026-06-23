@@ -120,6 +120,46 @@ bannedfunc -f /path/to/binary --skip-analysis
 
 ---
 
+## AI decompilation (decai)
+
+The `decai` decompiler uses an AI backend through the radare2 `decai` plugin.
+The backend is driven entirely by the `decompiler.options.decai` section of
+`config.json`, so you can switch providers without touching code.
+
+**Default backend: Gemini (free tier).** It is the most generous genuinely-free
+cloud option `decai` supports natively. It needs a one-time free Google API key:
+
+```bash
+# 1. Get a free key at https://aistudio.google.com/apikey
+# 2. Store it for decai (opens apikeys.txt):
+r2 -qc 'decai -K' /bin/ls
+```
+
+> ⚠️ **Privacy note for malware analysis.** A cloud backend uploads the
+> disassembly of the analyzed sample to a third party. For sensitive or
+> classified samples, use a local backend (below) so nothing leaves the host.
+
+**Switch backend** by editing `config.json` → `decompiler.options.decai`:
+
+```jsonc
+// Local / offline (private) — requires Ollama + a local model:
+"decai": { "api": "ollama", "model": "qwen2.5-coder:7b",
+           "host": "http://localhost", "port": 11434 }
+
+// Any OpenAI-compatible endpoint (self-hosted gateway, etc.):
+"decai": { "api": "openai", "model": "<model>", "host": "http://localhost:4000" }
+```
+
+`api`, `model` and the `host`(+`port`)-derived base URL are applied to the
+plugin automatically when `--decompiler decai` runs. Providers supported by
+decai: `gemini`, `ollama`, `ollamacloud`, `openai`, `anthropic`, `claude`,
+`mistral`, `xai`, `deepseek`, `lmstudio`.
+
+> If you see `ABI mismatch` warnings for `r2ai.dylib`, rebuild the backend
+> plugin for your radare2 version: `r2pm -ci r2ai`.
+
+---
+
 ## Python Library
 
 ### Basic Usage
@@ -157,7 +197,7 @@ print(results)
 - Python 3.13+ (tested on 3.13 y 3.14)
 - radare2 (required)
 - r2ghidra/r2dec (optional decompilers)
-- Ollama + decai plugin (optional for AI-assisted decompilation)
+- decai plugin (optional, for AI-assisted decompilation — see "AI decompilation" above)
 - See `pyproject.toml` for Python dependencies
 
 ---
