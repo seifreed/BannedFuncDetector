@@ -887,34 +887,48 @@ exit 0
     return script
 
 
+class _ShimPath(dict):
+    """PATH-override handle that is both a mapping and a context manager.
+
+    As a context manager it prepends the shim directory to ``PATH`` on enter and
+    restores the original on exit (preferred). The legacy mapping interface
+    (``["original_path"]`` / ``["modified_path"]``) remains for callers that set
+    ``os.environ["PATH"]`` manually.
+    """
+
+    def __enter__(self) -> "_ShimPath":
+        os.environ["PATH"] = self["modified_path"]
+        return self
+
+    def __exit__(self, *exc: Any) -> bool:
+        os.environ["PATH"] = self["original_path"]
+        return False
+
+
 @pytest.fixture()
 def path_with_shim(shim_path: Any) -> Callable[[Any], Any]:
     """
-    Fixture providing a context manager factory for temporarily modifying PATH.
+    Fixture providing a PATH-override context manager factory.
 
     Args:
         shim_path: Directory path for shim scripts
 
     Returns:
-        A factory function that takes a shim script path and returns context manager utilities
+        A factory taking a shim script path and returning a ``_ShimPath`` that
+        prepends the shim dir to PATH for the duration of a ``with`` block.
 
     Example:
         def test_something(path_with_shim, r2ai_server_shim):
-            path_manager = path_with_shim(r2ai_server_shim)
-            original_path = path_manager["original_path"]
-            os.environ["PATH"] = path_manager["modified_path"]
-            try:
-                # test code
-            finally:
-                os.environ["PATH"] = original_path
+            with path_with_shim(r2ai_server_shim):
+                ...  # test code; PATH restored automatically on exit
     """
 
-    def _factory(shim_script: Any) -> Dict[str, str]:
+    def _factory(shim_script: Any) -> "_ShimPath":
         original_path = os.environ.get("PATH", "")
-        return {
-            "original_path": original_path,
-            "modified_path": f"{shim_script.parent}{os.pathsep}{original_path}",
-        }
+        return _ShimPath(
+            original_path=original_path,
+            modified_path=f"{shim_script.parent}{os.pathsep}{original_path}",
+        )
 
     return _factory
 

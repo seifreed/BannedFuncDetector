@@ -1739,19 +1739,13 @@ class TestR2AiServer:
             _handle_r2ai_server_not_running,
         )
 
-        path_manager = path_with_shim(r2ai_server_fail_shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(r2ai_server_fail_shim):
             result = _handle_r2ai_server_not_running(
                 "http://localhost:8080",
                 auto_start=False,
                 prompt_callback=lambda _: "n",
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
     def test_handle_r2ai_server_not_running_installed_declines_start(
         self, shim_path, path_with_shim, r2ai_server_shim
@@ -1765,19 +1759,13 @@ class TestR2AiServer:
             _handle_r2ai_server_not_running,
         )
 
-        path_manager = path_with_shim(r2ai_server_shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(r2ai_server_shim):
             result = _handle_r2ai_server_not_running(
                 "http://localhost:8080",
                 auto_start=False,
                 prompt_callback=lambda _: "n",
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
     @pytest.mark.skipif(
         sys.platform == "win32",
@@ -1808,18 +1796,12 @@ class TestR2AiServer:
         )
         os.chmod(shim, 0o755)
 
-        path_manager = path_with_shim(shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(shim):
             result = _start_r2ai_server(
                 "http://localhost:8080",
                 prompt_callback=lambda _: "model-1",
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
     def test_prompt_install_r2ai_server_decline_returns_false(self):
         """
@@ -1865,24 +1847,18 @@ class TestR2AiServer:
         )
         os.chmod(r2pm, 0o755)
 
-        path_manager = path_with_shim(r2pm)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
         import subprocess as sp
 
         def failing_run(cmd, **kwargs):
             raise sp.CalledProcessError(1, cmd)
 
-        try:
+        with path_with_shim(r2pm):
             result = _prompt_install_r2ai_server(
                 "http://localhost:8080",
                 prompt_callback=lambda _: "y",
                 run=failing_run,
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
 
 # =============================================================================
@@ -2359,19 +2335,13 @@ class TestR2AiServerAdditional:
             _handle_r2ai_server_not_running,
         )
 
-        path_manager = path_with_shim(r2ai_server_fail_shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(r2ai_server_fail_shim):
             result = _handle_r2ai_server_not_running(
                 "http://localhost:8080",
                 auto_start=True,
                 prompt_callback=lambda _: "n",
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
     def test_handle_not_running_auto_start_installed_calls_start(
         self, shim_path, path_with_shim, r2ai_server_no_server_shim
@@ -2385,11 +2355,7 @@ class TestR2AiServerAdditional:
             _handle_r2ai_server_not_running,
         )
 
-        path_manager = path_with_shim(r2ai_server_no_server_shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(r2ai_server_no_server_shim):
             result = _handle_r2ai_server_not_running(
                 "http://localhost:8080",
                 auto_start=True,
@@ -2397,8 +2363,6 @@ class TestR2AiServerAdditional:
             )
             # Result depends on whether server starts; typically False in test
             assert isinstance(result, bool)
-        finally:
-            os.environ["PATH"] = original_path
 
     def test_prompt_start_declines_returns_false(
         self, shim_path, path_with_shim, r2ai_server_shim
@@ -2411,19 +2375,13 @@ class TestR2AiServerAdditional:
             _handle_r2ai_server_not_running,
         )
 
-        path_manager = path_with_shim(r2ai_server_shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(r2ai_server_shim):
             result = _handle_r2ai_server_not_running(
                 "http://localhost:8080",
                 auto_start=False,
                 prompt_callback=lambda _: "n",
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
     def test_start_r2ai_server_with_models_and_popen(
         self, shim_path, path_with_shim, r2ai_server_no_server_shim
@@ -2436,18 +2394,12 @@ class TestR2AiServerAdditional:
             _start_r2ai_server,
         )
 
-        path_manager = path_with_shim(r2ai_server_no_server_shim)
-        original_path = path_manager["original_path"]
-        os.environ["PATH"] = path_manager["modified_path"]
-
-        try:
+        with path_with_shim(r2ai_server_no_server_shim):
             result = _start_r2ai_server(
                 "http://localhost:19998",  # nothing will listen here
                 prompt_callback=lambda _: "model-1",
             )
             assert result is False
-        finally:
-            os.environ["PATH"] = original_path
 
 
 class TestValidatorsAdditional:
