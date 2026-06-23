@@ -136,103 +136,31 @@ class TestValidateExecutableType:
 class TestCheckMagicBytes:
     """_check_magic_bytes detects every supported magic-byte header variant."""
 
-    def test_pe_magic_bytes_detected(self) -> None:
+    @pytest.mark.parametrize(
+        "make_file, file_type, expected",
+        [
+            (_pe_file, "pe", True),
+            (_elf_file, "elf", True),
+            (_macho_le32_file, "macho", True),
+            (_macho_le64_file, "macho", True),
+            (_macho_be32_file, "macho", True),
+            (_macho_be64_file, "macho", True),
+            (_macho_fat_be_file, "macho", True),
+            (_macho_fat_le_file, "macho", True),
+            (_text_file, "pe", False),
+            (_empty_file, "pe", False),
+            (_pe_file, "any", True),
+            (_elf_file, "any", True),
+            (_macho_le64_file, "any", True),
+            (_text_file, "any", False),
+        ],
+    )
+    def test_magic_bytes_detection(self, make_file, file_type, expected) -> None:
         from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = _pe_file(tmpdir)
-            assert _check_magic_bytes(path, "pe") is True
+            assert _check_magic_bytes(make_file(tmpdir), file_type) is expected
 
-    def test_elf_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _elf_file(tmpdir)
-            assert _check_magic_bytes(path, "elf") is True
-
-    def test_macho_le32_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_le32_file(tmpdir)
-            assert _check_magic_bytes(path, "macho") is True
-
-    def test_macho_le64_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_le64_file(tmpdir)
-            assert _check_magic_bytes(path, "macho") is True
-
-    def test_macho_be32_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_be32_file(tmpdir)
-            assert _check_magic_bytes(path, "macho") is True
-
-    def test_macho_be64_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_be64_file(tmpdir)
-            assert _check_magic_bytes(path, "macho") is True
-
-    def test_macho_fat_be_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_fat_be_file(tmpdir)
-            assert _check_magic_bytes(path, "macho") is True
-
-    def test_macho_fat_le_magic_bytes_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_fat_le_file(tmpdir)
-            assert _check_magic_bytes(path, "macho") is True
-
-    def test_text_file_not_detected_as_pe(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _text_file(tmpdir)
-            assert _check_magic_bytes(path, "pe") is False
-
-    def test_empty_file_not_detected(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _empty_file(tmpdir)
-            assert _check_magic_bytes(path, "pe") is False
-
-    def test_any_type_matches_pe(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _pe_file(tmpdir)
-            assert _check_magic_bytes(path, "any") is True
-
-    def test_any_type_matches_elf(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _elf_file(tmpdir)
-            assert _check_magic_bytes(path, "any") is True
-
-    def test_any_type_matches_macho(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _macho_le64_file(tmpdir)
-            assert _check_magic_bytes(path, "any") is True
-
-    def test_any_type_returns_false_for_text(self) -> None:
-        from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = _text_file(tmpdir)
-            assert _check_magic_bytes(path, "any") is False
 
     def test_nonexistent_file_returns_false(self) -> None:
         from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
