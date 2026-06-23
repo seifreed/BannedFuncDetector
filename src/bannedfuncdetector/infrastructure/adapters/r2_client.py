@@ -91,10 +91,10 @@ class R2Client(IR2Client):
         Args:
             file_path: Absolute or relative path to the binary file to analyze.
                       Must be a valid executable (PE, ELF, Mach-O).
-            flags: Optional list of radare2 flags. Defaults to ["-2"]
-                  to disable radare2 sandbox.
+            flags: Optional list of radare2 flags. Defaults to ["-2"],
+                  which closes radare2's stderr to silence warning noise.
                   Common flags:
-                  - "-2": Disable sandbox
+                  - "-2": Close stderr (silence radare2 warnings)
                   - "-A": Full automatic analysis on open
                   - "-w": Open in write mode
                   - "-d": Open in debug mode
@@ -105,7 +105,7 @@ class R2Client(IR2Client):
 
         Notes:
             - The connection remains open until quit() is called
-            - The "-2" flag disables sandbox for better compatibility
+            - The "-2" flag closes stderr to silence radare2 warnings
             - No automatic analysis is performed; call "aaa" explicitly
         """
         if flags is None:
