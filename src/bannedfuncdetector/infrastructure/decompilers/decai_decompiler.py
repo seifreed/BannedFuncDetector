@@ -48,6 +48,17 @@ def _safe_decai_value(value: object) -> str | None:
     return text
 
 
+def _coerce_port(value: object) -> int | None:
+    """Coerce a port to a positive int, accepting numeric strings from config."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip()) or None
+    return None
+
+
 def apply_decai_backend_config(r2: IR2Client, decai_config: dict[str, Any]) -> None:
     """Apply the configured decai backend (api/model/base URL) to the plugin.
 
@@ -60,7 +71,7 @@ def apply_decai_backend_config(r2: IR2Client, decai_config: dict[str, Any]) -> N
     api = _safe_decai_value(decai_config.get("api", ""))
     model = _safe_decai_value(decai_config.get("model", ""))
     host = _safe_decai_value(decai_config.get("host", ""))
-    port = decai_config.get("port")
+    port = _coerce_port(decai_config.get("port"))
 
     try:
         if api:
@@ -68,7 +79,7 @@ def apply_decai_backend_config(r2: IR2Client, decai_config: dict[str, Any]) -> N
         if model:
             r2.cmd(f"decai -e model={model}")
         if host:
-            base_url = f"{host}:{port}" if isinstance(port, int) and port else host
+            base_url = f"{host}:{port}" if port else host
             r2.cmd(f"decai -e baseurl={base_url}")
     except (RuntimeError, ValueError, OSError, AttributeError) as exc:
         logger.warning("Could not apply decai backend config: %s", exc)

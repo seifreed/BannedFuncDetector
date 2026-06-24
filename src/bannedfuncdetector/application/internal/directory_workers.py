@@ -47,12 +47,26 @@ def analyze_binary_job(
                 decompiler_orchestrator=decompiler_orchestrator,
             ),
             verbose=verbose,
-            worker_limit=config.get("worker_limit", 10),
+            worker_limit=_resolve_worker_limit(config),
             force_decompiler=force_decompiler,
             skip_banned=skip_banned,
             skip_analysis=skip_analysis,
         ),
     )
+
+
+def _resolve_worker_limit(config: IConfigRepository) -> int | None:
+    """Read the per-binary worker limit from the analysis config section.
+
+    The value lives at ``config["analysis"]["worker_limit"]`` (None means no
+    limit); the previous top-level ``config.get("worker_limit")`` lookup never
+    matched and always forced 10, ignoring the configured value.
+    """
+    analysis = config.get("analysis", {})
+    if not isinstance(analysis, dict):
+        return None
+    worker_limit = analysis.get("worker_limit")
+    return worker_limit if isinstance(worker_limit, int) else None
 
 
 def serialize_config(config: IConfigRepository) -> dict[str, Any]:

@@ -136,6 +136,20 @@ class AppConfig:
                 opt_dict["port"] = opt.port
             if opt.server_url:
                 opt_dict["server_url"] = opt.server_url
+            # Mirror the nested sub-dicts from_dict reads, so a from_dict ->
+            # to_dict -> from_dict round-trip preserves these fields instead of
+            # silently reverting them to defaults.
+            opt_dict["error_handling"] = {
+                "ignore_unknown_branches": opt.ignore_unknown_branches,
+                "clean_error_messages": opt.clean_error_messages,
+                "fallback_to_asm": opt.fallback_to_asm,
+            }
+            opt_dict["advanced_options"] = {
+                "temperature": opt.temperature,
+                "context": opt.context,
+                "max_tokens": opt.max_tokens,
+                "system_prompt": opt.system_prompt,
+            }
             decompiler_options_dict[name] = opt_dict
 
         decompiler_options_dict["ignore_unknown_branches"] = (
