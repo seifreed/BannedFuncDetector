@@ -284,6 +284,18 @@ class FakeDecompilerOrchestrator:
         return self._available_result
 
 
+@pytest.fixture(autouse=True)
+def _clear_plugin_availability_cache():
+    """Keep the memoized r2-plugin availability check isolated between tests."""
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_availability import (
+        _r2_plugin_available_cached,
+    )
+
+    _r2_plugin_available_cached.cache_clear()
+    yield
+    _r2_plugin_available_cached.cache_clear()
+
+
 @pytest.fixture
 def fake_r2() -> FakeR2:
     """

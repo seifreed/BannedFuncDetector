@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from typing import Any, cast
 
 import requests
@@ -43,6 +44,21 @@ DECAI_PREFERRED_MODELS = [
 ]
 
 
+@lru_cache(maxsize=8)
+def _r2_plugin_available_cached(decompiler_type: str) -> bool:
+    """Memoized r2-plugin availability check.
+
+    Each call to _check_r2_plugin_available spawns a throwaway r2 process, and
+    the cascade asks this once per analyzed function — so without caching a
+    145-function binary spawned ~145 r2 processes just to re-answer a constant
+    ("is r2ghidra installed?"). Plugin presence does not change during a
+    process, so the answer is cached. Cleared between tests by a conftest
+    fixture to keep availability checks isolated.
+    """
+    config = DECOMPILER_CONFIG[decompiler_type]
+    return _check_r2_plugin_available(config["check_cmd"], config["expected"])
+
+
 def check_decompiler_plugin_available(
     decompiler_type: str | DecompilerType,
 ) -> bool:
@@ -58,9 +74,11 @@ def check_decompiler_plugin_available(
     if config.get("always_available"):
         return True
     if config.get("check_service"):
+        # decai availability depends on a live Ollama service, so it is checked
+        # fresh (not cached) and is not on the per-function decompile path.
         return _check_decai_service_available(config["url"])
     if "check_cmd" in config:
-        return _check_r2_plugin_available(config["check_cmd"], config["expected"])
+        return _r2_plugin_available_cached(decompiler_type)
     return False
 
 
