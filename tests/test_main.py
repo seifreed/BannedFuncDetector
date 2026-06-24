@@ -759,3 +759,28 @@ def test_analyze_binary_with_fake_r2_open_error(compiled_binary, tmp_path):
         or "error" in str(result.error).lower()
         or "boom" in str(result.error).lower()
     )
+
+
+def test_main_output_dir_is_a_file_returns_1(compiled_binary, tmp_path):
+    """`-o <regular file>` must fail cleanly (exit 1), not raise FileExistsError.
+
+    os.makedirs(path, exist_ok=True) still raises when the path exists but is a
+    regular file; main() now catches that and returns 1 instead of crashing.
+    """
+    binary = tmp_path / "sample.bin"
+    os.link(compiled_binary, binary)
+    output_file = tmp_path / "output_is_a_file"
+    output_file.write_text("not a directory")
+
+    with _SysArgvOverride(
+        [
+            "prog",
+            "-f",
+            str(binary),
+            "--skip-analysis",
+            "--skip-banned",
+            "-o",
+            str(output_file),
+        ]
+    ):
+        assert bannedfunc_module.main() == 1

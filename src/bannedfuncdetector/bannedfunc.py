@@ -28,7 +28,11 @@ def main() -> int:
     )
 
     wiring = create_application_wiring()
-    os.makedirs(args.output, exist_ok=True)
+    try:
+        os.makedirs(args.output, exist_ok=True)
+    except OSError as exc:
+        logger.error("Cannot use output directory '%s': %s", args.output, exc)
+        return 1
     result = dispatch_cli_analysis(
         args,
         wiring,
