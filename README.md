@@ -167,6 +167,9 @@ URL as `host` + `/v1/chat/completions`). Providers supported by decai:
 
 ## Python Library
 
+Both helpers return a `Result`: `Ok(outcome)` on success or `Err(failure)` on
+error — check with `.is_ok()` and read the value with `.unwrap()`.
+
 ### Basic Usage
 
 ```python
@@ -178,7 +181,12 @@ result = analyze_file(
     output_dir="output",
 )
 
-print(result)
+if result.is_ok():
+    outcome = result.unwrap()
+    for finding in outcome.report.detected_functions:
+        print(finding.name, finding.banned_calls)
+else:
+    print("Analysis failed:", result.error)
 ```
 
 ### Directory Analysis
@@ -186,13 +194,16 @@ print(result)
 ```python
 from bannedfuncdetector.bannedfunc import analyze_directory
 
-results = analyze_directory(
+result = analyze_directory(
     "/path/to/binaries",
     output_dir="output",
     decompiler_type="r2dec",
+    parallel=True,
 )
 
-print(results)
+if result.is_ok():
+    summary = result.unwrap().summary
+    print(f"{summary.analyzed_files}/{summary.total_files} files analyzed")
 ```
 
 ---
