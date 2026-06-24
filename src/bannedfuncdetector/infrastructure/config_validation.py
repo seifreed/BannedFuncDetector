@@ -116,6 +116,34 @@ def validate_full_config(config: dict[str, Any]) -> Result[dict[str, Any], str]:
     if isinstance(result, Err):
         return Err(f"Analysis validation failed: {result.error}")
 
+    result = validate_function_filtering(config)
+    if isinstance(result, Err):
+        return result
+
+    return Ok(config)
+
+
+def validate_function_filtering(
+    config: dict[str, Any],
+) -> Result[dict[str, Any], str]:
+    """Validate the top-level small-function filtering settings.
+
+    ``small_function_threshold`` is compared with integer function sizes, so a
+    non-int value would raise a TypeError mid-analysis rather than being caught
+    here at the boundary.
+    """
+    if "small_function_threshold" in config:
+        threshold = config["small_function_threshold"]
+        if (
+            isinstance(threshold, bool)
+            or not isinstance(threshold, int)
+            or threshold < 0
+        ):
+            return Err("small_function_threshold must be a non-negative integer")
+    if "skip_small_functions" in config and not isinstance(
+        config["skip_small_functions"], bool
+    ):
+        return Err("skip_small_functions must be a boolean")
     return Ok(config)
 
 
@@ -127,5 +155,6 @@ __all__ = [
     "validate_config",
     "validate_decompiler_settings",
     "validate_full_config",
+    "validate_function_filtering",
     "validate_output_settings",
 ]
