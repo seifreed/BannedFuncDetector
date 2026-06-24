@@ -42,9 +42,18 @@ def _setup_analysis_error(
 
 
 def _validate_binary_input(binary_path: str) -> None:
-    """Validate that the target binary exists before analysis."""
+    """Validate that the target binary exists and is a regular file.
+
+    The regular-file check matters before the path is handed to radare2: a
+    FIFO, socket, or character device "exists" but blocks indefinitely on
+    open/read, which would hang the whole analysis.
+    """
     if not os.path.exists(binary_path):
         error_msg = f"The file {binary_path} does not exist."
+        logger.error(error_msg)
+        raise BinaryNotFoundError(error_msg)
+    if not os.path.isfile(binary_path):
+        error_msg = f"The path {binary_path} is not a regular file."
         logger.error(error_msg)
         raise BinaryNotFoundError(error_msg)
 
