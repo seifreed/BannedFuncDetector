@@ -33,6 +33,10 @@ logger = logging.getLogger(__name__)
 AFFIRMATIVE_RESPONSES = {"s", "si", "yes", "y"}
 ALLOWED_EXECUTABLES = frozenset({"r2ai-server", "r2pm"})
 
+# Cap r2ai-server CLI calls so a hung/unreachable backend can't block the tool
+# indefinitely (subprocess.run with no timeout blocks forever).
+_COMMAND_TIMEOUT_SECONDS = 30.0
+
 
 def _is_affirmative(response: str) -> bool:
     """Return True if the response is an affirmative answer."""
@@ -47,25 +51,43 @@ def _ping_server(server_url: str, timeout: int) -> bool:
 
 def _wait_for_server(server_url: str, attempts: int = 10, timeout: int = 1) -> bool:
     """Poll the server until it responds or attempts are exhausted."""
-    for _ in range(attempts):
+    for attempt in range(attempts):
         try:
             if _ping_server(server_url, timeout):
                 logger.info("r2ai-server is available")
                 return True
-        except requests.RequestException:
-            # Network or connection errors - server not ready yet
-            time.sleep(1)
-        except (OSError, IOError):
-            # System-level network errors
+        except (requests.RequestException, OSError):
+            # Network/connection error or non-ready server — retry after backoff.
+            pass
+        # Back off between attempts. This also runs when the server is reachable
+        # but replies non-200 (e.g. 503 during warmup); without it the loop would
+        # busy-spin through every attempt in microseconds instead of polling.
+        if attempt < attempts - 1:
             time.sleep(1)
     return False
 
 
-def _run_r2ai_server_command(args: list[str]) -> subprocess.CompletedProcess[str]:
-    """Run an r2ai-server command and return the completed process."""
+def _run_r2ai_server_command(
+    args: list[str], *, timeout: float = _COMMAND_TIMEOUT_SECONDS
+) -> subprocess.CompletedProcess[str]:
+    """Run an r2ai-server command and return the completed process.
+
+    A timeout is enforced so a hung backend surfaces as a failed command
+    (returncode 1) instead of blocking the caller forever.
+    """
     resolved = _resolve_command(args)
     _validate_executable(resolved)
-    return subprocess.run(resolved, capture_output=True, text=True)
+    try:
+        return subprocess.run(
+            resolved, capture_output=True, text=True, timeout=timeout
+        )
+    except subprocess.TimeoutExpired:
+        logger.error(
+            "r2ai-server command timed out after %ss: %s", timeout, resolved
+        )
+        return subprocess.CompletedProcess(
+            resolved, returncode=1, stdout="", stderr="timeout"
+        )
 
 
 def _get_models_from_cli() -> list[str]:
@@ -168,7 +190,13 @@ def get_r2ai_models(
         response = requests.get(f"{server_url}/models", timeout=timeout)
         if response.status_code == 200:
             models_data = response.json()
-            models: list[Any] = models_data.get("models", [])
+            # Accept both {"models": [...]} and a bare [...] top-level array.
+            if isinstance(models_data, dict):
+                models: list[Any] = models_data.get("models", [])
+            elif isinstance(models_data, list):
+                models = models_data
+            else:
+                models = []
             return models
     except (requests.RequestException, json.JSONDecodeError, ValueError, KeyError) as e:
         logger.warning("Error getting models from r2ai-server: %s", str(e))

@@ -101,6 +101,12 @@ class ImmutableConfig:
             if user_config is None:
                 logger.warning(f"Configuration file {config_file} not found.")
                 return
+            if not isinstance(user_config, dict):
+                logger.error(
+                    f"Configuration file {config_file} must contain a JSON object, "
+                    f"got {type(user_config).__name__}. Keeping current config."
+                )
+                return
             if not validate_config(user_config):
                 logger.warning(
                     f"Configuration file {config_file} missing required keys, merging with defaults."
@@ -142,6 +148,13 @@ def load_config(config_file: str = "config.json") -> dict[str, Any]:
         user_config = load_config_from_file(config_file)
         if user_config is None:
             logger.warning(f"Configuration file {config_file} not found.")
+            return copy.deepcopy(DEFAULT_CONFIG)
+
+        if not isinstance(user_config, dict):
+            logger.error(
+                f"Configuration file {config_file} must contain a JSON object, "
+                f"got {type(user_config).__name__}. Using defaults."
+            )
             return copy.deepcopy(DEFAULT_CONFIG)
 
         if not validate_config(user_config):
