@@ -60,11 +60,19 @@ ERROR_SKIP_PATTERNS: frozenset[str] = frozenset(
 )
 
 
+# ANSI escape sequences (color/SGR and other CSI codes). radare2 emits these in
+# decompiled output by default; left in, they split a banned-function name from
+# its call paren ("printf\x1b[0m(") and defeat call-site detection. Strip them so
+# detection is correct even when the r2 session was opened with color enabled.
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+
+
 def clean_decompiled_output(decompiled_text: str | None) -> str | None:
-    """Clean decompiled output by removing error messages and warnings."""
+    """Clean decompiled output by removing ANSI codes, error messages and warnings."""
     if not decompiled_text:
         return decompiled_text
 
+    decompiled_text = _ANSI_ESCAPE.sub("", decompiled_text)
     cleaned_lines = [
         line
         for line in decompiled_text.splitlines()

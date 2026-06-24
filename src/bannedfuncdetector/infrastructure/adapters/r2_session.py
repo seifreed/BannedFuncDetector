@@ -71,6 +71,11 @@ def open_binary_with_r2(
     for attempt in range(1, _OPEN_RETRY_ATTEMPTS + 1):
         try:
             r2 = r2_factory(binary_path)
+            # radare2 emits ANSI color codes by default. They split a banned
+            # function name from its call paren in decompiled output
+            # ("printf\x1b[0m(") and silently defeat decompilation-based
+            # detection, so force plain output for the whole session.
+            r2.cmd("e scr.color=0")
             if verbose:
                 logger.info("Analyzing the binary...")
             r2.cmd("aaa")

@@ -43,3 +43,27 @@ def test_valueerror_during_setup_propagates_and_closes_session() -> None:
 
     # The session that failed analysis was closed rather than leaked.
     assert created and all(client.quit_called for client in created)
+
+
+class _RecordingR2:
+    """Fake r2 client that records the commands it receives."""
+
+    def __init__(self) -> None:
+        self.commands: list[str] = []
+
+    def cmd(self, command: str) -> str:
+        self.commands.append(command)
+        return ""
+
+    def quit(self) -> None:  # pragma: no cover - not exercised here
+        pass
+
+
+def test_open_binary_disables_color_before_analysis() -> None:
+    """Color must be disabled so ANSI codes never split call sites in pseudocode."""
+    r2 = _RecordingR2()
+    open_binary_with_r2("/tmp/whatever", r2_factory=lambda _p: r2)
+
+    assert "e scr.color=0" in r2.commands
+    # Color is disabled before analysis (aaa), so all later output is plain.
+    assert r2.commands.index("e scr.color=0") < r2.commands.index("aaa")

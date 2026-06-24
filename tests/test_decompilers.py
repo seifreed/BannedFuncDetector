@@ -24,6 +24,23 @@ def make_config():
     return create_config_from_dict(DEFAULT_CONFIG)
 
 
+def test_clean_decompiled_output_strips_ansi_color():
+    """ANSI color codes (emitted by r2 by default) must be stripped so banned
+    call sites like 'printf(' are detectable instead of 'printf\\x1b[0m('."""
+    from bannedfuncdetector.infrastructure.decompilers.decompiler_support import (
+        clean_decompiled_output,
+    )
+    from bannedfuncdetector.domain.types import find_banned_calls_in_text
+
+    colored = "\x1b[38;2;58;150;221mvoid\x1b[0m f(){ sym.imp.strcpy\x1b[0m(d, s); }"
+    cleaned = clean_decompiled_output(colored)
+
+    assert "\x1b" not in cleaned
+    # Detection now sees a contiguous "strcpy(" and matches.
+    assert find_banned_calls_in_text("", {"strcpy"}) == []  # sanity
+    assert "strcpy" in find_banned_calls_in_text(cleaned, {"strcpy"})
+
+
 def make_function(
     name: str = "f", offset: int = 1, size: int = 100
 ) -> FunctionDescriptor:
