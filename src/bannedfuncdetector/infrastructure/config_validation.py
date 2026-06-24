@@ -9,13 +9,18 @@ from ..domain.result import Err, Ok, Result
 
 logger = logging.getLogger(__name__)
 
+# Accepted values for the decompiler "type" field. "r2ai" is kept because it is
+# a common user mistake that the selector intercepts with a helpful message
+# (it is an AI assistant, not a decompiler). "r2ai-server" is intentionally
+# absent: it is not wired into the decompilation flow, so accepting it as a type
+# and then silently falling back to "default" hides a configuration error. AI
+# decompilation is available through "decai".
 VALID_DECOMPILER_TYPES = [
     "default",
     "r2ghidra",
     "r2dec",
     "r2ai",
     "decai",
-    "r2ai-server",
 ]
 VALID_OUTPUT_FORMATS = ["json", "text", "html"]
 
