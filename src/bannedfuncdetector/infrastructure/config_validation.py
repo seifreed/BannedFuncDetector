@@ -87,11 +87,16 @@ def validate_analysis_settings(settings: dict[str, Any]) -> Result[dict[str, Any
     if not isinstance(settings, dict):
         return Err("Analysis settings must be a dictionary")
     if "max_workers" in settings:
-        if not isinstance(settings["max_workers"], int) or settings["max_workers"] <= 0:
+        if (
+            isinstance(settings["max_workers"], bool)
+            or not isinstance(settings["max_workers"], int)
+            or settings["max_workers"] <= 0
+        ):
             return Err("max_workers must be a positive integer")
     if "timeout" in settings:
         if (
-            not isinstance(settings["timeout"], (int, float))
+            isinstance(settings["timeout"], bool)
+            or not isinstance(settings["timeout"], (int, float))
             or settings["timeout"] <= 0
         ):
             return Err("timeout must be a positive number")

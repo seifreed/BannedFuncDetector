@@ -245,6 +245,12 @@ class TestValidateAnalysisSettings:
         result = validate_analysis_settings({"max_workers": "four"})
         assert isinstance(result, Err)
 
+    def test_bool_max_workers_returns_err(self):
+        # bool is a subclass of int; True must not slip through as a worker count.
+        result = validate_analysis_settings({"max_workers": True})
+        assert isinstance(result, Err)
+        assert "max_workers" in result.error
+
     def test_valid_timeout_int_passes(self):
         result = validate_analysis_settings({"timeout": 600})
         assert isinstance(result, Ok)
@@ -265,6 +271,12 @@ class TestValidateAnalysisSettings:
     def test_string_timeout_returns_err(self):
         result = validate_analysis_settings({"timeout": "fast"})
         assert isinstance(result, Err)
+
+    def test_bool_timeout_returns_err(self):
+        # bool is a subclass of int/float; True must not slip through as a timeout.
+        result = validate_analysis_settings({"timeout": True})
+        assert isinstance(result, Err)
+        assert "timeout" in result.error
 
     def test_bool_parallel_true_passes(self):
         result = validate_analysis_settings({"parallel": True})
