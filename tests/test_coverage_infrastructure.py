@@ -963,6 +963,7 @@ def test_process_single_function_empty_decompilation():
         current_index=0,
         config=config,
         decompile_function_impl=_empty_decompile,
+        banned_functions=(),
     )
     assert success is False
     assert result.is_err()
@@ -989,6 +990,7 @@ def test_process_single_function_raises_runtime_error():
         current_index=0,
         config=config,
         decompile_function_impl=_exploding_decompile,
+        banned_functions=(),
     )
     assert success is False
     assert result.is_err()

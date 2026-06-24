@@ -259,6 +259,38 @@ def test_decompile_with_selected_decompiler_no_alternative():
     assert result and result[0].detection_method == "decompilation"
 
 
+def test_decompile_with_selected_decompiler_honors_custom_banned_functions():
+    """Custom config['banned_functions'] is scanned, not just the built-in defaults."""
+    code = "my_unsafe_copy(dest, src); int abcdefghij_padding;"
+    fake = FakeR2(
+        cmd_map={"s f": "", "s *": "", "pdg": "", "pdd": "", "pdc": code}
+    )
+    config = create_config_from_dict({"banned_functions": ["my_unsafe_copy"]})
+    functions = [make_function()]
+    result = decompiler_orchestrator.decompile_with_selected_decompiler(
+        fake, functions, verbose=False, decompiler_type="default", config=config
+    )
+    assert result and result[0].banned_calls == ("my_unsafe_copy",)
+
+
+def test_decompile_with_selected_decompiler_custom_list_excludes_defaults():
+    """A narrowed custom list drops a default banned name from the scan.
+
+    Regression guard: the search previously used the hardcoded default set and
+    ignored config['banned_functions'], so strcpy here would always be flagged.
+    """
+    code = "strcpy(dest, src); int abcdefghij_padding;"
+    fake = FakeR2(
+        cmd_map={"s f": "", "s *": "", "pdg": "", "pdd": "", "pdc": code}
+    )
+    config = create_config_from_dict({"banned_functions": ["my_unsafe_copy"]})
+    functions = [make_function()]
+    result = decompiler_orchestrator.decompile_with_selected_decompiler(
+        fake, functions, verbose=False, decompiler_type="default", config=config
+    )
+    assert result == []
+
+
 def test_decompile_with_selected_decompiler_skip_small():
     fake = FakeR2()
     config = create_config_from_dict(

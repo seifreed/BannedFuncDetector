@@ -17,7 +17,7 @@ from typing import Any
 
 from bannedfuncdetector.constants import SMALL_FUNCTION_THRESHOLD
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
-from bannedfuncdetector.domain.banned_functions import BANNED_FUNCTIONS
+from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
 from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
 from bannedfuncdetector.domain.types import (
@@ -34,9 +34,6 @@ from .cascade import _decompile_with_instance
 from .selector import resolve_to_decompiler_type, select_decompiler
 
 logger = logging.getLogger(__name__)
-
-# Pre-sorted once at module load; sorting 300+ items on every analyzed function is O(N log N) waste.
-_BANNED_FUNCTIONS_SORTED: tuple[str, ...] = tuple(sorted(BANNED_FUNCTIONS))
 
 
 # --------------------------------------------------------------------------- #
@@ -88,6 +85,7 @@ def _search_banned_in_decompiled(
     decompiled_code: DecompiledCode,
     func: FunctionDescriptor,
     verbose: bool,
+    banned_functions: tuple[str, ...],
 ) -> Result[BannedFunction, str]:
     """Search for all banned functions in decompiled code."""
     func_name = func.name
@@ -95,7 +93,7 @@ def _search_banned_in_decompiled(
 
     found: list[str] = [
         insecure_func
-        for insecure_func in _BANNED_FUNCTIONS_SORTED
+        for insecure_func in banned_functions
         if _search_single_banned_function(decompiled_code, insecure_func, func_name)
     ]
 
@@ -196,6 +194,7 @@ def _process_single_function(
     current_index: int,
     config: IConfigRepository,
     decompile_function_impl: Callable[..., DecompilationResultType],
+    banned_functions: tuple[str, ...],
 ) -> tuple[Result[BannedFunction, str], bool]:
     """Decompile one function and search for banned calls."""
     func_name = func.name
@@ -216,7 +215,9 @@ def _process_single_function(
         if not decompiled:
             return err(f"Empty decompilation result for {func_name}"), False
 
-        detection_result = _search_banned_in_decompiled(decompiled, func, verbose)
+        detection_result = _search_banned_in_decompiled(
+            decompiled, func, verbose, banned_functions
+        )
         return detection_result, True
     except (KeyError, AttributeError, RuntimeError, ValueError, TypeError) as exc:
         return _handle_processing_exception(
@@ -233,6 +234,7 @@ def _iterate_and_decompile_functions(
     skip_small_functions: bool,
     config: IConfigRepository,
     decompile_function_impl: Callable[..., DecompilationResultType],
+    banned_functions: tuple[str, ...],
 ) -> tuple[list[BannedFunction], int, int]:
     """Iterate functions, decompile them, and collect banned-call detections."""
     detected_functions_list: list[BannedFunction] = []
@@ -264,6 +266,7 @@ def _iterate_and_decompile_functions(
             index,
             config,
             decompile_function_impl,
+            banned_functions,
         )
         if decompiled_ok:
             if isinstance(detection_result, Ok):
@@ -331,6 +334,9 @@ def decompile_with_selected_decompiler(
 
     _log_decompilation_progress(functions, decompiler_type_str, verbose)
     threshold, skip = _get_function_filtering_config(config)
+    # Honor a config-customized banned-function list (config["banned_functions"]),
+    # falling back to the built-in set, instead of always scanning the defaults.
+    banned_functions = tuple(sorted(get_banned_functions_set(config)))
     detected, success_count, error_count = _iterate_and_decompile_functions(
         r2,
         functions,
@@ -340,6 +346,7 @@ def decompile_with_selected_decompiler(
         skip,
         config,
         decompile_function_impl,
+        banned_functions,
     )
     _log_final_summary(
         len(functions), success_count, error_count, len(detected), verbose
