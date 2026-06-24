@@ -554,6 +554,20 @@ class TestFunctionDescriptorToDto:
         assert recovered.address == entity.address
         assert recovered.size == entity.size
 
+    def test_none_size_defaults_to_zero(self):
+        # A null size must not raise (which would fail extraction of the whole
+        # binary); it defaults to 0 like the offset path.
+        recovered = function_descriptor_from_dto(
+            {"name": "f", "offset": 0, "size": None}
+        )
+        assert recovered.size == 0
+
+    def test_non_numeric_size_defaults_to_zero(self):
+        recovered = function_descriptor_from_dto(
+            {"name": "f", "offset": 0, "size": "garbage"}
+        )
+        assert recovered.size == 0
+
 
 # ===========================================================================
 # application/dto_mappers.py – detection_entity_from_dto
@@ -713,6 +727,29 @@ class TestDetectionEntityFromDto:
         }
         result = detection_entity_from_dto(raw)
         assert result.size == 0
+
+    def test_non_numeric_size_defaults_to_zero(self):
+        raw = {
+            "name": "f",
+            "address": 0,
+            "size": "not-a-number",
+            "banned_functions": [],
+            "detection_method": "import",
+        }
+        result = detection_entity_from_dto(raw)
+        assert result.size == 0
+
+    def test_numeric_string_size_parsed_as_decimal(self):
+        # Regression: size is a plain count, not a hex address. "16" is 16, not 0x16.
+        raw = {
+            "name": "f",
+            "address": 0,
+            "size": "16",
+            "banned_functions": [],
+            "detection_method": "import",
+        }
+        result = detection_entity_from_dto(raw)
+        assert result.size == 16
 
 
 # ===========================================================================

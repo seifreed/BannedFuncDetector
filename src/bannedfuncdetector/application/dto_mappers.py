@@ -8,6 +8,19 @@ from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
 from bannedfuncdetector.domain.types import safe_parse_address
 
 
+def _safe_int(value: Any) -> int:
+    """Coerce a value to int (decimal), returning 0 for unusable input.
+
+    Never raises: a malformed size on one function must not fail the whole
+    binary's extraction. Mirrors the defensive intent of safe_parse_address,
+    but for plain counts rather than hex addresses.
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 def function_dto_name(func: dict[str, Any]) -> str:
     """Return a normalized function name from a raw payload."""
     return str(func.get("name") or "unknown")
@@ -21,7 +34,7 @@ def function_dto_offset(func: dict[str, Any]) -> int:
 
 def function_dto_size(func: dict[str, Any]) -> int:
     """Return a normalized function size from a raw payload."""
-    return int(func.get("size", 0))
+    return _safe_int(func.get("size", 0))
 
 
 def function_descriptor_from_dto(raw: dict[str, Any]) -> FunctionDescriptor:
@@ -65,7 +78,7 @@ def detection_entity_from_dto(
     return BannedFunction(
         name=str(detection.get("name", "unknown")),
         address=parsed_address,
-        size=safe_parse_address(detection.get("size", 0)),
+        size=_safe_int(detection.get("size", 0)),
         banned_calls=banned_calls,
         detection_method=str(detection_method),
         category=str(category) if isinstance(category, str) else None,
