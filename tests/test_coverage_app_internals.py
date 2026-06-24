@@ -400,6 +400,53 @@ class TestR2BinaryAnalyzer:
 
         assert isinstance(result, (Ok, Err))
 
+    def test_analyze_detects_banned_call_via_decompilation(self, tmp_path):
+        """With an orchestrator wired, the decompilation half runs and detects
+        banned calls in functions whose names are not themselves banned."""
+        from bannedfuncdetector.application.analysis_runtime import (
+            BinaryRuntimeServices,
+        )
+        from bannedfuncdetector.application.binary_analyzer.service import (
+            R2BinaryAnalyzer,
+        )
+        from bannedfuncdetector.domain.result import Ok, ok
+
+        binary = tmp_path / "sample.exe"
+        binary.write_bytes(b"\x00" * 64)
+
+        config = _base_config()  # banned_functions == ["strcpy"]
+        fake_r2 = _fake_r2_with_functions()  # one function: sym.main (not banned)
+        orchestrator = FakeDecompilerOrchestrator(
+            decompile_result=ok("void sym_main(void){ strcpy(dst, src); }")
+        )
+        analyzer = R2BinaryAnalyzer(
+            decompiler_type="default",
+            verbose=False,
+            r2_factory=lambda p: fake_r2,
+            config=config,
+            binary_services=BinaryRuntimeServices(
+                binary_opener=_make_opener_ok(fake_r2),
+                r2_closer=_make_closer_ok(),
+            ),
+            decompiler_orchestrator=orchestrator,
+        )
+
+        result = analyzer.analyze(str(binary))
+
+        assert isinstance(result, Ok)
+        detected = result.unwrap().report.detected_functions
+        assert len(detected) == 1
+        assert detected[0].detection_method == "decompilation"
+        assert "strcpy" in detected[0].banned_calls
+
+    def test_factory_wires_decompiler_orchestrator(self):
+        """create_binary_analyzer wires an orchestrator so the decompilation
+        half of analysis is actually available (regression guard)."""
+        from bannedfuncdetector.factories import create_binary_analyzer
+
+        analyzer = create_binary_analyzer(config=_base_config())
+        assert analyzer._decompiler_orchestrator is not None
+
 
 # ===========================================================================
 # 4. session_setup.py — lines 23, 33, 53

@@ -7,7 +7,11 @@ from bannedfuncdetector.application.contracts import (
     AnalysisRuntime,
     BinaryAnalysisRequest,
 )
-from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
+from bannedfuncdetector.domain.protocols import (
+    IConfigRepository,
+    IDecompilerOrchestrator,
+    IR2Client,
+)
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 
 from .core import analyze_binary
@@ -26,11 +30,15 @@ class R2BinaryAnalyzer:
         r2_factory: Callable[[str], IR2Client],
         config: IConfigRepository,
         binary_services: BinaryRuntimeServices,
+        decompiler_orchestrator: IDecompilerOrchestrator | None = None,
     ):
         self.decompiler_type = decompiler_type
         self.verbose = verbose
         self._r2_factory = r2_factory
         self._binary_services = binary_services
+        # Without an orchestrator the decompilation half is silently skipped,
+        # so full analysis requires one to be injected (the factory wires it).
+        self._decompiler_orchestrator = decompiler_orchestrator
         if config is None:
             raise ValueError("config is required for R2BinaryAnalyzer")
         self._config = config
@@ -44,6 +52,7 @@ class R2BinaryAnalyzer:
                     config=self._config,
                     r2_factory=self._r2_factory,
                     binary=self._binary_services,
+                    decompiler_orchestrator=self._decompiler_orchestrator,
                 ),
                 decompiler_type=self.decompiler_type,
                 verbose=self.verbose,
