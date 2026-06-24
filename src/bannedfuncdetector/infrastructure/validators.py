@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_REQUIREMENT_EXECUTABLES = frozenset({"r2", "python"})
 
+# Cap requirement-check subprocesses so a hung tool (e.g. r2 blocked on I/O)
+# cannot freeze the CLI; asyncio communicate() has no deadline of its own.
+_COMMAND_TIMEOUT_SECONDS = 30.0
+
 REQUIREMENTS = [
     {"name": "r2", "command": ["r2", "-v"], "expected": "radare2"},
     {
@@ -52,14 +56,26 @@ def _normalize_command(command: Sequence[str]) -> list[str]:
     return [executable, *command[1:]]
 
 
-async def _run_command_async(command: Sequence[str]) -> _CommandResult:
+async def _run_command_async(
+    command: Sequence[str], *, timeout: float = _COMMAND_TIMEOUT_SECONDS
+) -> _CommandResult:
     resolved = _normalize_command(command)
     process = await asyncio.create_subprocess_exec(
         *resolved,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout_bytes, stderr_bytes = await process.communicate()
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            process.communicate(), timeout=timeout
+        )
+    except (asyncio.TimeoutError, TimeoutError):
+        # A hung requirement check must not freeze the tool: terminate it and
+        # report a failed command instead of blocking forever.
+        logger.error("Command timed out after %ss: %s", timeout, resolved)
+        process.kill()
+        await process.wait()
+        return _CommandResult(returncode=1, stdout="", stderr="timeout")
     stdout = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
     stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
     return _CommandResult(
