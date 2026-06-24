@@ -15,6 +15,7 @@ import time
 from collections.abc import Callable
 
 from bannedfuncdetector.analyzer_exceptions import TransientR2Error
+from bannedfuncdetector.constants import DECOMPILER_TIMEOUT
 from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.result import Result, err, ok
 
@@ -76,6 +77,11 @@ def open_binary_with_r2(
             # ("printf\x1b[0m(") and silently defeat decompilation-based
             # detection, so force plain output for the whole session.
             r2.cmd("e scr.color=0")
+            # Bound the analysis phase. Without this, `aaa` on a large or
+            # deliberately obfuscated binary (the expected input for a malware
+            # tool) runs unbounded and can hang the analyst. anal.timeout caps
+            # it and r2 keeps whatever it analyzed so far.
+            r2.cmd(f"e anal.timeout={DECOMPILER_TIMEOUT}")
             if verbose:
                 logger.info("Analyzing the binary...")
             r2.cmd("aaa")

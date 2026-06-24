@@ -67,3 +67,16 @@ def test_open_binary_disables_color_before_analysis() -> None:
     assert "e scr.color=0" in r2.commands
     # Color is disabled before analysis (aaa), so all later output is plain.
     assert r2.commands.index("e scr.color=0") < r2.commands.index("aaa")
+
+
+def test_open_binary_bounds_analysis_timeout_before_aaa() -> None:
+    """Analysis must be time-bounded so an obfuscated binary cannot hang `aaa`."""
+    from bannedfuncdetector.constants import DECOMPILER_TIMEOUT
+
+    r2 = _RecordingR2()
+    open_binary_with_r2("/tmp/whatever", r2_factory=lambda _p: r2)
+
+    timeout_cmd = f"e anal.timeout={DECOMPILER_TIMEOUT}"
+    assert timeout_cmd in r2.commands
+    # The cap is applied before analysis runs.
+    assert r2.commands.index(timeout_cmd) < r2.commands.index("aaa")
