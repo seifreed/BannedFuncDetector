@@ -85,11 +85,25 @@ def is_small_function(func: dict[str, Any], threshold: int) -> bool:
     return bool(size < threshold) if isinstance(size, int) else False
 
 
+# Markers that identify an AI/decompiler *failure message* rather than code.
+# decai surfaces failures as a leading "ERROR: ..." string and r2 backends emit
+# phrases like "Cannot decompile"/"Unknown command". These are matched
+# case-sensitively so ordinary code that merely references error handling
+# (``strerror``, ``error_code``, ``GetLastError``, a ``goto error;`` label) is
+# not mistaken for a failed decompilation.
+_DECOMPILE_FAILURE_MARKERS = (
+    "ERROR:",
+    "Cannot decompile",
+    "Unknown command",
+    "RCmd.Use",
+)
+
+
 def is_valid_result(code: str | None) -> bool:
-    """Check if decompiled code is a valid result."""
+    """Check if decompiled code is a valid result (not a failure message)."""
     if not code or len(code) <= MIN_VALID_CODE_LENGTH:
         return False
-    return "Error" not in code and "error" not in code.lower()
+    return not any(marker in code for marker in _DECOMPILE_FAILURE_MARKERS)
 
 
 def try_decompile_with_command(
