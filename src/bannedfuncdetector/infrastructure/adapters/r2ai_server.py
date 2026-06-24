@@ -88,6 +88,15 @@ def _run_r2ai_server_command(
         return subprocess.CompletedProcess(
             resolved, returncode=1, stdout="", stderr="timeout"
         )
+    except OSError as exc:
+        # A genuinely-absent (or non-executable) binary raises here. Surface it
+        # as a failed command (returncode 1) — exactly like the timeout case —
+        # so callers route to the "not installed" / install-prompt path instead
+        # of having the exception swallowed into an unrelated "error" branch.
+        logger.error("r2ai-server command could not be run: %s (%s)", resolved, exc)
+        return subprocess.CompletedProcess(
+            resolved, returncode=1, stdout="", stderr=str(exc)
+        )
 
 
 def _get_models_from_cli() -> list[str]:

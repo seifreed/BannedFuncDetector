@@ -239,3 +239,61 @@ def test_prompt_install_r2ai_server_run_error():
         run=failing_run,
     )
     assert result is False
+
+
+def test_run_r2ai_server_command_missing_binary_returns_failure(monkeypatch):
+    """A genuinely-absent binary surfaces as a returncode=1 result, not an exception."""
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    def missing(*_args, **_kwargs):
+        raise FileNotFoundError("No such file or directory: 'r2ai-server'")
+
+    monkeypatch.setattr(r2ai_server.subprocess, "run", missing)
+    result = r2ai_server._run_r2ai_server_command(["r2ai-server", "-h"])
+    assert result.returncode == 1
+    assert "r2ai-server" in result.stderr
+
+
+def test_handle_r2ai_server_not_running_missing_binary_offers_install(monkeypatch):
+    """When the binary is absent, the user is offered installation (not silently False)."""
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    def missing(*_args, **_kwargs):
+        raise FileNotFoundError("No such file or directory: 'r2ai-server'")
+
+    monkeypatch.setattr(r2ai_server.subprocess, "run", missing)
+    prompts: list[str] = []
+
+    def record_decline(prompt: str) -> str:
+        prompts.append(prompt)
+        return "n"
+
+    result = r2ai_server._handle_r2ai_server_not_running(
+        "http://127.0.0.1:9",
+        auto_start=False,
+        prompt_callback=record_decline,
+    )
+    assert result is False
+    assert any("install" in prompt.lower() for prompt in prompts)
+
+
+def test_handle_r2ai_server_not_running_prompt_ioerror_returns_false(monkeypatch):
+    """An I/O failure while prompting the user is handled, not propagated."""
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    installed = subprocess.CompletedProcess(
+        ["r2ai-server", "-h"], returncode=0, stdout="usage", stderr=""
+    )
+    monkeypatch.setattr(
+        r2ai_server, "_run_r2ai_server_command", lambda *_a, **_k: installed
+    )
+
+    def failing_prompt(_prompt: str) -> str:
+        raise OSError("stdin unavailable")
+
+    result = r2ai_server._handle_r2ai_server_not_running(
+        "http://127.0.0.1:9",
+        auto_start=False,
+        prompt_callback=failing_prompt,
+    )
+    assert result is False
