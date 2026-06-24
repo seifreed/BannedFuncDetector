@@ -62,13 +62,21 @@ def normalize_directory_result(
     """Convert a worker Result into the structured directory-result contract."""
     if isinstance(result, Ok):
         return result
+    failure = result.error
     return err(
         ExecutionFailure(
             error=DirectoryExecutionError(
-                category="Analysis error",
+                # Preserve the original error category (I/O, Runtime, ...),
+                # phase and message instead of flattening everything to
+                # "Analysis error".
+                category=failure.error.category,
                 context=executable_file,
-                message=str(result.error),
-            )
+                message=failure.error.message,
+                phase=failure.error.phase,
+            ),
+            # Carry forward any notices (e.g. a cleanup failure) so the
+            # directory caller can still surface them.
+            operational_notices=failure.operational_notices,
         )
     )
 

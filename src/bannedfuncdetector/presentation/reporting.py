@@ -37,7 +37,7 @@ def display_final_results(
 
     logger.info("Analysis completed.")
     results_list = _normalize_results(result)
-    total_files = len(results_list)
+    total_files = _total_files_count(result)
     total_banned = sum(_count_detected_functions(r) for r in results_list)
 
     logger.info(f"Total files analyzed: {total_files}")
@@ -63,6 +63,20 @@ def _normalize_results(
     if isinstance(result, BinaryAnalysisOutcome):
         return [result.report]
     return list(result.summary.analyzed_results)
+
+
+def _total_files_count(
+    result: BinaryAnalysisOutcome | DirectoryAnalysisOutcome,
+) -> int:
+    """Total files the analysis covered.
+
+    For a directory this is every file found (``summary.total_files``), not
+    just the ones that produced a result — binaries that fail to open are still
+    part of the run and must be counted.
+    """
+    if isinstance(result, BinaryAnalysisOutcome):
+        return 1
+    return result.summary.total_files
 
 
 def _log_detected_functions(detected: Sequence[BannedFunction]) -> None:
