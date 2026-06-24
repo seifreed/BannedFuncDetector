@@ -70,9 +70,21 @@ class _BannedPatternMatcher:
         return bool(self._pattern_for(name).search(text))
 
     def find_all(self, text: str, names: set[str]) -> list[str]:
-        """Every name in ``names`` whose pattern occurs in ``text``."""
+        """Every name in ``names`` whose pattern occurs in ``text``.
+
+        Both patterns (``\\bname\\b`` and ``\\bname\\s*\\(``) can only match when
+        ``name`` itself appears in ``text``, so a cheap case-insensitive substring
+        check gates the (far more expensive) regex. On large binaries this turns
+        ~N*280 regex searches into only the handful that can actually match — a
+        necessary-condition filter, so it never changes the result.
+        """
         self._ensure_cache()
-        return [name for name in names if self._pattern_for(name).search(text)]
+        lowered = text.lower()
+        return [
+            name
+            for name in names
+            if name.lower() in lowered and self._pattern_for(name).search(text)
+        ]
 
 
 _CALL_MATCHER = _BannedPatternMatcher(_compile_call_pattern)
