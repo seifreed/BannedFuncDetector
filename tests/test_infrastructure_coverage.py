@@ -203,15 +203,12 @@ class TestValidateOutputSettings:
             result = validate_output_settings(settings)
             assert isinstance(result, Ok)
 
-    def test_invalid_format_still_returns_ok_but_logs_warning(self, caplog):
+    def test_invalid_format_is_rejected(self):
+        # Unsupported formats are now rejected (json/text/html are implemented).
         settings = {"directory": "/tmp/out", "format": "xml"}
-        with caplog.at_level(
-            logging.WARNING,
-            logger="bannedfuncdetector.infrastructure.config_validation",
-        ):
-            result = validate_output_settings(settings)
-        assert isinstance(result, Ok)
-        assert any("xml" in record.message for record in caplog.records)
+        result = validate_output_settings(settings)
+        assert isinstance(result, Err)
+        assert "xml" in result.error
 
     def test_no_format_key_returns_ok(self):
         settings = {"directory": "/tmp/out", "verbose": True}

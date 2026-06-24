@@ -9,7 +9,7 @@ from bannedfuncdetector.application.analysis_error import (
 from bannedfuncdetector.application.contracts import BinaryAnalysisRequest
 from bannedfuncdetector.application.internal import BinaryScanPlan
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
-from bannedfuncdetector.domain.protocols import IR2Client
+from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
 from bannedfuncdetector.domain.types import classify_error
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
@@ -40,16 +40,27 @@ def _analysis_error(
     return err(ExecutionFailure(error=error))
 
 
+def _resolve_output_format(config: IConfigRepository) -> str:
+    """Read the configured output format (json/text/html), defaulting to json."""
+    output_settings = config.get("output", {})
+    if isinstance(output_settings, dict):
+        return str(output_settings.get("format", "json"))
+    return "json"
+
+
 def _finalize_analysis(
     binary_path: str,
     functions: list[FunctionDescriptor],
     results: list[BannedFunction],
     output_dir: str | None,
     verbose: bool,
+    output_format: str = "json",
 ) -> BinaryAnalysisResultType:
     report = _create_analysis_report(binary_path, functions, results)
     if output_dir:
-        _save_analysis_results(report, output_dir, binary_path, verbose)
+        _save_analysis_results(
+            report, output_dir, binary_path, verbose, output_format
+        )
     return ok(BinaryAnalysisOutcome(report=report))
 
 
@@ -116,6 +127,7 @@ def run_detection_with_cleanup(
                 results,
                 params.output_dir,
                 params.verbose,
+                _resolve_output_format(params.runtime.config),
             )
         except (
             AnalysisError,

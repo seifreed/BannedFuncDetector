@@ -75,8 +75,9 @@ def validate_output_settings(settings: dict[str, Any]) -> Result[dict[str, Any],
     if "directory" not in settings:
         return Err("Output settings missing 'directory' field")
     if "format" in settings and settings["format"] not in VALID_OUTPUT_FORMATS:
-        logger.warning(
-            f"Output format '{settings['format']}' not in: {VALID_OUTPUT_FORMATS}"
+        return Err(
+            f"Output format '{settings['format']}' must be one of: "
+            f"{VALID_OUTPUT_FORMATS}"
         )
     return Ok(settings)
 
