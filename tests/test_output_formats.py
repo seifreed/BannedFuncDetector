@@ -62,6 +62,35 @@ def test_html_format_escapes(tmp_path):
     assert "<table" in content and "main" in content and "0x1149" in content
 
 
+def test_html_format_escapes_attacker_controlled_names(tmp_path):
+    """Function/call names come from the analysed (malicious) binary, so the
+    HTML report must escape them — otherwise a crafted symbol name is stored
+    XSS in a report an analyst opens in a browser."""
+    payload = "<script>alert('xss')</script>"
+    img = '"><img src=x onerror=alert(1)>'
+    malicious = AnalysisResult(
+        file_name=payload,
+        file_path=img,
+        total_functions=1,
+        detected_functions=(
+            BannedFunction(
+                name=payload,
+                address=0x401000,
+                size=10,
+                banned_calls=(img,),
+                detection_method="xref",
+                category="String",
+            ),
+        ),
+        analysis_date="2026-01-01",
+    )
+    path = _save_analysis_results(malicious, str(tmp_path), "evil", False, "html")
+    content = open(path).read()
+    assert payload not in content
+    assert "onerror=alert(1)>" not in content
+    assert "&lt;script&gt;" in content
+
+
 def test_unknown_format_falls_back_to_json(tmp_path):
     path = _save_analysis_results(_report(), str(tmp_path), "ls", False, "weird")
     assert path.endswith(".json")
