@@ -118,6 +118,7 @@ from bannedfuncdetector.infrastructure.validators import (
     check_python_version,
     validate_binary_file,
     _check_available_decompilers,
+    _check_file_type_detection,
 )
 from bannedfuncdetector.presentation.reporting import display_final_results
 
@@ -1689,6 +1690,41 @@ def test_check_available_decompilers_does_not_raise():
     """
     # Use whatever ls is available; the function handles missing file gracefully.
     _check_available_decompilers()  # Must not raise
+
+
+def test_check_file_type_detection_logs_available(caplog):
+    """When libmagic is present, the requirements check reports it at INFO."""
+    import bannedfuncdetector.infrastructure.file_detection as fd_mod
+
+    original = fd_mod.magic
+    try:
+        # Force a usable magic so the available branch is exercised deterministically.
+        class _OkMagic:
+            @staticmethod
+            def from_file(_path):
+                return "data"
+
+        fd_mod.magic = _OkMagic()
+        with caplog.at_level("INFO"):
+            _check_file_type_detection()
+        assert any("libmagic) is available" in r.message for r in caplog.records)
+    finally:
+        fd_mod.magic = original
+
+
+def test_check_file_type_detection_warns_when_absent(caplog):
+    """When libmagic is missing, the requirements check warns about the
+    weaker magic-byte fallback — otherwise a silent detection degradation."""
+    import bannedfuncdetector.infrastructure.file_detection as fd_mod
+
+    original = fd_mod.magic
+    try:
+        fd_mod.magic = None  # simulate missing python-magic
+        with caplog.at_level("WARNING"):
+            _check_file_type_detection()
+        assert any("magic-byte sniffing" in r.message for r in caplog.records)
+    finally:
+        fd_mod.magic = original
 
 
 def test_validate_binary_file_nonexistent_returns_false():

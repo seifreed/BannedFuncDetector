@@ -199,6 +199,24 @@ def _check_available_decompilers() -> None:
         logger.error(f"Data error checking decompilers: {str(e)}")
 
 
+def _check_file_type_detection() -> None:
+    """Report whether libmagic is available for file-type detection.
+
+    Its absence is otherwise a silent degradation: detection still runs but
+    falls back to magic-byte sniffing, which is weaker on packed binaries.
+    """
+    from .file_detection import is_magic_available
+
+    if is_magic_available():
+        logger.info("python-magic (libmagic) is available for file-type detection.")
+    else:
+        logger.warning(
+            "python-magic/libmagic is not available; file-type detection falls "
+            "back to magic-byte sniffing, which is less reliable for packed or "
+            "obfuscated binaries."
+        )
+
+
 def check_requirements(skip_requirements: bool = True) -> bool:
     """
     Verifies that all requirements to run the tool are met.
@@ -218,6 +236,8 @@ def check_requirements(skip_requirements: bool = True) -> bool:
         _check_available_decompilers()
     except ImportError:
         logger.warning("Could not import decompilers module to check decompilers.")
+
+    _check_file_type_detection()
 
     return all_requirements_met
 

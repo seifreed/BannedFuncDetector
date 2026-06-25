@@ -48,6 +48,15 @@ def _load_magic_module() -> Any | None:
     return None
 
 
+def is_magic_available() -> bool:
+    """Whether python-magic/libmagic is usable for file-type detection.
+
+    When False, detection falls back to magic-byte sniffing, which is less
+    reliable for packed or obfuscated binaries.
+    """
+    return _load_magic_module() is not None
+
+
 # Configure module logger
 logger = logging.getLogger(__name__)
 
