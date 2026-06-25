@@ -42,6 +42,23 @@ unacceptable without ground-truth equivalence work. `axj` (a single global
 xref dump) returns empty on this r2 build, so there is no drop-in
 result-preserving batch query either.
 
+## Rejected: batched single-roundtrip axffj
+
+Collapsing the N per-function `axffj` queries into one piped r2 command
+(`s addr; axffj; ...` with delimiters) measured **3.9x faster** on the
+23k-func ELF (1.28 s vs 5.03 s, identical semantics in principle). Not adopted:
+reliably splitting r2's concatenated command output back into per-function JSON
+is fragile (the prototype mis-parsed every record), and for most binaries the
+loop is not the bottleneck anyway — `aaa` is.
+
+## Bottom line
+
+For the common case `aaa` dominates and is already capped by `anal.timeout`.
+The per-function loop only dominates on pathological function-dense binaries
+(200k+). No simple, result-preserving, maintainable speedup is available there
+without validation work that would risk changing what a security tool flags, so
+the per-function `axffj` model is kept as-is.
+
 **Future work:** make the inverted scan provably equivalent (filter to
 `type==CALL`, reconcile symbol sources) before swapping, or parallelize the
 per-function loop across worker r2 instances for very large binaries (net win
