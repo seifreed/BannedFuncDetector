@@ -186,6 +186,24 @@ def test_parse_arguments_directory():
     assert args.skip_requirements is False
 
 
+def test_parse_arguments_check_requirements_standalone():
+    # --check-requirements is a system check with no target, so it parses
+    # without -f/-d.
+    with _SysArgvOverride(["prog", "--check-requirements"]):
+        args = parse_arguments()
+    assert args.file is None
+    assert args.directory is None
+    assert args.check_requirements is True
+    assert args.skip_requirements is False
+
+
+def test_parse_arguments_requires_target_or_check():
+    # Neither a target nor --check-requirements: argparse errors out.
+    with _SysArgvOverride(["prog"]):
+        with pytest.raises(SystemExit):
+            parse_arguments()
+
+
 # ===========================================================================
 # Binary analysis (real functions, real binaries)
 # ===========================================================================
@@ -326,6 +344,13 @@ def test_main_entry(compiled_binary, tmp_path):
             str(tmp_path / "out"),
         ]
     ):
+        assert bannedfunc_module.main() == 0
+
+
+def test_main_check_requirements_standalone(tmp_path):
+    """main() with only --check-requirements runs the check and exits 0,
+    without attempting any analysis."""
+    with _SysArgvOverride(["prog", "--check-requirements", "-o", str(tmp_path / "o")]):
         assert bannedfunc_module.main() == 0
 
 

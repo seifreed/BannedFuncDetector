@@ -97,6 +97,9 @@ def main() -> int:
         logger=logger,
     )
 
+    if args.check_requirements and not args.file and not args.directory:
+        return 0
+
     wiring = create_application_wiring()
     try:
         os.makedirs(args.output, exist_ok=True)

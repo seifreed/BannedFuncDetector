@@ -17,7 +17,9 @@ def parse_arguments() -> argparse.Namespace:
         description="BannedFuncDetector - Analyzes binaries to find banned functions. Author: Marc Rivero | @seifreed"
     )
 
-    group = parser.add_mutually_exclusive_group(required=True)
+    # Not required at the group level so --check-requirements can run on its own
+    # (a system check has no target by definition); enforced manually below.
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("-f", "--file", help="Executable file to analyze")
     group.add_argument(
         "-d", "--directory", help="Directory with executables to analyze"
@@ -63,6 +65,8 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
+    if not args.file and not args.directory and not args.check_requirements:
+        parser.error("one of the arguments -f/--file -d/--directory is required")
     args.skip_requirements = not args.check_requirements
 
     return args
