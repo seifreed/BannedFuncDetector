@@ -53,6 +53,7 @@ class _BannedPatternMatcher:
     def __init__(self, compile_pattern: "Callable[[str], re.Pattern[str]]") -> None:
         self._compile = compile_pattern
         self._cache: dict[str, re.Pattern[str]] = {}
+        self._lowered: dict[str, str] = {}
 
     def _ensure_cache(self) -> None:
         if not self._cache:
@@ -60,9 +61,13 @@ class _BannedPatternMatcher:
 
             for f in BANNED_FUNCTIONS:
                 self._cache[f] = self._compile(f)
+                self._lowered[f] = f.lower()
 
     def _pattern_for(self, name: str) -> re.Pattern[str]:
         return self._cache.get(name) or self._compile(name)
+
+    def _lower_for(self, name: str) -> str:
+        return self._lowered.get(name) or name.lower()
 
     def matches(self, text: str, name: str) -> bool:
         """Whether ``name``'s pattern occurs in ``text``."""
@@ -83,7 +88,7 @@ class _BannedPatternMatcher:
         return [
             name
             for name in names
-            if name.lower() in lowered and self._pattern_for(name).search(text)
+            if self._lower_for(name) in lowered and self._pattern_for(name).search(text)
         ]
 
 
