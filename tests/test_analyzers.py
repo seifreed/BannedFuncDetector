@@ -141,6 +141,33 @@ def identity_completed_futures(futures):
     return futures
 
 
+class _XrefR2:
+    """Fake IR2Client serving a fixed ``axffj`` reference list (xref model)."""
+
+    def __init__(self, *, axff=None, raise_exc=None):
+        self._axff = axff
+        self._raise_exc = raise_exc
+
+    def cmd(self, command):
+        return ""
+
+    def cmdj(self, command):
+        if self._raise_exc is not None:
+            raise self._raise_exc
+        if command.startswith("axffj"):
+            return self._axff
+        return None
+
+    def quit(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+
 def test_analyze_function_detect_by_name():
     fake_func = function_descriptor_from_dto({"name": "strcpy", "offset": 4096})
     result = analyzers.analyze_function(
@@ -178,26 +205,18 @@ def test_analyze_function_decompile_no_match(compiled_binary):
         r2.quit()
 
 
-def test_analyze_function_decompile_empty():
-    """Test that empty decompilation results in Err (no banned functions found)."""
+def test_analyze_function_no_xrefs():
+    """No cross-references for a function returns Err (nothing to flag)."""
     func = function_descriptor_from_dto({"name": "f", "offset": 1})
     result = analyzers.analyze_function(
-        None,
+        _XrefR2(axff=None),
         func,
         request=FunctionAnalysisRequest(
-            runtime=AnalysisRuntime(
-                config=make_config(),
-                config_factory=create_config_from_dict,
-                r2_factory=fake_r2_factory,
-                binary=_default_binary_services(),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(
-                    decompile_result=ok("")
-                ),
-            ),
+            runtime=make_runtime(),
             banned_functions={"strcpy"},
         ),
     )
-    # When decompilation is empty, returns Err (no banned functions found)
+    # No xrefs -> no banned calls -> Err.
     assert result.is_err()
 
 
@@ -497,20 +516,12 @@ def test_analyze_directory_verbose_success(tmp_path, pe_file):
 
 
 def test_analyze_function_exception():
-    """Test that exceptions during decompilation return Err."""
+    """Test that exceptions during the xref lookup return Err."""
     result = analyzers.analyze_function(
-        None,
+        _XrefR2(raise_exc=RuntimeError("boom")),
         function_descriptor_from_dto({"name": "f", "offset": 1}),
         request=FunctionAnalysisRequest(
-            runtime=AnalysisRuntime(
-                config=make_config(),
-                config_factory=create_config_from_dict,
-                r2_factory=fake_r2_factory,
-                binary=_default_binary_services(),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(
-                    decompile_result=RuntimeError("boom"),
-                ),
-            ),
+            runtime=make_runtime(),
             banned_functions=set(),
             verbose=True,
         ),
@@ -519,28 +530,20 @@ def test_analyze_function_exception():
     assert result.is_err()
 
 
-def test_analyze_function_decompile_match():
-    """Test that banned functions in decompiled code are detected."""
+def test_analyze_function_xref_match():
+    """Test that banned callees surfaced via xrefs are detected."""
     func = function_descriptor_from_dto({"name": "f", "offset": 1})
     result = analyzers.analyze_function(
-        None,
+        _XrefR2(axff=[{"type": "CALL", "name": "sym.imp.strcpy"}]),
         func,
         request=FunctionAnalysisRequest(
-            runtime=AnalysisRuntime(
-                config=make_config(),
-                config_factory=create_config_from_dict,
-                r2_factory=fake_r2_factory,
-                binary=_default_binary_services(),
-                decompiler_orchestrator=FakeDecompilerOrchestrator(
-                    decompile_result=ok("strcpy(")
-                ),
-            ),
+            runtime=make_runtime(),
             banned_functions={"strcpy"},
             verbose=True,
         ),
     )
     assert result.is_ok()
-    assert result.unwrap().detection_method == "decompilation"
+    assert result.unwrap().detection_method == "xref"
 
 
 def test_analyze_binary_no_decompiler(tmp_path):

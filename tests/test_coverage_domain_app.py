@@ -31,7 +31,7 @@ from bannedfuncdetector.application.analysis_runtime import (
     BinaryRuntimeServices,
 )
 from bannedfuncdetector.application.binary_analyzer.detection import (
-    _decompile_and_search,
+    _find_banned_calls_via_xref,
     _find_banned_in_code,
     _find_banned_in_name,
     _validate_analysis_inputs,
@@ -59,7 +59,7 @@ from bannedfuncdetector.domain.entities import (
     DirectoryAnalysisSummary,
     FunctionDescriptor,
 )
-from bannedfuncdetector.domain.result import Err, Ok, err, ok
+from bannedfuncdetector.domain.result import Err, Ok
 from bannedfuncdetector.domain.result import Err as ResultErr
 from bannedfuncdetector.domain.result import Ok as ResultOk
 from bannedfuncdetector.domain.result import ok as domain_ok
@@ -302,13 +302,32 @@ class TestExecutionFailureStr:
 # ---------------------------------------------------------------------------
 
 
+def _axff(*names: str) -> list[dict]:
+    """Build an ``axffj``-shaped CALL reference list for the given callee names."""
+    return [{"type": "CALL", "at": 0x1000, "ref": 0x2000, "name": n} for n in names]
+
+
 class FakeR2Client:
-    """Minimal real IR2Client implementation sufficient for detection tests."""
+    """Minimal real IR2Client implementation sufficient for detection tests.
+
+    ``axff`` is returned verbatim for any ``axffj`` query so detection tests can
+    drive the xref model without a real binary.
+    """
+
+    def __init__(
+        self, axff: list[dict] | None = None, raise_exc: Exception | None = None
+    ):
+        self._axff = axff
+        self._raise_exc = raise_exc
 
     def cmd(self, command: str) -> str:
         return ""
 
     def cmdj(self, command: str):
+        if self._raise_exc is not None:
+            raise self._raise_exc
+        if command.startswith("axffj"):
+            return self._axff
         return None
 
     def quit(self) -> None:
@@ -319,39 +338,6 @@ class FakeR2Client:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         pass
-
-
-class DecompilerOrchestratorReturnsOk:
-    """Real orchestrator that returns a fixed Ok result."""
-
-    def __init__(self, decompiled_code: str):
-        self._code = decompiled_code
-
-    def decompile_function(
-        self, r2, function_name: str, decompiler_type=None, **kwargs
-    ):
-        return ok(self._code)
-
-    def select_decompiler(self, requested=None, force=False) -> str:
-        return "default"
-
-    def check_decompiler_available(self, decompiler_type: str) -> bool:
-        return True
-
-
-class DecompilerOrchestratorReturnsErr:
-    """Real orchestrator that always returns an Err result."""
-
-    def decompile_function(
-        self, r2, function_name: str, decompiler_type=None, **kwargs
-    ):
-        return err("decompilation engine not available")
-
-    def select_decompiler(self, requested=None, force=False) -> str:
-        return "default"
-
-    def check_decompiler_available(self, decompiler_type: str) -> bool:
-        return False
 
 
 class TestFindBannedInNameCustomSet:
@@ -410,103 +396,82 @@ class TestFindBannedInCodeCustomSet:
         assert found == []
 
 
-class TestDecompileAndSearch:
-    """Lines 91, 133, 147 — _decompile_and_search control flow branches."""
+class TestFindBannedCallsViaXref:
+    """_find_banned_calls_via_xref control-flow branches (axffj-driven)."""
 
-    def test_returns_err_when_orchestrator_is_none(self):
-        # Line 91: orchestrator is None -> immediate Err
-        r2 = FakeR2Client()
-        result = _decompile_and_search(
+    def test_returns_err_when_no_xrefs(self):
+        # No cross-references for the function -> Err.
+        r2 = FakeR2Client(axff=None)
+        result = _find_banned_calls_via_xref(
             r2=r2,
             func_name="main",
             func_addr=0x1000,
             banned_functions={"strcpy"},
-            decompiler_type="default",
-            decompiler_orchestrator=None,
         )
         assert isinstance(result, ResultErr)
-        assert (
-            "orchestrator" in result.error.lower() or "required" in result.error.lower()
-        )
+        assert "No cross-references found" in result.error
 
-    def test_returns_err_when_decompilation_fails(self):
-        # Line 133: decompile_result is Err
-        r2 = FakeR2Client()
-        orch = DecompilerOrchestratorReturnsErr()
-        result = _decompile_and_search(
+    def test_returns_err_when_no_banned_in_xrefs(self):
+        # Callees exist but none are banned -> Err.
+        r2 = FakeR2Client(axff=_axff("sym.imp.printf", "sym.imp.malloc"))
+        result = _find_banned_calls_via_xref(
             r2=r2,
             func_name="main",
             func_addr=0x1000,
             banned_functions={"strcpy"},
-            decompiler_type="default",
-            decompiler_orchestrator=orch,
         )
         assert isinstance(result, ResultErr)
-        assert "Decompilation failed" in result.error
+        assert "No banned functions found in xrefs" in result.error
 
-    def test_returns_err_when_no_banned_found_in_code(self):
-        # Line 147: decompilation succeeds but code contains no banned calls
-        r2 = FakeR2Client()
-        orch = DecompilerOrchestratorReturnsOk("int main() { return 0; }")
-        result = _decompile_and_search(
-            r2=r2,
-            func_name="main",
-            func_addr=0x1000,
-            banned_functions={"strcpy"},
-            decompiler_type="default",
-            decompiler_orchestrator=orch,
-        )
-        assert isinstance(result, ResultErr)
-        assert "No banned functions found in decompiled code" in result.error
-
-    def test_returns_ok_when_banned_call_found_in_code(self):
-        # Happy path: decompiled code contains a banned call
-        r2 = FakeR2Client()
-        orch = DecompilerOrchestratorReturnsOk("void helper() { strcpy(buf, input); }")
-        result = _decompile_and_search(
+    def test_returns_ok_when_banned_callee_found(self):
+        # Happy path: a banned symbol is among the resolved callees.
+        r2 = FakeR2Client(axff=_axff("sym.imp.strcpy", "sym.imp.printf"))
+        result = _find_banned_calls_via_xref(
             r2=r2,
             func_name="helper",
             func_addr=0x2000,
             banned_functions={"strcpy"},
-            decompiler_type="default",
-            decompiler_orchestrator=orch,
         )
         assert isinstance(result, ResultOk)
         detection = result.unwrap()
         assert detection.name == "helper"
+        assert detection.detection_method == "xref"
         assert "strcpy" in detection.banned_calls
 
-    def test_returns_err_when_decompiled_code_is_empty(self):
-        # Orchestrator returns Ok but with empty string
-        r2 = FakeR2Client()
-        orch = DecompilerOrchestratorReturnsOk("")
-        result = _decompile_and_search(
+    def test_strips_r2_prefix_before_matching(self):
+        # Bare callee names (no sym.imp. prefix) must still match.
+        r2 = FakeR2Client(axff=_axff("gets"))
+        result = _find_banned_calls_via_xref(
+            r2=r2,
+            func_name="reader",
+            func_addr=0x4000,
+            banned_functions={"gets"},
+        )
+        assert isinstance(result, ResultOk)
+        assert "gets" in result.unwrap().banned_calls
+
+    def test_custom_banned_set_matches_callee(self):
+        # A custom (non-BANNED_FUNCTIONS) set still resolves against xref names.
+        r2 = FakeR2Client(axff=_axff("sym.imp.my_bad_func"))
+        result = _find_banned_calls_via_xref(
+            r2=r2,
+            func_name="foo",
+            func_addr=0x3000,
+            banned_functions={"my_bad_func"},
+        )
+        assert isinstance(result, ResultOk)
+        assert "my_bad_func" in result.unwrap().banned_calls
+
+    def test_ignores_malformed_xref_entries(self):
+        # Non-dict / nameless entries are skipped without raising.
+        r2 = FakeR2Client(axff=["not-a-dict", {"type": "CALL"}, {"name": ""}])
+        result = _find_banned_calls_via_xref(
             r2=r2,
             func_name="main",
             func_addr=0x1000,
             banned_functions={"strcpy"},
-            decompiler_type="default",
-            decompiler_orchestrator=orch,
         )
         assert isinstance(result, ResultErr)
-        assert "Empty decompilation result" in result.error
-
-    def test_custom_banned_set_uses_fallback_compilation_in_search(self):
-        # Passes a custom (non-BANNED_FUNCTIONS) set, exercising the fallback
-        # compilation path inside _find_banned_in_code (lines 75-78)
-        custom_banned = {"my_bad_func"}
-        r2 = FakeR2Client()
-        orch = DecompilerOrchestratorReturnsOk("void foo() { my_bad_func(x); }")
-        result = _decompile_and_search(
-            r2=r2,
-            func_name="foo",
-            func_addr=0x3000,
-            banned_functions=custom_banned,
-            decompiler_type="default",
-            decompiler_orchestrator=orch,
-        )
-        assert isinstance(result, ResultOk)
-        assert "my_bad_func" in result.unwrap().banned_calls
 
 
 class TestValidateAnalysisInputs:
@@ -580,13 +545,13 @@ class TestMergeDetections:
             address=0x1000,
             size=0,
             banned_calls=("gets",),
-            detection_method="decompilation",
+            detection_method="xref",
             category="string_input",
         )
         merged = _merge_detections(name_det, code_det)
         assert "strcpy" in merged.banned_calls
         assert "gets" in merged.banned_calls
-        assert merged.detection_method == "name+decompilation"
+        assert merged.detection_method == "name+xref"
 
     def test_merge_deduplicates_calls(self):
         name_det = BannedFunction(
@@ -601,7 +566,7 @@ class TestMergeDetections:
             address=0x2000,
             size=0,
             banned_calls=("strcpy",),
-            detection_method="decompilation",
+            detection_method="xref",
         )
         merged = _merge_detections(name_det, code_det)
         # After dedup, strcpy appears once
@@ -620,7 +585,7 @@ class TestMergeDetections:
             address=0xABCD,
             size=10,
             banned_calls=("sprintf",),
-            detection_method="decompilation",
+            detection_method="xref",
         )
         merged = _merge_detections(name_det, code_det)
         assert merged.name == "target_func"
@@ -640,7 +605,7 @@ class TestMergeDetections:
             address=0,
             size=0,
             banned_calls=("strcpy",),  # string_copy risk weight=8
-            detection_method="decompilation",
+            detection_method="xref",
             category="string_copy",
         )
         merged = _merge_detections(name_det, code_det)
@@ -649,16 +614,12 @@ class TestMergeDetections:
 
 
 class TestAnalyzeFunctionBothDetections:
-    """Line 101 — _run_detection_steps merges name and decompilation detections."""
+    """Line 101 — _run_detection_steps merges name and xref detections."""
 
     def test_both_name_and_code_detections_are_merged(self):
-        # Function name IS a banned function AND the decompiled code also contains it.
+        # Function name IS a banned function AND its xrefs also call one.
         # skip_banned=False, skip_analysis=False to run both steps.
-        r2 = FakeR2Client()
-        # Orchestrator returns code that also has a banned call.
-        orch = DecompilerOrchestratorReturnsOk(
-            "void strcpy_impl() { strcpy(dest, src); }"
-        )
+        r2 = FakeR2Client(axff=_axff("sym.imp.strcpy"))
 
         config_repo = type(
             "_Cfg",
@@ -678,7 +639,6 @@ class TestAnalyzeFunctionBothDetections:
                 binary_opener=lambda path, verbose, factory: r2,
                 r2_closer=lambda _r2: domain_ok(None),
             ),
-            decompiler_orchestrator=orch,
         )
         request = FunctionAnalysisRequest(
             runtime=runtime,
@@ -686,14 +646,14 @@ class TestAnalyzeFunctionBothDetections:
             decompiler_type="default",
             verbose=False,
             skip_banned=False,  # run name detection
-            skip_analysis=False,  # run decompilation detection
+            skip_analysis=False,  # run xref detection
         )
-        # func named "strcpy" -> name detection hits; decompiled code also has strcpy( -> code detection hits
+        # func named "strcpy" -> name detection hits; xref to strcpy -> code detection hits
         func = FunctionDescriptor(name="strcpy", address=0x1000, size=20)
         result = analyze_function(r2, func, request=request)
         assert result.is_ok()
         detection = result.unwrap()
-        assert detection.detection_method == "name+decompilation"
+        assert detection.detection_method == "name+xref"
         assert "strcpy" in detection.banned_calls
 
 
@@ -736,23 +696,8 @@ class TestAnalyzeFunctionAnalysisError:
         assert result.is_err()
         assert "cannot be None" in result.error
 
-    def _make_request_with_raising_orchestrator(
-        self, exc: Exception
-    ) -> FunctionAnalysisRequest:
-        """Build a FunctionAnalysisRequest whose orchestrator raises the given exception."""
-
-        class RaisingOrchestrator:
-            def decompile_function(
-                self, r2, function_name, decompiler_type=None, **kwargs
-            ):
-                raise exc
-
-            def select_decompiler(self, requested=None, force=False):
-                return "default"
-
-            def check_decompiler_available(self, decompiler_type):
-                return True
-
+    def _make_request_reaching_xref(self) -> FunctionAnalysisRequest:
+        """Build a request that skips the name check so the xref step runs."""
         config_repo = type(
             "_Cfg",
             (),
@@ -764,47 +709,41 @@ class TestAnalyzeFunctionAnalysisError:
             },
         )()
 
-        r2_instance = FakeR2Client()
         runtime = AnalysisRuntime(
             config=config_repo,
-            r2_factory=lambda _: r2_instance,
+            r2_factory=lambda _: FakeR2Client(),
             binary=BinaryRuntimeServices(
-                binary_opener=lambda path, verbose, factory: r2_instance,
+                binary_opener=lambda path, verbose, factory: FakeR2Client(),
                 r2_closer=lambda _r2: domain_ok(None),
             ),
-            decompiler_orchestrator=RaisingOrchestrator(),
         )
         return FunctionAnalysisRequest(
             runtime=runtime,
             banned_functions={"strcpy"},
             decompiler_type="default",
             verbose=False,
-            skip_banned=True,  # skip name check so we reach decompile step
+            skip_banned=True,  # skip name check so we reach the xref step
             skip_analysis=False,
         )
 
     def test_analysis_error_is_caught_and_returned_as_err(self):
-        r2 = FakeR2Client()
+        # r2 raising during the xref lookup is routed through the error handler.
+        r2 = FakeR2Client(raise_exc=AnalysisError("analysis exploded"))
         func = FunctionDescriptor(name="vuln_func", address=0x1000, size=50)
-        request = self._make_request_with_raising_orchestrator(
-            AnalysisError("analysis exploded")
-        )
-        result = analyze_function(r2, func, request=request)
+        result = analyze_function(r2, func, request=self._make_request_reaching_xref())
         assert result.is_err()
         assert "Analysis error" in result.error
 
     def test_runtime_error_is_caught_and_returned_as_err(self):
-        r2 = FakeR2Client()
+        r2 = FakeR2Client(raise_exc=RuntimeError("crash"))
         func = FunctionDescriptor(name="crash_func", address=0x2000, size=50)
-        request = self._make_request_with_raising_orchestrator(RuntimeError("crash"))
-        result = analyze_function(r2, func, request=request)
+        result = analyze_function(r2, func, request=self._make_request_reaching_xref())
         assert result.is_err()
 
     def test_value_error_is_caught_and_returned_as_err(self):
-        r2 = FakeR2Client()
+        r2 = FakeR2Client(raise_exc=ValueError("bad value"))
         func = FunctionDescriptor(name="bad_val", address=0x3000, size=50)
-        request = self._make_request_with_raising_orchestrator(ValueError("bad value"))
-        result = analyze_function(r2, func, request=request)
+        result = analyze_function(r2, func, request=self._make_request_reaching_xref())
         assert result.is_err()
 
 

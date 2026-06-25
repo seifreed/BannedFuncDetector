@@ -5,14 +5,14 @@ import logging
 from bannedfuncdetector.analyzer_exceptions import AnalysisError
 from bannedfuncdetector.application.contracts import FunctionAnalysisRequest
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
-from bannedfuncdetector.domain.protocols import IDecompilerOrchestrator, IR2Client
+from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.banned_functions import get_highest_risk_category
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
 from bannedfuncdetector.domain.types import classify_error
 
 from .detection import (
     _check_function_name_banned,
-    _decompile_and_search,
+    _find_banned_calls_via_xref,
     _validate_analysis_inputs,
 )
 
@@ -51,7 +51,7 @@ def _merge_detections(
         address=name_result.address,
         size=name_result.size,
         banned_calls=all_calls,
-        detection_method="name+decompilation",
+        detection_method="name+xref",
         category=category,
     )
 
@@ -60,12 +60,10 @@ def _run_detection_steps(
     r2: IR2Client,
     func: FunctionDescriptor,
     validated_banned: set[str],
-    decompiler_type: str,
     verbose: bool,
     *,
     skip_banned: bool,
     skip_analysis: bool,
-    decompiler_orchestrator: IDecompilerOrchestrator | None,
 ) -> Result[BannedFunction, str]:
     """Run the enabled detection steps for one function."""
     if skip_banned and skip_analysis:
@@ -86,17 +84,15 @@ def _run_detection_steps(
     code_detection: BannedFunction | None = None
 
     if not skip_analysis:
-        decompile_result = _decompile_and_search(
+        xref_result = _find_banned_calls_via_xref(
             r2,
             func.name,
             func.address,
             validated_banned,
-            decompiler_type,
             verbose,
-            decompiler_orchestrator=decompiler_orchestrator,
         )
-        if isinstance(decompile_result, Ok):
-            code_detection = decompile_result.unwrap()
+        if isinstance(xref_result, Ok):
+            code_detection = xref_result.unwrap()
 
     # Merge both detection results if available
     if name_detection and code_detection:
@@ -126,11 +122,9 @@ def analyze_function(
             r2,
             func,
             validated_banned,
-            request.decompiler_type,
             request.verbose,
             skip_banned=request.skip_banned,
             skip_analysis=request.skip_analysis,
-            decompiler_orchestrator=request.runtime.decompiler_orchestrator,
         )
     except (
         AnalysisError,

@@ -400,25 +400,45 @@ class TestR2BinaryAnalyzer:
 
         assert isinstance(result, (Ok, Err))
 
-    def test_analyze_detects_banned_call_via_decompilation(self, tmp_path):
-        """With an orchestrator wired, the decompilation half runs and detects
-        banned calls in functions whose names are not themselves banned."""
+    def test_analyze_detects_banned_call_via_xref(self, tmp_path):
+        """The xref half runs and detects banned calls in functions whose names
+        are not themselves banned."""
         from bannedfuncdetector.application.analysis_runtime import (
             BinaryRuntimeServices,
         )
         from bannedfuncdetector.application.binary_analyzer.service import (
             R2BinaryAnalyzer,
         )
-        from bannedfuncdetector.domain.result import Ok, ok
+        from bannedfuncdetector.domain.result import Ok
 
         binary = tmp_path / "sample.exe"
         binary.write_bytes(b"\x00" * 64)
 
         config = _base_config()  # banned_functions == ["strcpy"]
-        fake_r2 = _fake_r2_with_functions()  # one function: sym.main (not banned)
-        orchestrator = FakeDecompilerOrchestrator(
-            decompile_result=ok("void sym_main(void){ strcpy(dst, src); }")
-        )
+
+        class _XrefFakeR2:
+            """sym.main (name not banned) whose xrefs call sym.imp.strcpy."""
+
+            def cmd(self, command):
+                return ""
+
+            def cmdj(self, command):
+                if command == "aflj":
+                    return [{"name": "sym.main", "offset": 0x1000, "size": 100}]
+                if command.startswith("axffj"):
+                    return [{"type": "CALL", "name": "sym.imp.strcpy"}]
+                return None
+
+            def quit(self):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+        fake_r2 = _XrefFakeR2()
         analyzer = R2BinaryAnalyzer(
             decompiler_type="default",
             verbose=False,
@@ -428,7 +448,6 @@ class TestR2BinaryAnalyzer:
                 binary_opener=_make_opener_ok(fake_r2),
                 r2_closer=_make_closer_ok(),
             ),
-            decompiler_orchestrator=orchestrator,
         )
 
         result = analyzer.analyze(str(binary))
@@ -436,7 +455,7 @@ class TestR2BinaryAnalyzer:
         assert isinstance(result, Ok)
         detected = result.unwrap().report.detected_functions
         assert len(detected) == 1
-        assert detected[0].detection_method == "decompilation"
+        assert detected[0].detection_method == "xref"
         assert "strcpy" in detected[0].banned_calls
 
     def test_factory_wires_decompiler_orchestrator(self):

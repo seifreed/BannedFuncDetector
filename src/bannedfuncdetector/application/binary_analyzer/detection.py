@@ -4,8 +4,8 @@ import logging
 from typing import Any
 
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
-from bannedfuncdetector.domain.protocols import IR2Client, IDecompilerOrchestrator
-from bannedfuncdetector.domain.result import Result, Err, ok, err
+from bannedfuncdetector.domain.protocols import IR2Client
+from bannedfuncdetector.domain.result import Result, ok, err
 from bannedfuncdetector.domain.banned_functions import BANNED_FUNCTIONS
 from bannedfuncdetector.domain.types import (
     create_detection_result as _create_detection_result,
@@ -53,41 +53,65 @@ def _check_function_name_banned(
     return err(f"No banned functions found in name: {func_name}")
 
 
-def _decompile_and_search(
+_R2_SYMBOL_PREFIXES = ("sym.imp.", "sym.", "imp.", "reloc.", "flirt.", "loc.", "fcn.")
+
+
+def _strip_r2_symbol_prefix(name: str) -> str:
+    """Reduce an r2 flag name (``sym.imp.strcpy``) to its bare symbol (``strcpy``)."""
+    for prefix in _R2_SYMBOL_PREFIXES:
+        if name.startswith(prefix):
+            return name[len(prefix) :]
+    return name
+
+
+def _xref_callee_names(r2: IR2Client, func_addr: Any) -> list[str]:
+    """Bare names of every symbol the function at ``func_addr`` references."""
+    if r2 is None:
+        return []
+    refs = r2.cmdj(f"axffj @ {func_addr}")
+    if not isinstance(refs, list):
+        return []
+    names: list[str] = []
+    for ref in refs:
+        if not isinstance(ref, dict):
+            continue
+        name = ref.get("name")
+        if isinstance(name, str) and name:
+            names.append(_strip_r2_symbol_prefix(name))
+    return names
+
+
+def _find_banned_calls_via_xref(
     r2: IR2Client,
     func_name: str,
     func_addr: Any,
     banned_functions: set[str],
-    decompiler_type: str,
     verbose: bool = False,
-    decompiler_orchestrator: IDecompilerOrchestrator | None = None,
 ) -> Result[BannedFunction, str]:
-    """Decompile a function and search the recovered code for banned calls."""
-    if decompiler_orchestrator is None:
-        return err("Decompilation orchestrator is required for decompilation analysis")
+    """Detect banned calls from a function's cross-references (``axffj``).
 
-    decompile_result = decompiler_orchestrator.decompile_function(
-        r2, func_name, decompiler_type
-    )
+    Works on stripped/Go binaries where decompilation is unreliable: r2 resolves
+    call targets to symbol names directly, so we match those against the banned
+    set instead of regexing recovered C.
+    """
+    callees = _xref_callee_names(r2, func_addr)
+    if not callees:
+        return err(f"No cross-references found for {func_name}")
 
-    if isinstance(decompile_result, Err):
-        return err(f"Decompilation failed: {decompile_result.error}")
-
-    decompiled_code = decompile_result.unwrap()
-    if not decompiled_code:
-        return err(f"Empty decompilation result for {func_name}")
-
-    detected_banned = _find_banned_in_code(decompiled_code, banned_functions)
+    # Reuse the call-site matcher by synthesizing one call per callee; keeps
+    # detection semantics identical to the old decompiled-text path.
+    # ponytail: misses fortified wrappers (__strcpy_chk vs strcpy), same gap the
+    # text path had; add wrapper-stripping if those need flagging.
+    synthetic_calls = "\n".join(f"{name}(" for name in callees)
+    detected_banned = _find_banned_in_code(synthetic_calls, banned_functions)
 
     if detected_banned:
         if verbose:
-            logger.info(f"Insecure function detected in decompiled code: {func_name}")
+            logger.info(f"Insecure function detected via xrefs: {func_name}")
         return ok(
-            _create_detection_result(
-                func_name, func_addr, detected_banned, "decompilation"
-            )
+            _create_detection_result(func_name, func_addr, detected_banned, "xref")
         )
-    return err(f"No banned functions found in decompiled code: {func_name}")
+    return err(f"No banned functions found in xrefs: {func_name}")
 
 
 __all__: list[str] = []  # internal module; use explicit imports
