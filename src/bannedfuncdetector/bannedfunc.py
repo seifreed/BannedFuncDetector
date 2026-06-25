@@ -100,6 +100,13 @@ def main() -> int:
     if args.check_requirements and not args.file and not args.directory:
         return 0
 
+    if args.skip_banned and args.skip_analysis:
+        logger.warning(
+            "Both --skip-banned and --skip-analysis are set: no detection runs, "
+            "so a result of zero findings means nothing was checked, not that the "
+            "target is clean."
+        )
+
     wiring = create_application_wiring()
     try:
         os.makedirs(args.output, exist_ok=True)

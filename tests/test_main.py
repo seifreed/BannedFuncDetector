@@ -354,6 +354,27 @@ def test_main_check_requirements_standalone(tmp_path):
         assert bannedfunc_module.main() == 0
 
 
+def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
+    """Disabling both detection methods must warn that zero findings is
+    meaningless — otherwise it reads as a clean target."""
+    binary = tmp_path / "sample.bin"
+    os.link(compiled_binary, binary)
+    with _SysArgvOverride(
+        [
+            "prog",
+            "-f",
+            str(binary),
+            "--skip-banned",
+            "--skip-analysis",
+            "-o",
+            str(tmp_path / "out"),
+        ]
+    ):
+        with caplog.at_level("WARNING"):
+            bannedfunc_module.main()
+    assert any("nothing was checked" in r.message for r in caplog.records)
+
+
 def test_dispatch_passes_cli_flags_to_binary_analysis(tmp_path):
     """Test that dispatch_cli_analysis correctly threads CLI flags into the request.
 
