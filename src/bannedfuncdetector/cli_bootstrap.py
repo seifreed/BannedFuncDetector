@@ -7,12 +7,21 @@ import sys
 from collections.abc import Callable
 
 
-def configure_logging() -> None:
-    """Configure process-wide logging for CLI execution."""
+def configure_logging(verbose: bool = False) -> None:
+    """Configure process-wide logging for CLI execution.
+
+    ``verbose`` lowers the level to DEBUG so the ``logger.debug`` diagnostics
+    (symlink following, r2 client flags, file discovery, …) become visible;
+    otherwise they are unreachable since the level defaults to INFO.
+    """
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if verbose else logging.INFO,
         format="[%(levelname)s] %(message)s",
     )
+    if verbose:
+        # basicConfig is a no-op if handlers already exist (e.g. a worker that
+        # configured at INFO first), so force the level explicitly.
+        logging.getLogger().setLevel(logging.DEBUG)
 
 
 def validate_requirements(

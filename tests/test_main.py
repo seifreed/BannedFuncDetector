@@ -354,6 +354,26 @@ def test_main_check_requirements_standalone(tmp_path):
         assert bannedfunc_module.main() == 0
 
 
+def test_configure_logging_verbose_toggles_debug_level():
+    """verbose=True lowers the root level to DEBUG so the logger.debug
+    diagnostics become visible; verbose=False keeps INFO."""
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    root = logging.getLogger()
+    saved_level = root.level
+    saved_handlers = root.handlers[:]
+    try:
+        root.handlers.clear()
+        configure_logging(verbose=True)
+        assert root.level == logging.DEBUG
+        root.handlers.clear()
+        configure_logging(verbose=False)
+        assert root.level == logging.INFO
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""

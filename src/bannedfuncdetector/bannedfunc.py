@@ -88,9 +88,9 @@ def analyze_directory(
 
 def main() -> int:
     """Run the CLI entry point."""
-    configure_logging()
-    check_python_version()
     args = parse_arguments()
+    configure_logging(verbose=args.verbose)
+    check_python_version()
     validate_requirements(
         args.skip_requirements,
         check_requirements=check_requirements,
