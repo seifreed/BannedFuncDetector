@@ -233,6 +233,58 @@ class TestAnalyzeFunctionsInBinary:
                 function_analyzer=None,
             )
 
+    def test_warns_when_r2_dies_mid_scan(self, caplog):
+        """A dead r2 session after the loop logs an incomplete-results warning."""
+
+        class _DeadR2:
+            def cmd(self, command):
+                raise RuntimeError("Process terminated unexpectedly")
+
+            def cmdj(self, command):
+                return None
+
+            def quit(self):
+                pass
+
+        options = FunctionScanPlan(
+            decompiler_type="r2ghidra",
+            verbose=False,
+            worker_limit=1,
+            config=FakeConfig(),
+        )
+
+        def fake_analyzer(r2, func, *, request):
+            return Err("No banned functions")
+
+        with caplog.at_level("WARNING"):
+            results = analyze_functions_in_binary(
+                r2=_DeadR2(),
+                functions=[{"name": "f", "offset": 4096}],
+                banned_functions_set={"strcpy"},
+                options=options,
+                function_analyzer=fake_analyzer,
+            )
+
+        assert results == []
+        assert any("results are incomplete" in r.message for r in caplog.records)
+
+    def test_no_warning_when_no_functions(self, fake_r2_factory):
+        """An empty function list does not probe the session or warn."""
+        options = FunctionScanPlan(
+            decompiler_type="r2ghidra",
+            verbose=False,
+            worker_limit=1,
+            config=FakeConfig(),
+        )
+        results = analyze_functions_in_binary(
+            r2=fake_r2_factory(),
+            functions=[],
+            banned_functions_set={"strcpy"},
+            options=options,
+            function_analyzer=lambda r2, func, *, request: Err("x"),
+        )
+        assert results == []
+
     def test_analyze_functions_parallel_respects_worker_limit(self, fake_r2_factory):
         """Test that parallel analysis respects worker limit."""
         fake = fake_r2_factory()
