@@ -60,8 +60,8 @@ def _default_binary_services():
 
 
 skip_in_ci = pytest.mark.skipif(
-    os.environ.get("GITHUB_ACTIONS") == "true",
-    reason="r2pipe communication hangs in GitHub Actions CI environment",
+    os.environ.get("BFD_SKIP_R2_TESTS") == "1",
+    reason="r2-dependent test; set BFD_SKIP_R2_TESTS=1 to skip when r2 is unavailable",
 )
 
 

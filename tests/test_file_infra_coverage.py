@@ -43,8 +43,8 @@ def _make_r2_client_with_inner(compiled_binary: str, inner: object) -> R2Client:
     return client
 
 skip_in_ci = pytest.mark.skipif(
-    os.environ.get("GITHUB_ACTIONS") == "true",
-    reason="r2pipe communication hangs in GitHub Actions CI environment",
+    os.environ.get("BFD_SKIP_R2_TESTS") == "1",
+    reason="r2-dependent test; set BFD_SKIP_R2_TESTS=1 to skip when r2 is unavailable",
 )
 
 skip_on_windows = pytest.mark.skipif(
