@@ -454,6 +454,19 @@ class TestIsExecutableFileFallbackPaths:
             fd_mod.magic = original_magic
 
 
+def test_log_walk_error_warns_with_path(caplog):
+    """A directory-traversal error (e.g. an unreadable subdir) is surfaced as a
+    warning naming the path, so a partial scan is not silently complete."""
+    from bannedfuncdetector.infrastructure.file_detection import _log_walk_error
+
+    err = PermissionError(13, "Permission denied", "/some/locked/dir")
+    with caplog.at_level("WARNING"):
+        _log_walk_error(err)
+    messages = [r.message for r in caplog.records]
+    assert any("may be skipped" in m for m in messages)
+    assert any("/some/locked/dir" in m for m in messages)
+
+
 class TestFindExecutablesOsStatErrorPath:
     """
     Cover lines 272-273 in _find_executables: the except OSError branch

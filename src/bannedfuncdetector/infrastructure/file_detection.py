@@ -299,6 +299,20 @@ def find_executable_files(directory: str, file_type: str = "any") -> list[str]:
     )
 
 
+def _log_walk_error(error: OSError) -> None:
+    """Surface a directory-traversal failure so an incomplete scan is visible.
+
+    os.walk swallows per-directory errors (e.g. an unreadable subdirectory)
+    silently by default, which would let a scan skip part of the tree without
+    any indication — dangerous when the tree holds samples to analyse.
+    """
+    logger.warning(
+        "Cannot read %s during directory scan (%s); some files may be skipped.",
+        getattr(error, "filename", None) or "a directory",
+        error,
+    )
+
+
 def _find_executables(
     directory: str, file_type: str, debug_label: str, summary_label: str
 ) -> list[str]:
@@ -313,7 +327,9 @@ def _find_executables(
         set()
     )  # (device, inode) pairs for cycle detection
 
-    for root, dirs, files in os.walk(directory, followlinks=True):
+    for root, dirs, files in os.walk(
+        directory, followlinks=True, onerror=_log_walk_error
+    ):
         # Detect symlink cycles by tracking real directory identities
         real_root = os.path.realpath(root)
         try:
