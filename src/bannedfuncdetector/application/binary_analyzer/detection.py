@@ -64,8 +64,23 @@ def _strip_r2_symbol_prefix(name: str) -> str:
     return name
 
 
+def _defortify(name: str) -> str:
+    """Unwrap a ``_FORTIFY_SOURCE`` wrapper (``__strcpy_chk`` -> ``strcpy``).
+
+    Modern toolchains emit fortified variants for most string/memory calls, so
+    the bare banned name never appears at the call site without this.
+    """
+    if name.startswith("__") and name.endswith("_chk") and len(name) > 6:
+        return name[2:-4]
+    return name
+
+
 def _xref_callee_names(r2: IR2Client, func_addr: Any) -> list[str]:
-    """Bare names of every symbol the function at ``func_addr`` references."""
+    """Bare names of every symbol the function at ``func_addr`` references.
+
+    Fortified wrappers contribute their unwrapped name too, so a call to
+    ``__strcpy_chk`` is matched against banned ``strcpy``.
+    """
     if r2 is None:
         return []
     refs = r2.cmdj(f"axffj @ {func_addr}")
@@ -77,7 +92,11 @@ def _xref_callee_names(r2: IR2Client, func_addr: Any) -> list[str]:
             continue
         name = ref.get("name")
         if isinstance(name, str) and name:
-            names.append(_strip_r2_symbol_prefix(name))
+            bare = _strip_r2_symbol_prefix(name)
+            names.append(bare)
+            unwrapped = _defortify(bare)
+            if unwrapped != bare:
+                names.append(unwrapped)
     return names
 
 
@@ -99,9 +118,8 @@ def _find_banned_calls_via_xref(
         return err(f"No cross-references found for {func_name}")
 
     # Reuse the call-site matcher by synthesizing one call per callee; keeps
-    # detection semantics identical to the old decompiled-text path.
-    # ponytail: misses fortified wrappers (__strcpy_chk vs strcpy), same gap the
-    # text path had; add wrapper-stripping if those need flagging.
+    # detection semantics identical to the old decompiled-text path. Fortified
+    # wrappers are unwrapped upstream so __strcpy_chk matches banned strcpy.
     synthetic_calls = "\n".join(f"{name}(" for name in callees)
     detected_banned = _find_banned_in_code(synthetic_calls, banned_functions)
 

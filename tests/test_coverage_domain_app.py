@@ -450,6 +450,20 @@ class TestFindBannedCallsViaXref:
         assert isinstance(result, ResultOk)
         assert "gets" in result.unwrap().banned_calls
 
+    def test_unwraps_fortify_source_wrapper(self):
+        # __strcpy_chk (the _FORTIFY_SOURCE wrapper) must match banned strcpy.
+        r2 = FakeR2Client(axff=_axff("sym.imp.__strcpy_chk", "sym.imp.__sprintf_chk"))
+        result = _find_banned_calls_via_xref(
+            r2=r2,
+            func_name="v",
+            func_addr=0x5000,
+            banned_functions={"strcpy", "sprintf"},
+        )
+        assert isinstance(result, ResultOk)
+        detected = result.unwrap().banned_calls
+        assert "strcpy" in detected
+        assert "sprintf" in detected
+
     def test_custom_banned_set_matches_callee(self):
         # A custom (non-BANNED_FUNCTIONS) set still resolves against xref names.
         r2 = FakeR2Client(axff=_axff("sym.imp.my_bad_func"))
