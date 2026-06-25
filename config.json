@@ -83,6 +83,5 @@
     },
     "max_workers": 10,
     "skip_small_functions": true,
-    "small_function_threshold": 10,
-    "r2pipe_threads": 10
+    "small_function_threshold": 10
 }

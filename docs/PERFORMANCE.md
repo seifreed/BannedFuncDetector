@@ -63,3 +63,17 @@ the per-function `axffj` model is kept as-is.
 `type==CALL`, reconcile symbol sources) before swapping, or parallelize the
 per-function loop across worker r2 instances for very large binaries (net win
 only when loop time >> the repeated `aaa` cost).
+
+## Robustness note: r2 can die mid-scan on huge binaries
+
+On the 200k-function Mach-O under memory pressure, the r2 child process was
+SIGKILL'd partway through the per-function loop (`axffj @ <addr>` →
+"Process terminated unexpectedly"). The tool catches the per-function error and
+continues, so it returns a partial count without raising — one run reported 82
+unsafe where an unpressured run found 105. The detections are still correct,
+just incomplete. Surfacing "scan truncated, N functions unanalyzed" to the
+analyst (rather than a silently-partial count) is worthwhile future work; it
+needs a truncation flag threaded through the result/summary DTO, so it was not
+rushed here. Tested r2 build (6.1.8) exposes no `anal.threads` knob, so the
+orphaned `r2pipe_threads` config could not be wired to in-r2 parallelism and
+was removed instead.
