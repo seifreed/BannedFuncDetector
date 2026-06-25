@@ -132,7 +132,10 @@ def try_decompile_with_command(
         if decompiled and len(decompiled.strip()) > MIN_DECOMPILED_CODE_LENGTH:
             return decompiled
         return None
-    except (RuntimeError, ValueError, OSError, IOError, AttributeError):
+    except (RuntimeError, ValueError, OSError, IOError, AttributeError) as exc:
+        logger.debug(
+            "Decompilation command %r failed for %s: %s", command, function_name, exc
+        )
         return None
 
 

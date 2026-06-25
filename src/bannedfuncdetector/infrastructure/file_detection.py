@@ -123,7 +123,10 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
 
     try:
         detected_type = magic_module.from_file(file_path)
-    except Exception:
+    except Exception as exc:
+        logger.debug(
+            "libmagic failed on %s, falling back to magic bytes: %s", file_path, exc
+        )
         return None
 
     if file_type == "any":

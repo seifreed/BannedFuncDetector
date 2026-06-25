@@ -426,6 +426,33 @@ class TestIsExecutableFileFallbackPaths:
         finally:
             fd_mod.magic = original_magic
 
+    def test_libmagic_per_file_failure_logged_at_debug(self, caplog) -> None:
+        """libmagic that loads but fails on a specific file logs the per-file
+        failure at DEBUG (covers the fallback diagnostic in
+        _detect_executable_with_magic)."""
+        import bannedfuncdetector.infrastructure.file_detection as fd_mod
+
+        class _SelectiveMagic:
+            @staticmethod
+            def from_file(path: str) -> str:
+                # Succeed for the module's smoke-test (__file__, a .py), raise
+                # for the actual target so the per-file except is reached.
+                if path.endswith(".py"):
+                    return "Python script"
+                raise RuntimeError("boom on target")
+
+        original_magic = fd_mod.magic
+        try:
+            fd_mod.magic = _SelectiveMagic()
+            with tempfile.TemporaryDirectory() as tmpdir:
+                target = _pe_file(tmpdir)
+                with caplog.at_level("DEBUG"):
+                    # PE magic bytes still classify it after the libmagic failure.
+                    assert fd_mod.is_executable_file(target, "pe") is True
+            assert any("libmagic failed on" in r.message for r in caplog.records)
+        finally:
+            fd_mod.magic = original_magic
+
 
 class TestFindExecutablesOsStatErrorPath:
     """

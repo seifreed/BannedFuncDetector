@@ -1131,6 +1131,25 @@ def test_try_decompile_with_command_returns_none_for_short_output():
     assert result is None
 
 
+def test_try_decompile_with_command_logs_on_exception(caplog):
+    """A decompilation command that raises is swallowed (returns None) but
+    logged at DEBUG so the failure is diagnosable under -v."""
+
+    def boom():
+        raise RuntimeError("r2 exploded")
+
+    r2 = FakeR2(cmd_map={"s main": "", "pdc": boom})
+    with caplog.at_level("DEBUG"):
+        result = try_decompile_with_command(
+            r2, "pdc", "main", clean_error_messages=False
+        )
+    assert result is None
+    assert any(
+        "Decompilation command" in r.message and "failed" in r.message
+        for r in caplog.records
+    )
+
+
 # ===========================================================================
 # 13. infrastructure/decompilers/decompiler_availability.py — lines 54, 65-70, 83, 86, 90-92
 # ===========================================================================
