@@ -12,6 +12,7 @@ from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
+from bannedfuncdetector.cli_bootstrap import configure_logging
 from bannedfuncdetector.domain.result import Result
 
 from .directory_results import (
@@ -90,7 +91,10 @@ def iter_parallel_directory_results(
     )
     completed_iterator = plan.completed_futures or concurrent.futures.as_completed
 
-    with pool_factory(max_workers=max_workers) as executor:
+    # Worker processes start without the parent's logging config, so their
+    # INFO/WARNING output (including incomplete-scan warnings) would be silently
+    # dropped. The initializer reconfigures logging in each worker.
+    with pool_factory(max_workers=max_workers, initializer=configure_logging) as executor:
         futures: dict[concurrent.futures.Future[BinaryAnalysisResultType], str] = {
             executor.submit(worker, job): job.executable_file for job in jobs
         }
