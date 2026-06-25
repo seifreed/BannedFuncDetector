@@ -42,27 +42,41 @@ unacceptable without ground-truth equivalence work. `axj` (a single global
 xref dump) returns empty on this r2 build, so there is no drop-in
 result-preserving batch query either.
 
-## Rejected: batched single-roundtrip axffj
+## Rejected: skip functions with call-graph outdegree == 0
+
+`aflj` reports `outdegree` (call-graph out-edges), and 45% of the 23k-func ELF
+have outdegree 0 — tempting to skip their `axffj` query. **Unsafe**: outdegree
+counts edges to analysed *functions*, not to imports, so a thunk that only calls
+`sym.imp.strcpy` has outdegree 0 yet a banned CALL xref. Measured 15 such
+functions on the 23k ELF — skipping them would drop real detections.
+
+## Rejected: batched / chunked single-roundtrip axffj
 
 Collapsing the N per-function `axffj` queries into one piped r2 command
-(`s addr; axffj; ...` with delimiters) measured **3.9x faster** on the
-23k-func ELF (1.28 s vs 5.03 s, identical semantics in principle). Not adopted:
-reliably splitting r2's concatenated command output back into per-function JSON
-is fragile (the prototype mis-parsed every record), and for most binaries the
-loop is not the bottleneck anyway — `aaa` is.
+(`axffj @ a; ?e MARKER; ...`, parsed back per function) measured **3.3–3.8x
+faster** and is identical by construction. **Not adopted: it does not survive
+scale.** With a marker scheme that parses cleanly for 3 functions, batches of
+200–1000 functions come back from `r2.cmd()` with the `?e` markers missing
+entirely (0 parsed of 23k) — r2pipe's handling of large multi-command strings is
+unreliable, and the failure is silent (it would yield zero detections, not an
+error). This is an r2pipe interface limitation, not a parser bug. Shipping
+output-parsing whose correctness depends on input size is unacceptable for a
+security detector.
 
 ## Bottom line
 
 For the common case `aaa` dominates and is already capped by `anal.timeout`.
 The per-function loop only dominates on pathological function-dense binaries
-(200k+). No simple, result-preserving, maintainable speedup is available there
-without validation work that would risk changing what a security tool flags, so
-the per-function `axffj` model is kept as-is.
+(200k+). The optimization space has been investigated exhaustively — inverted
+scan, outdegree skip, lighter analysis, batched/chunked queries, the global
+`axj` dump (empty on this r2 build), and r2 `anal.threads` (absent in 6.1.8) —
+and **every avenue is either result-changing or unreliable at scale**. The
+per-function `axffj` model is kept as-is.
 
-**Future work:** make the inverted scan provably equivalent (filter to
-`type==CALL`, reconcile symbol sources) before swapping, or parallelize the
-per-function loop across worker r2 instances for very large binaries (net win
-only when loop time >> the repeated `aaa` cost).
+**Only remaining real lever** (a dedicated project, not a quick change): a
+custom r2 plugin / native batch primitive that returns all functions' call
+xrefs in one reliable round-trip, or sharding the loop across worker r2
+processes that load a saved analysis project (`Po`) instead of re-running `aaa`.
 
 ## Robustness note: r2 can die mid-scan on huge binaries
 
