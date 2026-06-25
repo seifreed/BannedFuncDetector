@@ -72,3 +72,8 @@ copilot-instructions.md
 CLAUDE.md
 */CLAUDE.md
 */*CLAUDE.md
+
+# Malware samples and analysis output (never commit binaries)
+samples/
+output/
+perf_results/
