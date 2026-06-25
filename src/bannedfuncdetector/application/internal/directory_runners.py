@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import functools
 import logging
 from concurrent.futures import Future
 from collections.abc import Callable, Iterator
@@ -92,9 +93,11 @@ def iter_parallel_directory_results(
     completed_iterator = plan.completed_futures or concurrent.futures.as_completed
 
     # Worker processes start without the parent's logging config, so their
-    # INFO/WARNING output (including incomplete-scan warnings) would be silently
-    # dropped. The initializer reconfigures logging in each worker.
-    with pool_factory(max_workers=max_workers, initializer=configure_logging) as executor:
+    # output (incomplete-scan warnings, and DEBUG diagnostics under -v) would be
+    # silently dropped. The initializer reconfigures logging in each worker at
+    # the run's verbosity so --parallel -v matches sequential -v.
+    initializer = functools.partial(configure_logging, verbose=plan.verbose)
+    with pool_factory(max_workers=max_workers, initializer=initializer) as executor:
         futures: dict[concurrent.futures.Future[BinaryAnalysisResultType], str] = {
             executor.submit(worker, job): job.executable_file for job in jobs
         }
