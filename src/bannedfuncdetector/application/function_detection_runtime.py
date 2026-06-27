@@ -42,6 +42,31 @@ def resolve_banned_functions(
     return (banned_functions_provider or get_banned_functions_set)(options.config)
 
 
+def _with_prefetched_xrefs(
+    r2: IR2Client,
+    functions: list[FunctionDescriptor],
+    options: FunctionScanPlan,
+) -> IR2Client:
+    """Wrap ``r2`` so per-function ``axffj`` queries hit a batched prefetch.
+
+    Only worthwhile for the xref path: when it is skipped no ``axffj`` runs, so
+    the prefetch is pointless. Falls back to the bare client when the batch
+    cannot be served, leaving detection behaviour unchanged.
+    """
+    if options.skip_analysis or not functions:
+        return r2
+    try:
+        addrs = [func.address for func in functions]
+    except AttributeError:
+        return r2
+    from .binary_analyzer.xref_prefetch import CachedAxffjClient, prefetch_axffj
+
+    cache = prefetch_axffj(r2, addrs)
+    if not cache:
+        return r2
+    return CachedAxffjClient(r2, cache)
+
+
 def analyze_functions_in_binary(
     r2: IR2Client,
     functions: list[FunctionDescriptor],
@@ -57,9 +82,10 @@ def analyze_functions_in_binary(
         )
 
     request = build_function_analysis_request(r2, options, banned_functions_set)
+    detection_client = _with_prefetched_xrefs(r2, functions, options)
     results: list[BannedFunction] = []
     for func in functions:
-        result = function_analyzer(r2, func, request=request)
+        result = function_analyzer(detection_client, func, request=request)
         if result.is_ok():
             detection = result.unwrap()
             results.append(detection)
