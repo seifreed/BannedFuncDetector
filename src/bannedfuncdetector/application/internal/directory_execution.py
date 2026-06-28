@@ -4,8 +4,10 @@ import os
 from collections.abc import Callable
 
 from bannedfuncdetector.application.analysis_outcome import DirectoryAnalysisOutcome
+from bannedfuncdetector.constants import DEFAULT_MAX_WORKERS
 from bannedfuncdetector.domain import AnalysisResult, DirectoryAnalysisSummary
 from bannedfuncdetector.application.analysis_outcome import OperationalNotice
+from bannedfuncdetector.domain.protocols import IConfigRepository
 
 from .directory_results import collect_directory_results, persist_directory_summary
 from .directory_runners import (
@@ -13,6 +15,21 @@ from .directory_runners import (
     iter_sequential_directory_results,
 )
 from .execution_plans import DirectoryScanPlan
+
+
+def _config_max_workers(config: IConfigRepository) -> int:
+    """Worker count for the directory pool, from ``config["analysis"]["max_workers"]``.
+
+    Falls back to ``DEFAULT_MAX_WORKERS`` when the section or value is missing or
+    invalid. This is the single source for directory parallelism (there is no
+    longer a separate top-level ``max_workers``).
+    """
+    analysis = config.get("analysis", {})
+    if isinstance(analysis, dict):
+        workers = analysis.get("max_workers")
+        if isinstance(workers, int) and not isinstance(workers, bool) and workers > 0:
+            return workers
+    return DEFAULT_MAX_WORKERS
 
 
 def execute_directory_plan(
@@ -28,7 +45,7 @@ def execute_directory_plan(
     max_workers = (
         options.max_workers
         if options.max_workers is not None
-        else config.get("max_workers", 4)
+        else _config_max_workers(config)
     )
 
     if options.parallel:

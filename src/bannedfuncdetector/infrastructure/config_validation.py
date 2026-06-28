@@ -126,15 +126,6 @@ def validate_full_config(config: dict[str, Any]) -> Result[dict[str, Any], str]:
     if isinstance(result, Err):
         return result
 
-    # The top-level "max_workers" (distinct from analysis.max_workers) is what
-    # the directory pool actually reads, and it is handed straight to
-    # ProcessPoolExecutor — a non-positive-int value would raise there instead
-    # of being caught at this boundary.
-    if "max_workers" in config:
-        workers = config["max_workers"]
-        if isinstance(workers, bool) or not isinstance(workers, int) or workers <= 0:
-            return Err("max_workers must be a positive integer")
-
     return Ok(config)
 
 

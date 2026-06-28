@@ -77,11 +77,10 @@
     },
     "analysis": {
         "parallel": true,
-        "max_workers": 4,
+        "max_workers": 10,
         "timeout": 600,
         "worker_limit": null
     },
-    "max_workers": 10,
     "skip_small_functions": true,
     "small_function_threshold": 10
 }

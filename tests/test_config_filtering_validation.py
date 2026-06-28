@@ -62,14 +62,14 @@ def test_create_config_from_dict_rejects_bad_threshold() -> None:
         create_config_from_dict({"small_function_threshold": "ten"})
 
 
-def test_top_level_max_workers_must_be_positive_int() -> None:
+def test_analysis_max_workers_must_be_positive_int() -> None:
     from bannedfuncdetector.infrastructure.config_validation import validate_full_config
 
     for bad in ("lots", 0, -1, True):
         cfg = _full()
-        cfg["max_workers"] = bad
+        cfg["analysis"]["max_workers"] = bad
         assert isinstance(validate_full_config(cfg), Err), bad
 
     cfg = _full()
-    cfg["max_workers"] = 8
+    cfg["analysis"]["max_workers"] = 8
     assert isinstance(validate_full_config(cfg), Ok)

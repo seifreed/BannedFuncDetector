@@ -180,7 +180,6 @@ class AppConfig:
                 "timeout": self.timeout,
                 "worker_limit": self.worker_limit,
             },
-            "max_workers": self.max_workers,
             "skip_small_functions": self.skip_small_functions,
             "small_function_threshold": self.small_function_threshold,
         }
