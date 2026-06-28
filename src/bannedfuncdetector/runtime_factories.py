@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 from collections.abc import Callable
 
@@ -59,13 +60,48 @@ def create_config_from_dict(config_dict: dict) -> IConfigRepository:
     return DictConfig(merged)
 
 
-def _default_binary_opener(
-    binary_path: str, verbose: bool, r2_factory: Callable
-) -> IR2Client:
-    """Top-level picklable adapter for open_binary_with_r2."""
-    from .infrastructure.adapters.r2_session import open_binary_with_r2
+def _resolve_anal_timeout(config: IConfigRepository) -> int:
+    """Read the r2 analysis-time budget from ``config["analysis"]["timeout"]``.
 
-    return open_binary_with_r2(binary_path, verbose, r2_factory=r2_factory)
+    Falls back to ``DECOMPILER_TIMEOUT`` when the section or value is missing or
+    invalid. The value caps r2's ``aaa`` so larger budgets recover more
+    functions on big binaries; it is honored via :func:`_default_binary_opener`.
+    """
+    from .constants import DECOMPILER_TIMEOUT
+
+    analysis = config.get("analysis", {})
+    if isinstance(analysis, dict):
+        timeout = analysis.get("timeout")
+        if (
+            isinstance(timeout, (int, float))
+            and not isinstance(timeout, bool)
+            and timeout > 0
+        ):
+            return int(timeout)
+    return DECOMPILER_TIMEOUT
+
+
+def _default_binary_opener(
+    binary_path: str,
+    verbose: bool,
+    r2_factory: Callable,
+    *,
+    anal_timeout: int | None = None,
+) -> IR2Client:
+    """Top-level picklable adapter for open_binary_with_r2.
+
+    ``anal_timeout`` is bound by the factories (via ``functools.partial``) from
+    config; ``None`` keeps r2_session's built-in default for direct callers.
+    """
+    from .infrastructure.adapters.r2_session import open_binary_with_r2
+    from .constants import DECOMPILER_TIMEOUT
+
+    return open_binary_with_r2(
+        binary_path,
+        verbose,
+        r2_factory=r2_factory,
+        anal_timeout=anal_timeout if anal_timeout is not None else DECOMPILER_TIMEOUT,
+    )
 
 
 def _default_r2_closer(r2: IR2Client) -> Result[None, str]:
@@ -109,7 +145,9 @@ def create_application_wiring(config_path: str | None = None) -> AnalysisRuntime
     return AnalysisRuntime(
         config=config,
         binary=BinaryRuntimeServices(
-            binary_opener=_default_binary_opener,
+            binary_opener=functools.partial(
+                _default_binary_opener, anal_timeout=_resolve_anal_timeout(config)
+            ),
             r2_closer=_default_r2_closer,
         ),
         directory=DirectoryRuntimeServices(

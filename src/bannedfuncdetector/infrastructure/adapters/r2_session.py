@@ -63,6 +63,7 @@ def open_binary_with_r2(
     verbose: bool = False,
     *,
     r2_factory: Callable[[str], IR2Client],
+    anal_timeout: int = DECOMPILER_TIMEOUT,
 ) -> IR2Client:
     last_error: Exception | None = None
     if verbose:
@@ -80,8 +81,10 @@ def open_binary_with_r2(
             # Bound the analysis phase. Without this, `aaa` on a large or
             # deliberately obfuscated binary (the expected input for a malware
             # tool) runs unbounded and can hang the analyst. anal.timeout caps
-            # it and r2 keeps whatever it analyzed so far.
-            r2.cmd(f"e anal.timeout={DECOMPILER_TIMEOUT}")
+            # it and r2 keeps whatever it analyzed so far. The cap comes from
+            # config["analysis"]["timeout"], so large binaries can be given a
+            # longer budget to recover more functions.
+            r2.cmd(f"e anal.timeout={anal_timeout}")
             if verbose:
                 logger.info("Analyzing the binary...")
             r2.cmd("aaa")

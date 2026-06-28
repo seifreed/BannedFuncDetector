@@ -14,6 +14,7 @@ application wiring the way the process pool does.
 
 from __future__ import annotations
 
+import functools
 import pickle
 
 from bannedfuncdetector.factories import create_application_wiring
@@ -36,12 +37,20 @@ def test_application_wiring_parallel_handoff_fields_serialize() -> None:
         wiring.orchestrator_factory,
         wiring.config_factory,
         wiring.r2_factory,
-        wiring.binary.binary_opener,
         wiring.binary.r2_closer,
         wiring.directory.file_finder,
     ):
-        # Raises PicklingError if a closure/lambda sneaks back in.
+        # Top-level callables pickle by reference; a closure/lambda would raise.
         assert pickle.loads(pickle.dumps(value)) is value
+
+    # binary_opener binds the config-derived anal.timeout via functools.partial,
+    # which serializes to an equivalent (not identical) object. It must still
+    # survive the round-trip with its function and bound keywords intact.
+    opener = wiring.binary.binary_opener
+    assert isinstance(opener, functools.partial)
+    restored = pickle.loads(pickle.dumps(opener))
+    assert restored.func is opener.func
+    assert restored.keywords == opener.keywords
 
 
 def test_default_orchestrator_factory_builds_orchestrator() -> None:

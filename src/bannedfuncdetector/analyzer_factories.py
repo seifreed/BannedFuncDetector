@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -25,6 +26,7 @@ def create_binary_analyzer(
     from .runtime_factories import (
         _default_binary_opener,
         _default_r2_closer,
+        _resolve_anal_timeout,
         create_config_from_dict,
     )
     from .infrastructure.decompilers.orchestrator import create_decompiler_orchestrator
@@ -36,7 +38,9 @@ def create_binary_analyzer(
         r2_factory=effective_factory,
         config=config,
         binary_services=BinaryRuntimeServices(
-            binary_opener=_default_binary_opener,
+            binary_opener=functools.partial(
+                _default_binary_opener, anal_timeout=_resolve_anal_timeout(config)
+            ),
             r2_closer=_default_r2_closer,
         ),
         # Wire the decompiler orchestrator so the factory-built analyzer can do

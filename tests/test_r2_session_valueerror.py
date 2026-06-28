@@ -80,3 +80,12 @@ def test_open_binary_bounds_analysis_timeout_before_aaa() -> None:
     assert timeout_cmd in r2.commands
     # The cap is applied before analysis runs.
     assert r2.commands.index(timeout_cmd) < r2.commands.index("aaa")
+
+
+def test_open_binary_honors_custom_analysis_timeout() -> None:
+    """A caller-supplied analysis budget overrides the built-in default."""
+    r2 = _RecordingR2()
+    open_binary_with_r2("/tmp/whatever", r2_factory=lambda _p: r2, anal_timeout=600)
+
+    assert "e anal.timeout=600" in r2.commands
+    assert r2.commands.index("e anal.timeout=600") < r2.commands.index("aaa")
