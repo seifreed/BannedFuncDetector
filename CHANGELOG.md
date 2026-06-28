@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `output.open_results`: when enabled, open the saved report in the platform's
+  default viewer (`open`/`xdg-open`/`start`) after a successful single-file scan
+
 ### Changed
+- Batch per-function `axffj` cross-reference queries into a single r2pipe
+  round-trip (sentinel-delimited), collapsing tens of thousands of round-trips
+  into a handful; detection-loop time on large binaries drops sharply (measured
+  ~15x on a 199k-function binary) with byte-identical results
+- Cache lowercased banned-function names in the detection pre-filter, removing
+  the redundant per-binary re-lowercasing of the banned set
+- Consolidate the directory worker count under `analysis.max_workers` and drop
+  the dead top-level `max_workers` duplicate (behavior unchanged)
 - Removed dead legacy flat modules (`main.py`, `detector.py`, `analyzers.py`,
   `config.py`, `decompilers.py`, `utils.py`) that duplicated the package;
   restores a single source of truth (~1000 lines removed)
@@ -19,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   duplicate regex cache in `binary_analyzer/detection.py`
 - Removed redundant shebangs and UTF-8 coding cookies from imported library
   modules (kept only on real entry points)
+
+### Fixed
+- Honor `config["analysis"]["timeout"]` for radare2's `anal.timeout`, which was
+  hardcoded to 30s and ignored the configured value; large binaries can now use
+  the configured analysis budget to recover more functions
+
+### Removed
+- Dead config options with no runtime effect: `decompiler.options.error_threshold`
+  and `decompiler.options.max_retries`
 
 ## [3.0.1] - 2026-03-20
 
