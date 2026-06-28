@@ -138,7 +138,6 @@ def test_decompile_function_r2ghidra_cleaned_output():
         {
             "decompiler": {
                 "options": {
-                    "max_retries": 1,
                     "ignore_unknown_branches": True,
                     "fallback_to_asm": True,
                     "clean_error_messages": True,

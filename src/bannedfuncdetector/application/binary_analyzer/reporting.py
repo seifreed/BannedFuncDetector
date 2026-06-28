@@ -93,6 +93,21 @@ def _render_html(report: AnalysisResult) -> str:
 _RENDERERS = {"json": _render_json, "text": _render_text, "html": _render_html}
 
 
+def results_file_path(
+    output_dir: str, binary_path: str, output_format: str = "json"
+) -> str:
+    """Path of the saved report for one binary.
+
+    Shared by the writer and the optional ``open_results`` step so both agree on
+    where the report lands. An unrecognized format falls back to JSON.
+    """
+    fmt = output_format if output_format in _RENDERERS else "json"
+    extension = _FORMAT_EXTENSIONS[fmt]
+    return os.path.join(
+        output_dir, f"{os.path.basename(binary_path)}_banned_functions.{extension}"
+    )
+
+
 def _save_analysis_results(
     report: AnalysisResult,
     output_dir: str,
@@ -106,11 +121,8 @@ def _save_analysis_results(
     falls back to JSON.
     """
     fmt = output_format if output_format in _RENDERERS else "json"
-    extension = _FORMAT_EXTENSIONS[fmt]
     os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(
-        output_dir, f"{os.path.basename(binary_path)}_banned_functions.{extension}"
-    )
+    output_file = results_file_path(output_dir, binary_path, output_format)
 
     with open(output_file, "w", encoding="utf-8") as handle:
         handle.write(_RENDERERS[fmt](report))

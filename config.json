@@ -62,9 +62,7 @@
                 }
             },
             "ignore_unknown_branches": true,
-            "max_retries": 3,
             "fallback_to_asm": true,
-            "error_threshold": 0.1,
             "clean_error_messages": true,
             "use_alternative_decompiler": true
         }

@@ -101,8 +101,6 @@ class AppConfig:
     ignore_unknown_branches: bool = True
     clean_error_messages: bool = True
     fallback_to_asm: bool = True
-    max_retries: int = 3
-    error_threshold: float = 0.1
     use_alternative_decompiler: bool = True
     output_directory: str = DEFAULT_OUTPUT_DIR
     output_format: str = "json"
@@ -155,9 +153,7 @@ class AppConfig:
         decompiler_options_dict["ignore_unknown_branches"] = (
             self.ignore_unknown_branches
         )
-        decompiler_options_dict["max_retries"] = self.max_retries
         decompiler_options_dict["fallback_to_asm"] = self.fallback_to_asm
-        decompiler_options_dict["error_threshold"] = self.error_threshold
         decompiler_options_dict["clean_error_messages"] = self.clean_error_messages
         decompiler_options_dict["use_alternative_decompiler"] = (
             self.use_alternative_decompiler
@@ -229,8 +225,6 @@ class AppConfig:
             ignore_unknown_branches=options_data.get("ignore_unknown_branches", True),
             clean_error_messages=options_data.get("clean_error_messages", True),
             fallback_to_asm=options_data.get("fallback_to_asm", True),
-            max_retries=options_data.get("max_retries", 3),
-            error_threshold=options_data.get("error_threshold", 0.1),
             use_alternative_decompiler=options_data.get(
                 "use_alternative_decompiler", True
             ),

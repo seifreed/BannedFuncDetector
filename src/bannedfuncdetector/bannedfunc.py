@@ -126,6 +126,10 @@ def main() -> int:
         return 1
 
     display_final_results(result)
+    if args.file:
+        from .presentation.results_opener import open_results_if_configured
+
+        open_results_if_configured(args.file, args.output, wiring.config)
     return 0
 
 
