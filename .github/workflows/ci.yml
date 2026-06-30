@@ -58,8 +58,20 @@ jobs:
           pip-audit -r requirements.txt
           pip-audit -r requirements-dev.txt
 
-      - name: Test
+      # The 100% coverage gate is enforced on Linux only. Several branches are
+      # reachable only when an optional tool is present (libmagic, the decai
+      # plugin/Ollama) or exercise platform-specific r2pipe/subprocess error
+      # paths; those tools/paths differ on the macOS and Windows runners, so a
+      # per-platform 100% gate is unwinnable. Linux has the full toolchain and
+      # is the canonical gate; macOS and Windows still run the complete suite to
+      # catch real cross-platform failures, just without the coverage threshold.
+      - name: Test (coverage-gated)
+        if: matrix.os == 'ubuntu-latest'
         run: python -m pytest -q
+
+      - name: Test
+        if: matrix.os != 'ubuntu-latest'
+        run: python -m pytest -q --cov-fail-under=0
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
