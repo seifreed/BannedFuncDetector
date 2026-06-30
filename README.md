@@ -5,7 +5,7 @@
 <h1 align="center">BannedFuncDetector</h1>
 
 <p align="center">
-  <strong>Detect banned/insecure functions in binary files using radare2 decompilers</strong>
+  <strong>Find insecure function calls a symbol-table grep can't see — including statically-linked and inlined ones — via radare2 decompilation</strong>
 </p>
 
 <p align="center">
@@ -26,7 +26,17 @@
 
 ## Overview
 
-**BannedFuncDetector** is a Python tool that scans binary files to detect banned or insecure functions. It supports traditional radare2 decompilers and AI-assisted decompilation to provide readable output and highlight risky calls.
+**BannedFuncDetector** scans binaries for banned/insecure function usage (the Microsoft banned API set: `strcpy`, `sprintf`, `gets`, …).
+
+### Why not just `rabin2 -i | grep strcpy`?
+
+For a dynamically-linked binary, that one-liner *is* equivalent to the name check here — and you should use it. BannedFuncDetector exists for the case the import-table grep misses:
+
+- **Statically-linked and inlined calls.** A `strcpy` compiled into the binary (static linking, LTO, inlined libc) never appears in the import table, so `rabin2 -i | grep` finds nothing. BannedFuncDetector walks the decompiled code (`pdc`/`pdg`/`pdd`) and catches it at the call site.
+- **A curated banned-API list** so you don't grep one name at a time.
+- **Batch + structured output:** directory scans, parallel workers, per-target JSON reports for pipelines.
+
+If your target is dynamically linked and you just want a yes/no on imports, the grep is faster and has zero dependencies. Reach for this tool when "is it in the imports?" isn't the same question as "is it in the code?".
 
 ### Key Features
 
