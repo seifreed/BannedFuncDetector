@@ -52,27 +52,35 @@ jobs:
 
       - name: Get version from tag
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract release notes from CHANGELOG
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          # Pull the section for this version (## [3.1.0] ...) up to the next
+          # "## [" heading so the GitHub Release shows the actual changes.
+          number="${VERSION#v}"
+          awk -v ver="$number" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          {
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```bash'
+            echo "pip install bannedfuncdetector==${number}"
+            echo '```'
+          } >> release-notes.md
+          echo "----- release notes -----"; cat release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ steps.get_version.outputs.VERSION }}
-          body: |
-            ## What's Changed
-            
-            See [CHANGELOG.md](CHANGELOG.md) for details.
-            
-            ## Installation
-            
-            ```bash
-            pip install bannedfuncdetector==${{ steps.get_version.outputs.VERSION }}
-            ```
-            
-            Or from the wheel:
-            ```bash
-            pip install dist/bannedfuncdetector-${{ steps.get_version.outputs.VERSION }}-py3-none-any.whl
-            ```
+          body_path: release-notes.md
           files: |
             dist/*
           draft: false
