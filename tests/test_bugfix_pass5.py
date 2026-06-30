@@ -12,6 +12,9 @@
 from __future__ import annotations
 
 import json
+import os
+
+import pytest
 
 from bannedfuncdetector.infrastructure import config_storage
 from bannedfuncdetector.infrastructure.adapters import r2ai_server
@@ -40,9 +43,12 @@ def test_wait_for_server_sleeps_between_non_200_attempts() -> None:
 # --- Bug 2: command run enforces a timeout, surfaced as returncode 1 ---
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="uses a POSIX /bin/sh shim; the timeout path is covered on Linux",
+)
 def test_run_command_times_out_gracefully() -> None:
     # A shim that sleeps longer than the (tiny) timeout we pass.
-    import os
     import stat
     import tempfile
 

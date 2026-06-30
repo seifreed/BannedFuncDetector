@@ -19,6 +19,9 @@ from bannedfuncdetector.application.binary_analyzer.runtime import (
 )
 
 
+@pytest.mark.skipif(
+    not hasattr(os, "mkfifo"), reason="os.mkfifo is POSIX-only (absent on Windows)"
+)
 def test_fifo_is_rejected_not_opened(tmp_path) -> None:
     fifo = tmp_path / "pipe"
     os.mkfifo(fifo)

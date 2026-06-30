@@ -138,7 +138,10 @@ class TestBinaryFlowRuntimeLine158:
         try:
             bfr_mod._finalize_analysis = finalize_returning_third
             outcome = bfr_mod.run_detection_with_cleanup(
-                "/bin/ls",
+                # A real, regular file on every OS (the opener is faked, so only
+                # _validate_binary_input's existence check matters here); "/bin/ls"
+                # does not exist on Windows and would fail validation early.
+                __file__,
                 request,
                 detect_impl=lambda r2, funcs, params: [],
             )
@@ -934,14 +937,23 @@ class TestTryImportMagicMissingModule:
         assert result is None
 
     def test_default_module_imports_real_magic(self):
-        """The default name imports the real libmagic wrapper when present."""
+        """The default name resolves to the real libmagic wrapper when usable.
+
+        libmagic (the C library behind python-magic) is a system dependency that
+        is absent on some CI runners (macOS/Windows), where ``_try_import_magic``
+        returns None. Assert the invariant that holds either way; on Linux (the
+        coverage-gated platform) libmagic is present, so the success branch is
+        still exercised.
+        """
         from bannedfuncdetector.infrastructure import file_detection as fd_mod
 
         result = fd_mod._try_import_magic()
 
-        # libmagic is a declared dependency, so this resolves to the module.
-        assert result is not None
-        assert hasattr(result, "from_file")
+        if fd_mod.is_magic_available():
+            assert result is not None
+            assert hasattr(result, "from_file")
+        else:
+            assert result is None
 
 
 class TestGetAvailableDecompilerDefaultFallback:
