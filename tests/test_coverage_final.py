@@ -3091,6 +3091,57 @@ class TestDecompilerAvailabilityMissingBranches:
         finally:
             da_mod.R2Client = original_r2client
 
+    def test_check_decai_plugin_present_but_ollama_unreachable_returns_false(self):
+        """
+        Purpose: decompiler_availability._check_decai_service_available lines
+        116-117 — when the decai plugin IS available but the Ollama HTTP probe
+        raises requests.RequestException, the except clause logs and returns
+        False.
+
+        This is covered deterministically (the plugin and HTTP boundary are both
+        stubbed) so it does not depend on decai or Ollama being installed, which
+        differs between local and CI environments.
+        """
+        import requests
+
+        import bannedfuncdetector.infrastructure.decompilers.decompiler_availability as da_mod
+
+        class PluginPresentR2:
+            def cmd(self, _: str) -> str:
+                return "Usage: decai -d function"
+
+            def cmdj(self, _: str):
+                return None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+        class PluginPresentR2Client:
+            @staticmethod
+            def open(_path: str):
+                return PluginPresentR2()
+
+        class UnreachableRequests:
+            RequestException = requests.RequestException
+
+            @staticmethod
+            def get(*_args, **_kwargs):
+                raise requests.RequestException("ollama unreachable")
+
+        original_r2client = da_mod.R2Client
+        original_requests = da_mod.requests
+        try:
+            da_mod.R2Client = PluginPresentR2Client
+            da_mod.requests = UnreachableRequests
+            result = da_mod._check_decai_service_available("http://localhost:11434")
+            assert result is False
+        finally:
+            da_mod.R2Client = original_r2client
+            da_mod.requests = original_requests
+
 
 class TestDecompilerSupportMissingBranches:
     """
