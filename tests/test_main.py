@@ -618,6 +618,88 @@ def test_log_messages_are_bounded():
     assert message.endswith("[truncated]")
 
 
+def test_configure_logging_supports_stdout_destination(monkeypatch, capsys):
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_DESTINATION", "stdout")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        logging.getLogger("test.destination").warning("stdout event")
+
+        assert "stdout event" in capsys.readouterr().out
+    finally:
+        for handler in root.handlers:
+            if handler not in saved_handlers:
+                handler.close()
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
+def test_configure_logging_rotates_file_destination(monkeypatch, tmp_path):
+    import bannedfuncdetector.cli_bootstrap as cli_bootstrap
+
+    log_file = tmp_path / "detector.log"
+    monkeypatch.setenv("BFD_LOG_DESTINATION", f"file:{log_file}")
+    monkeypatch.setattr(cli_bootstrap, "_LOG_FILE_MAX_BYTES", 32)
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        cli_bootstrap.configure_logging()
+        logger = logging.getLogger("test.destination")
+        logger.warning("first %s", "x" * 64)
+        logger.warning("second %s", "y" * 64)
+        root.handlers[0].flush()
+
+        assert log_file.exists()
+        assert (tmp_path / "detector.log.1").exists()
+    finally:
+        for handler in root.handlers:
+            if handler not in saved_handlers:
+                handler.close()
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
+@pytest.mark.parametrize("invalid_destination", ["unknown", "file"])
+def test_invalid_log_destination_falls_back_to_stderr(
+    monkeypatch, capsys, tmp_path, invalid_destination
+):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    if invalid_destination == "file":
+        destination = f"file:{tmp_path / 'missing' / 'detector.log'}"
+        expected_error = "FileNotFoundError"
+    else:
+        destination = "network"
+        expected_error = "ValueError"
+    monkeypatch.setenv("BFD_LOG_DESTINATION", destination)
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        event = json.loads(capsys.readouterr().err)
+
+        assert event["event_name"] == "logging_destination_fallback"
+        assert event["error_type"] == expected_error
+    finally:
+        for handler in root.handlers:
+            if handler not in saved_handlers:
+                handler.close()
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
     from bannedfuncdetector.cli_bootstrap import configure_logging
 

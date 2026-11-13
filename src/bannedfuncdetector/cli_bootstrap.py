@@ -25,6 +25,8 @@ _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 _logging_configuration_lock = threading.Lock()
 _MAX_LOG_MESSAGE_CHARS = 16_384
+_LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
+_LOG_FILE_BACKUP_COUNT = 5
 
 
 def ensure_request_id() -> str:
@@ -201,11 +203,11 @@ def configure_logging(verbose: bool = False) -> None:
     log_format = os.getenv("BFD_LOG_FORMAT", "text").lower()
     formatter = _JsonLogFormatter() if log_format == "json" else _TextLogFormatter()
     root_logger = logging.getLogger()
+    destination_error = None
     with _logging_configuration_lock:
         root_logger.setLevel(level)
         if not root_logger.handlers:
-            handler = logging.StreamHandler()
-            handler.setFormatter(formatter)
+            handler, destination_error = _configured_handler(formatter)
             root_logger.addHandler(handler)
         for configured_handler in root_logger.handlers:
             if not any(
@@ -218,6 +220,50 @@ def configure_logging(verbose: bool = False) -> None:
                 for item in configured_handler.filters
             ):
                 configured_handler.addFilter(_SanitizingFilter())
+    if destination_error is not None:
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "Configured log destination failed; using stderr: %s",
+            destination_error,
+            exc_info=(
+                type(destination_error),
+                destination_error,
+                destination_error.__traceback__,
+            )
+            if destination_error.__traceback__
+            else None,
+            extra={
+                "error_type": type(destination_error).__name__,
+                "event_name": "logging_destination_fallback",
+            },
+        )
+
+
+def _configured_handler(
+    formatter: logging.Formatter,
+) -> tuple[logging.Handler, OSError | ValueError | None]:
+    destination = os.getenv("BFD_LOG_DESTINATION", "stderr")
+    error: OSError | ValueError | None = None
+    if destination == "stdout":
+        handler: logging.Handler = logging.StreamHandler(sys.stdout)
+    elif destination == "stderr":
+        handler = logging.StreamHandler(sys.stderr)
+    elif destination.startswith("file:") and destination[5:]:
+        try:
+            handler = logging.handlers.RotatingFileHandler(
+                destination[5:],
+                maxBytes=_LOG_FILE_MAX_BYTES,
+                backupCount=_LOG_FILE_BACKUP_COUNT,
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            handler = logging.StreamHandler(sys.stderr)
+            error = exc
+    else:
+        handler = logging.StreamHandler(sys.stderr)
+        error = ValueError("Unsupported BFD_LOG_DESTINATION")
+    handler.setFormatter(formatter)
+    return handler, error
 
 
 def configure_worker_logging(verbose: bool, log_queue: Any) -> None:
