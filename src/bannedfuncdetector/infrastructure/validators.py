@@ -136,11 +136,19 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
         result = _run_command(command)
 
         if result.returncode != 0 or req["expected"] not in result.stdout:
+            extra: dict[str, object] = {
+                "operation": "requirement_check",
+                "event_name": "requirement_check_failed",
+                "outcome": "error",
+            }
+            if result.returncode != 0:
+                extra["error_code"] = result.returncode
             logger.error(
                 "Requirement check failed for %s (exit_code=%s, output_matched=%s)",
                 req["name"],
                 result.returncode,
                 req["expected"] in result.stdout,
+                extra=extra,
             )
             return False
 

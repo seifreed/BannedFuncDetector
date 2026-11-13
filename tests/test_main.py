@@ -1157,6 +1157,10 @@ def test_requirement_failure_does_not_log_process_output(monkeypatch, caplog):
     assert "hunter2" not in caplog.text
     assert "private-value" not in caplog.text
     assert "exit_code=1" in caplog.text
+    event = next(record for record in caplog.records if record.event_name == "requirement_check_failed")
+    assert event.operation == "requirement_check"
+    assert event.outcome == "error"
+    assert event.error_code == 1
 
 
 def test_check_single_requirement_blocked_command(caplog):
