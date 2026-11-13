@@ -676,12 +676,14 @@ def test_configure_logging_rotates_file_destination(monkeypatch, tmp_path):
         root.handlers.clear()
         cli_bootstrap.configure_logging()
         logger = logging.getLogger("test.destination")
-        logger.warning("first %s", "x" * 64)
-        logger.warning("second %s", "y" * 64)
+        for index in range(8):
+            logger.warning("record %s %s", index, "x" * 64)
         root.handlers[0].flush()
 
         assert log_file.exists()
         assert (tmp_path / "detector.log.1").exists()
+        assert (tmp_path / "detector.log.5").exists()
+        assert not (tmp_path / "detector.log.6").exists()
     finally:
         for handler in root.handlers:
             if handler not in saved_handlers:
