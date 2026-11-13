@@ -465,6 +465,19 @@ def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary, ca
     assert completion.outcome == "success"
 
 
+def test_close_r2_client_returns_cleanup_error_without_logging_exception(caplog):
+    class DummyR2:
+        def quit(self):
+            raise RuntimeError("private close detail")
+
+    with caplog.at_level(logging.WARNING):
+        result = close_r2_client(DummyR2())
+
+    assert result.is_err()
+    assert "private close detail" in str(result.error)
+    assert all("private close detail" not in record.getMessage() for record in caplog.records)
+
+
 def test_analyze_directory_missing(tmp_path, caplog):
     caplog.set_level(logging.INFO, logger=directory_scanner.__name__)
     result = analyzers.analyze_directory(

@@ -38,9 +38,9 @@ def close_r2_client(r2: IR2Client) -> Result[None, str]:
         TypeError,
         ValueError,
     ) as exc:
-        message = f"Error closing r2 client {hex(id(r2))} ({type(r2).__name__}): {exc}"
-        logger.warning(message)
-        return err(message)
+        return err(
+            f"Error closing r2 client {hex(id(r2))} ({type(r2).__name__}): {exc}"
+        )
 
 
 def is_transient_r2_setup_error(exc: Exception) -> bool:
