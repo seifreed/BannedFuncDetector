@@ -692,7 +692,7 @@ def test_exception_arguments_set_structured_error_type(monkeypatch, capsys):
 
 
 def test_log_messages_are_bounded():
-    from bannedfuncdetector.cli_bootstrap import (
+    from bannedfuncdetector.infrastructure.logging_config import (
         _MAX_LOG_MESSAGE_CHARS,
         _safe_message,
     )
@@ -725,17 +725,17 @@ def test_configure_logging_supports_stdout_destination(monkeypatch, capsys):
 
 
 def test_configure_logging_rotates_file_destination(monkeypatch, tmp_path):
-    import bannedfuncdetector.cli_bootstrap as cli_bootstrap
+    import bannedfuncdetector.infrastructure.logging_config as logging_config
 
     log_file = tmp_path / "detector.log"
     monkeypatch.setenv("BFD_LOG_DESTINATION", f"file:{log_file}")
-    monkeypatch.setattr(cli_bootstrap, "_LOG_FILE_MAX_BYTES", 32)
+    monkeypatch.setattr(logging_config, "_LOG_FILE_MAX_BYTES", 32)
     root = logging.getLogger()
     saved_handlers = root.handlers[:]
     saved_level = root.level
     try:
         root.handlers.clear()
-        cli_bootstrap.configure_logging()
+        logging_config.configure_logging()
         logger = logging.getLogger("test.destination")
         for index in range(8):
             logger.warning("record %s %s", index, "x" * 64)
@@ -816,7 +816,10 @@ def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
 
 
 def test_text_formatter_sanitizes_forwarded_stack_trace():
-    from bannedfuncdetector.cli_bootstrap import _TextLogFormatter, operation_context
+    from bannedfuncdetector.infrastructure.logging_config import (
+        _TextLogFormatter,
+        operation_context,
+    )
 
     record = logging.LogRecord(
         "test.logging",
@@ -849,7 +852,7 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
 def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):
     from queue import Queue
 
-    from bannedfuncdetector.cli_bootstrap import (
+    from bannedfuncdetector.infrastructure.logging_config import (
         configure_worker_logging,
         log_context,
     )
@@ -902,7 +905,7 @@ def test_saturated_worker_log_queue_reports_drops_and_preserves_errors(
     import json
     from queue import Queue
 
-    from bannedfuncdetector.cli_bootstrap import (
+    from bannedfuncdetector.infrastructure.logging_config import (
         _ContextQueueHandler,
         _RequestContextFilter,
         operation_context,
@@ -975,7 +978,7 @@ def test_failed_stream_destination_does_not_raise(monkeypatch):
 def test_concurrent_logging_configuration_is_idempotent(monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
 
-    from bannedfuncdetector.cli_bootstrap import (
+    from bannedfuncdetector.infrastructure.logging_config import (
         _RequestContextFilter,
         _SanitizingFilter,
         configure_logging,

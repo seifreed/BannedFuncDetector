@@ -2,7 +2,7 @@
 
 from bannedfuncdetector.application.contracts import BinaryAnalysisRequest
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
-from bannedfuncdetector.cli_bootstrap import operation_context
+from bannedfuncdetector.infrastructure.logging_config import operation_context
 
 from .binary_flow_runtime import run_binary_analysis
 from .function_analysis import analyze_function

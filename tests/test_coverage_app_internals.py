@@ -169,7 +169,7 @@ class TestAnalysisError:
 
         import json
 
-        from bannedfuncdetector.cli_bootstrap import _JsonLogFormatter
+        from bannedfuncdetector.infrastructure.logging_config import _JsonLogFormatter
 
         event = json.loads(_JsonLogFormatter().format(record))
         assert event["error_category"] == record.error_category

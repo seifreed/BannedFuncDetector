@@ -15,7 +15,7 @@ from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.cli_bootstrap import (
+from bannedfuncdetector.infrastructure.logging_config import (
     configure_logging,
     configure_worker_logging,
     ensure_request_id,
