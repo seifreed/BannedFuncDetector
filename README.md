@@ -220,7 +220,7 @@ if result.is_ok():
 
 ## Requirements
 
-- Python 3.13+ (tested on 3.13 y 3.14)
+- Python 3.13+ (tested on 3.13, 3.14 y 3.15)
 - radare2 (required)
 - r2ghidra/r2dec (optional decompilers)
 - decai plugin (optional, for AI-assisted decompilation — see "AI decompilation" above)
