@@ -67,10 +67,14 @@ def log_context(request_id: str | None) -> Iterator[None]:
 _SENSITIVE_VALUE = re.compile(
     r"(?i)(\b(?:password|passwd|(?:access|refresh|id)?[_-]?token|"
     r"api[_-]?key|client[_-]?secret|secret|session(?:id)?|private[_-]?key)"
-    r"\b\s*[=:]\s*[\"']?|"
-    r"\b(?:authorization|set-cookie|cookie)\s*:\s*"
-    r"(?:bearer\s+|basic\s+)?|"
-    r"\b(?:bearer|basic)\s+)[^\s,;]+"
+    r"\b\s*[=:]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
+    r"(\bauthorization\s*:\s*)(?:bearer\s+|basic\s+)?"
+    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
+    r"(\b(?:bearer|basic)\s+)[^\s,;]+"
+)
+_COOKIE_HEADER = re.compile(
+    r"(?i)(\b(?:set-cookie|cookie)\s*:\s*)"
+    r"(?:(?!\\x0a|\\x0d)[^\r\n])*"
 )
 _URL_WITH_PRIVATE_PARTS = re.compile(
     r"(?i)\b(https?://)(?:[^/@\s]+@)?([^/?#\s]+)(?:[/?#][^\s]*)?"
@@ -80,7 +84,11 @@ _URL_WITH_PRIVATE_PARTS = re.compile(
 def _safe_message(value: str) -> str:
     truncated = len(value) > _MAX_LOG_MESSAGE_CHARS
     value = value[:_MAX_LOG_MESSAGE_CHARS]
-    redacted = _SENSITIVE_VALUE.sub(r"\1[REDACTED]", value)
+    redacted = _COOKIE_HEADER.sub(r"\1[REDACTED]", value)
+    redacted = _SENSITIVE_VALUE.sub(
+        lambda match: f"{match.group(1) or match.group(2) or match.group(3)}[REDACTED]",
+        redacted,
+    )
     redacted = _URL_WITH_PRIVATE_PARTS.sub(r"\1\2", redacted)
     home_directory = os.path.expanduser("~")
     if home_directory != "~":

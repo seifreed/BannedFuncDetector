@@ -393,7 +393,9 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         configure_logging()
         logging.getLogger("test.logging").warning(
             "request access_token=abc123 client_secret=private "
-            "Cookie: session=secret-value "
+            "password='quoted secret value' "
+            "client_secret=\"multi word secret\" "
+            "Cookie: session=secret-value; tracking=private-cookie\n"
             "https://user:password@service.test/path?api_key=url-secret\nINJECTED"
             "\x85NEXT\u2028LINE\u2029PARAGRAPH file=%s",
             Path.home() / "input.bin",
@@ -406,6 +408,9 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert "abc123" not in event["message"]
         assert "private" not in event["message"]
         assert "secret-value" not in event["message"]
+        assert "quoted secret value" not in event["message"]
+        assert "multi word secret" not in event["message"]
+        assert "private-cookie" not in event["message"]
         assert "user" not in event["message"]
         assert "url-secret" not in event["message"]
         assert "https://service.test" in event["message"]
