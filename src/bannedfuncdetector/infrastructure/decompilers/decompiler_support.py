@@ -50,6 +50,7 @@ def sanitize_r2_query_text(text: str) -> str:
     """
     return " ".join(text.translate(_R2_QUERY_TRANSLATION).split())
 
+
 ERROR_SKIP_PATTERNS: frozenset[str] = frozenset(
     [
         "error:",
@@ -142,18 +143,18 @@ def try_decompile_with_command(
 def get_function_info(r2: IR2Client, function_name: str) -> dict[str, Any] | None:
     """Get function information from radare2."""
     if not is_safe_r2_name(function_name):
-        logger.warning(
-            "Refusing to query unsafe function name: %r", function_name
-        )
+        logger.warning("Refusing to query unsafe function name: %r", function_name)
         return None
     try:
         function_info = r2.cmdj(f"afij @ {function_name}")
         return _normalize_function_info(function_info)
     except (RuntimeError, ValueError) as exc:
-        logger.error(f"Error getting function information {function_name}: {exc}")
+        logger.debug(
+            "Could not get function information for %s: %s", function_name, exc
+        )
         return None
     except (AttributeError, TypeError) as exc:
-        logger.error(f"Data error getting function information {function_name}: {exc}")
+        logger.debug("Invalid function information for %s: %s", function_name, exc)
         return None
 
 

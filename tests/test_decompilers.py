@@ -1,9 +1,11 @@
 import os
+import logging
 
 import pytest
 
 import bannedfuncdetector.infrastructure.decompilers.base_decompiler as decompilers
 import bannedfuncdetector.infrastructure.decompilers.base_decompiler as decompiler_base
+import bannedfuncdetector.infrastructure.decompilers.decompiler_support as decompiler_support
 import bannedfuncdetector.infrastructure.decompilers.orchestrator as decompiler_orchestrator
 
 # decompiler_registry was merged into decompiler_orchestrator
@@ -278,9 +280,7 @@ def test_decompile_with_selected_decompiler_no_alternative():
 def test_decompile_with_selected_decompiler_honors_custom_banned_functions():
     """Custom config['banned_functions'] is scanned, not just the built-in defaults."""
     code = "my_unsafe_copy(dest, src); int abcdefghij_padding;"
-    fake = FakeR2(
-        cmd_map={"s f": "", "s *": "", "pdg": "", "pdd": "", "pdc": code}
-    )
+    fake = FakeR2(cmd_map={"s f": "", "s *": "", "pdg": "", "pdd": "", "pdc": code})
     config = create_config_from_dict({"banned_functions": ["my_unsafe_copy"]})
     functions = [make_function()]
     result = decompiler_orchestrator.decompile_with_selected_decompiler(
@@ -296,9 +296,7 @@ def test_decompile_with_selected_decompiler_custom_list_excludes_defaults():
     ignored config['banned_functions'], so strcpy here would always be flagged.
     """
     code = "strcpy(dest, src); int abcdefghij_padding;"
-    fake = FakeR2(
-        cmd_map={"s f": "", "s *": "", "pdg": "", "pdd": "", "pdc": code}
-    )
+    fake = FakeR2(cmd_map={"s f": "", "s *": "", "pdg": "", "pdd": "", "pdc": code})
     config = create_config_from_dict({"banned_functions": ["my_unsafe_copy"]})
     functions = [make_function()]
     result = decompiler_orchestrator.decompile_with_selected_decompiler(
@@ -414,13 +412,16 @@ def test_get_function_info_unexpected_type():
     assert decompilers.get_function_info(fake, "weird") is None
 
 
-def test_get_function_info_exception():
+def test_get_function_info_exception(caplog):
     class ErrorR2(FakeR2):
         def cmdj(self, _command):
             raise RuntimeError("boom")
 
     fake = ErrorR2()
-    assert decompilers.get_function_info(fake, "func") is None
+    with caplog.at_level(logging.DEBUG, logger=decompiler_support.__name__):
+        assert decompilers.get_function_info(fake, "func") is None
+    assert any(record.levelno == logging.DEBUG for record in caplog.records)
+    assert not any(record.levelno >= logging.ERROR for record in caplog.records)
 
 
 def test_decompile_function_r2ghidra_alternative():
