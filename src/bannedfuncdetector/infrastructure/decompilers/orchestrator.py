@@ -102,10 +102,6 @@ def _search_banned_in_decompiled(
     ]
 
     if found:
-        if verbose:
-            logger.warning(
-                f"Unsafe functions detected in {func_name}: {', '.join(found)}"
-            )
         return ok(
             _create_detection_result(func_name, func_addr, list(found), "decompilation")
         )

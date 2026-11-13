@@ -113,7 +113,12 @@ def main() -> int:
         logger.warning(
             "Both --skip-banned and --skip-analysis are set: no detection runs, "
             "so a result of zero findings means nothing was checked, not that the "
-            "target is clean."
+            "target is clean.",
+            extra={
+                "operation": "analysis_policy",
+                "event_name": "detection_skipped",
+                "outcome": "skipped",
+            },
         )
 
     wiring = create_application_wiring()

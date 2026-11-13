@@ -93,7 +93,14 @@ def open_binary_with_r2(
             # longer budget to recover more functions.
             r2.cmd(f"e anal.timeout={anal_timeout}")
             if verbose:
-                logger.info("Analyzing the binary...")
+                logger.info(
+                    "Starting radare2 analysis",
+                    extra={
+                        "operation": "binary_analysis",
+                        "event_name": "r2_analysis_command_started",
+                        "outcome": "in_progress",
+                    },
+                )
             r2.cmd("aaa")
             return r2
         except (

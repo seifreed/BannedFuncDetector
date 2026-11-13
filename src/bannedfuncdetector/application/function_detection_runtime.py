@@ -94,6 +94,12 @@ def analyze_functions_in_binary(
             "radare2 session ended before all %d functions were analyzed; "
             "results are incomplete.",
             len(functions),
+            extra={
+                "operation": "function_detection",
+                "event_name": "function_detection_incomplete",
+                "outcome": "partial",
+                "function_count": len(functions),
+            },
         )
     return results
 
