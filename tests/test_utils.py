@@ -79,6 +79,27 @@ def test_r2ai_logs_omit_remote_url_and_model_data(monkeypatch, caplog):
     assert any("Models available in r2ai-server: 1" == record.getMessage() for record in records)
 
 
+def test_r2ai_start_failure_logs_type_without_exception_text(monkeypatch, caplog):
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    monkeypatch.setattr(r2ai_server, "_get_models_from_cli", lambda: ["model-a"])
+
+    def fail_command(_model):
+        raise RuntimeError("password=private-value")
+
+    monkeypatch.setattr(r2ai_server, "_build_server_command", fail_command)
+    caplog.set_level(logging.ERROR, logger=r2ai_server.__name__)
+
+    assert r2ai_server._start_r2ai_server(
+        "http://localhost:8080", prompt_callback=lambda _prompt: "model-a"
+    ) is False
+
+    assert "private-value" not in caplog.text
+    event = next(record for record in caplog.records if record.name == r2ai_server.__name__)
+    assert event.event_name == "external_service_start_failed"
+    assert event.error_type == "RuntimeError"
+
+
 def test_check_r2ai_server_available_success_no_models():
     server_url, server = start_test_server(
         ping_status=200,

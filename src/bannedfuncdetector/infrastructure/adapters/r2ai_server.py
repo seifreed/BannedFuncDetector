@@ -303,11 +303,23 @@ def _handle_r2ai_server_not_running(
     except (RuntimeError, OSError, IOError) as e:
         # RuntimeError: Command execution failure
         # OSError/IOError: System-level errors
-        logger.error("Error verifying r2ai-server installation: %s", str(e))
+        logger.error(
+            "Error verifying r2ai-server installation",
+            extra={
+                "event_name": "external_service_verification_failed",
+                "error_type": type(e).__name__,
+            },
+        )
         return False
     except (ValueError, TypeError) as e:
         # Data parsing or type errors
-        logger.error("Data error verifying r2ai-server installation: %s", str(e))
+        logger.error(
+            "Data error verifying r2ai-server installation",
+            extra={
+                "event_name": "external_service_verification_invalid",
+                "error_type": type(e).__name__,
+            },
+        )
         return False
 
 
@@ -401,7 +413,13 @@ def _start_r2ai_server(
         TypeError,
         RuntimeError,
     ) as e:
-        logger.error("Error starting r2ai-server: %s", str(e))
+        logger.error(
+            "Error starting r2ai-server",
+            extra={
+                "event_name": "external_service_start_failed",
+                "error_type": type(e).__name__,
+            },
+        )
         return False
 
 
@@ -443,7 +461,13 @@ def _prompt_install_r2ai_server(
             RuntimeError,
             ValueError,
         ) as e:
-            logger.error("Error installing r2ai-server: %s", str(e))
+            logger.error(
+                "Error installing r2ai-server",
+                extra={
+                    "event_name": "external_service_install_failed",
+                    "error_type": type(e).__name__,
+                },
+            )
             return False
 
     logger.info("r2ai-server installation canceled")
