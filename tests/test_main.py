@@ -1224,6 +1224,20 @@ def test_check_single_requirement_missing_fields():
     assert result is False
 
 
+def test_check_single_requirement_missing_name_is_handled(caplog):
+    caplog.set_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.validators")
+    result = _check_single_requirement({"command": ["python", "--version"]})
+
+    assert result is False
+    event = next(
+        record
+        for record in caplog.records
+        if record.event_name == "requirement_configuration_error"
+    )
+    assert event.error_type == "KeyError"
+    assert "unknown" in event.getMessage()
+
+
 def test_validate_requirements_skip():
     """validate_requirements returns immediately when skip is True."""
     # Should not raise SystemExit
