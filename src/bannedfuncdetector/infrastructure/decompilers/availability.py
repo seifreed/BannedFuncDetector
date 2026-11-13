@@ -42,9 +42,23 @@ def _check_service_decompiler(print_message: bool) -> bool:
     is_available = check_decompiler_plugin_available(DecompilerType.DECAI)
     if print_message:
         if is_available:
-            logger.info("Plugin decai is available and Ollama is running")
+            logger.info(
+                "DecAI service is available",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decai_service_available",
+                    "outcome": "success",
+                },
+            )
         else:
-            logger.warning("Plugin decai is not available or Ollama is not running")
+            logger.warning(
+                "DecAI service is unavailable",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decai_service_unavailable",
+                    "outcome": "unavailable",
+                },
+            )
     return is_available
 
 
@@ -62,9 +76,23 @@ def _check_plugin_decompiler(decompiler_type: str, print_message: bool) -> bool:
     is_available = check_decompiler_plugin_available(decompiler_type)
     if print_message:
         if is_available:
-            logger.info(f"Decompiler {decompiler_type} is available")
+            logger.info(
+                "Decompiler plugin is available",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decompiler_plugin_available",
+                    "outcome": "success",
+                },
+            )
         else:
-            logger.warning(f"Decompiler {decompiler_type} is not available")
+            logger.warning(
+                "Decompiler plugin is unavailable",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decompiler_plugin_unavailable",
+                    "outcome": "unavailable",
+                },
+            )
     return is_available
 
 
@@ -97,19 +125,38 @@ def check_decompiler_available(
     config = DECOMPILER_CONFIG.get(decompiler_type)
     if config is None:
         if print_message:
-            logger.warning(f"Unknown decompiler type: {decompiler_type}")
+            logger.warning(
+                "Unknown decompiler type",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decompiler_type_unknown",
+                    "outcome": "unavailable",
+                },
+            )
         return False
 
     if config.get("not_decompiler"):
         if print_message:
             logger.warning(
-                config.get("message", f"{decompiler_type} is not a decompiler")
+                "Requested component is not a decompiler",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decompiler_type_invalid",
+                    "outcome": "unavailable",
+                },
             )
         return False
 
     if config.get("always_available"):
         if print_message:
-            logger.info("Default decompiler is available")
+            logger.info(
+                "Default decompiler is available",
+                extra={
+                    "operation": "decompiler_availability",
+                    "event_name": "decompiler_default_available",
+                    "outcome": "success",
+                },
+            )
         return True
 
     if config.get("check_service"):

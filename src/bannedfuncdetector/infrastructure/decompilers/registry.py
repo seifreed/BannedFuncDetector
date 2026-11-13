@@ -94,7 +94,12 @@ def create_decompiler(decompiler_type: str | DecompilerType) -> DecompilerInstan
 
     if decompiler_key not in DECOMPILER_INSTANCES:
         logger.warning(
-            f"Unknown decompiler type: {decompiler_key}. Using default decompiler."
+            "Unknown decompiler type in registry; using the default",
+            extra={
+                "operation": "decompiler_resolution",
+                "event_name": "decompiler_registry_fallback",
+                "outcome": "defaulted",
+            },
         )
         decompiler_key = DecompilerType.DEFAULT.value
 

@@ -40,11 +40,46 @@ class TestCheckDecompilerAvailable:
 
         assert result is True
 
-    def test_check_decompiler_available_unknown_returns_false(self):
+    def test_check_decompiler_available_unknown_returns_false_without_input_leak(
+        self, caplog
+    ):
         """Test that unknown decompiler returns False."""
-        result = check_decompiler_available("unknown_decompiler", print_message=False)
+        secret = "customer-private-decompiler-value"
+        caplog.set_level(
+            "WARNING",
+            logger="bannedfuncdetector.infrastructure.decompilers.availability",
+        )
+        result = check_decompiler_available(secret)
 
         assert result is False
+        assert secret not in caplog.text
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "decompiler_type_unknown"
+        )
+        assert event.operation == "decompiler_availability"
+        assert event.outcome == "unavailable"
+
+    def test_unknown_decompiler_conversion_omits_untrusted_value(self, caplog):
+        """Unknown configured values are classified without logging their value."""
+        secret = "customer-private-decompiler-value"
+        caplog.set_level(
+            "WARNING",
+            logger="bannedfuncdetector.infrastructure.decompilers.decompiler_types",
+        )
+
+        result = DecompilerType.from_string(secret)
+
+        assert result is DecompilerType.DEFAULT
+        assert secret not in caplog.text
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "decompiler_type_unknown"
+        )
+        assert event.operation == "decompiler_selection"
+        assert event.outcome == "defaulted"
 
     def test_check_decompiler_available_r2ai_returns_false(self):
         """Test that r2ai (not a decompiler) returns False."""
@@ -184,6 +219,25 @@ class TestSelectDecompiler:
 
         # r2ai should be replaced with default
         assert result in ["r2ghidra", "r2dec", "default"]
+
+    def test_unknown_requested_decompiler_is_logged_without_value(self, caplog):
+        secret = "customer-private-decompiler-value"
+        caplog.set_level(
+            "WARNING",
+            logger="bannedfuncdetector.infrastructure.decompilers.selector",
+        )
+
+        result = select_decompiler(secret, verbose=True, config=make_config())
+
+        assert result in {"r2ghidra", "r2dec", "default"}
+        assert secret not in caplog.text
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "decompiler_unavailable"
+        )
+        assert event.operation == "decompiler_selection"
+        assert event.outcome == "fallback"
 
     def test_select_decompiler_none_uses_config(self):
         """Test that None uses config value."""

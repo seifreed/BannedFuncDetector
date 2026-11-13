@@ -102,7 +102,14 @@ def _resolve_requested_decompiler(
         requested = requested.value
 
     if requested == "r2ai":
-        logger.warning("r2ai is not a decompiler. Changing to default decompiler.")
+        logger.warning(
+            "AI assistant requested as a decompiler; using the default",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_request_fallback",
+                "outcome": "defaulted",
+            },
+        )
         return DecompilerType.DEFAULT.value
 
     return requested
@@ -154,10 +161,31 @@ def _log_unavailable_decompiler(requested: str) -> None:
         requested: The decompiler type that was not available.
     """
     if requested == DecompilerType.DECAI.value:
-        logger.warning(f"The AI assistant plugin {requested} is not available.")
+        logger.warning(
+            "AI assistant plugin is unavailable",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_unavailable",
+                "outcome": "fallback",
+            },
+        )
     else:
-        logger.warning(f"The decompiler {requested} is not available.")
-    logger.info("Checking available alternatives...")
+        logger.warning(
+            "Requested decompiler is unavailable",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_unavailable",
+                "outcome": "fallback",
+            },
+        )
+    logger.info(
+        "Checking available decompiler alternatives",
+        extra={
+            "operation": "decompiler_selection",
+            "event_name": "decompiler_fallback_search_started",
+            "outcome": "in_progress",
+        },
+    )
 
 
 def _select_best_available(
@@ -179,16 +207,49 @@ def _select_best_available(
             if verbose:
                 if alt == DecompilerType.DECAI.value:
                     logger.info(
-                        f"AI assistant plugin '{alt}' is available as an alternative."
+                        "AI assistant plugin is available as an alternative",
+                        extra={
+                            "operation": "decompiler_selection",
+                            "event_name": "decompiler_fallback_available",
+                            "outcome": "success",
+                        },
                     )
                 else:
-                    logger.info(f"Decompiler '{alt}' is available as an alternative.")
-                logger.info(f"Using '{alt}' automatically.")
+                    logger.info(
+                        "Decompiler is available as an alternative",
+                        extra={
+                            "operation": "decompiler_selection",
+                            "event_name": "decompiler_fallback_available",
+                            "outcome": "success",
+                        },
+                    )
+                logger.info(
+                    "Using an available decompiler alternative",
+                    extra={
+                        "operation": "decompiler_selection",
+                        "event_name": "decompiler_fallback_selected",
+                        "outcome": "fallback",
+                    },
+                )
             return alt
 
     if verbose:
-        logger.warning("No available alternatives found.")
-        logger.info("Using the default decompiler.")
+        logger.warning(
+            "No available decompiler alternatives found",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_fallback_unavailable",
+                "outcome": "defaulted",
+            },
+        )
+        logger.info(
+            "Using the default decompiler",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_default_selected",
+                "outcome": "fallback",
+            },
+        )
     return DecompilerType.DEFAULT.value
 
 
@@ -228,11 +289,25 @@ def select_decompiler(
     resolved = _resolve_requested_decompiler(requested, config)
 
     if verbose:
-        logger.info(f"Attempting to use decompiler: {resolved}...")
+        logger.info(
+            "Attempting decompiler selection",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_selection_started",
+                "outcome": "in_progress",
+            },
+        )
 
     if force:
         if verbose:
-            logger.info(f"Forcing use of decompiler: {resolved}")
+            logger.info(
+                "Forcing requested decompiler",
+                extra={
+                    "operation": "decompiler_selection",
+                    "event_name": "decompiler_selection_forced",
+                    "outcome": "forced",
+                },
+            )
         return resolved
 
     if check_decompiler_available(resolved, print_message=verbose):

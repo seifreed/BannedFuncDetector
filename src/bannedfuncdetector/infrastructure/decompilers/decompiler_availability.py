@@ -127,8 +127,16 @@ def _check_decai_service_available(url: str) -> bool:
 
         response = requests.get(f"{url}/api/tags", timeout=1)
         return _is_http_ok(response)
-    except requests.RequestException:
-        logger.warning("decai plugin is available but cannot connect to Ollama")
+    except requests.RequestException as exc:
+        logger.warning(
+            "DecAI service did not respond",
+            extra={
+                "operation": "decompiler_availability",
+                "event_name": "decai_service_connection_failed",
+                "outcome": "unavailable",
+                "error_type": type(exc).__name__,
+            },
+        )
         return False
     except (RuntimeError, ValueError, OSError, IOError) as exc:
         logger.error(

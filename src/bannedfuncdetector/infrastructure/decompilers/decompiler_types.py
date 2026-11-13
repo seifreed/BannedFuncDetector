@@ -25,7 +25,12 @@ class DecompilerType(str, Enum):
         value_lower = value.lower().strip()
         if value_lower == "r2ai":
             logger.warning(
-                "r2ai is not a decompiler, it's an AI assistant. Using default decompiler."
+                "AI assistant requested as a decompiler; using the default",
+                extra={
+                    "operation": "decompiler_selection",
+                    "event_name": "decompiler_request_fallback",
+                    "outcome": "defaulted",
+                },
             )
             return cls.DEFAULT
 
@@ -33,7 +38,14 @@ class DecompilerType(str, Enum):
             if member.value == value_lower:
                 return member
 
-        logger.warning(f"Unknown decompiler type: {value}. Using default decompiler.")
+        logger.warning(
+            "Unknown decompiler type; using the default",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_type_unknown",
+                "outcome": "defaulted",
+            },
+        )
         return cls.DEFAULT
 
 
