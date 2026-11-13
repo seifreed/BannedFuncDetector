@@ -19,6 +19,8 @@ from datetime import datetime, timezone
 from collections.abc import Iterator
 from typing import Any
 
+from concurrent_log_handler import ConcurrentRotatingFileHandler
+
 
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "bannedfuncdetector_request_id", default=None
@@ -271,7 +273,9 @@ def _configured_handler(
         handler = logging.StreamHandler(sys.stderr)
     elif destination.startswith("file:") and destination[5:]:
         try:
-            handler = logging.handlers.RotatingFileHandler(
+            with open(destination[5:], "a", encoding="utf-8"):
+                pass
+            handler = ConcurrentRotatingFileHandler(
                 destination[5:],
                 maxBytes=_LOG_FILE_MAX_BYTES,
                 backupCount=_LOG_FILE_BACKUP_COUNT,

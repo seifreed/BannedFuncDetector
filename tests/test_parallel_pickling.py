@@ -53,6 +53,13 @@ def _logging_worker(job):
     )
 
 
+def _rotation_logging_worker(job):
+    logger = logging.getLogger("test.process_rotation")
+    for index in range(180):
+        logger.warning("rotation-%s-%s-%s", job.executable_file, index, "x" * 16_000)
+    return _logging_worker(job)
+
+
 def test_application_wiring_orchestrator_factory_is_serializable() -> None:
     wiring = create_application_wiring()
 
@@ -218,3 +225,49 @@ def test_custom_process_executor_keeps_request_context_and_structured_logs(
     failure = next(event for event in events if event["message"] == "worker failed safely")
     assert failure["error_type"] == "RuntimeError"
     assert "worker diagnostic" in failure["stack_trace"]
+
+
+def test_custom_processes_write_and_rotate_one_file_without_losing_events(
+    monkeypatch, tmp_path
+) -> None:
+    import json
+
+    from bannedfuncdetector.application.internal.execution_plans import (
+        DirectoryScanPlan,
+    )
+    import bannedfuncdetector.application.internal.directory_runners as runners
+
+    log_file = tmp_path / "concurrent-workers.jsonl"
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    monkeypatch.setenv("BFD_LOG_DESTINATION", f"file:{log_file}")
+    monkeypatch.setenv("BFD_LOG_LEVEL", "WARNING")
+    plan = DirectoryScanPlan(
+        runtime=create_application_wiring(),
+        worker_entrypoint=_rotation_logging_worker,
+        parallel_executor_factory=_spawn_process_executor,
+    )
+
+    results = list(
+        runners.iter_parallel_directory_results(
+            [f"worker-{worker_id}.bin" for worker_id in range(4)],
+            plan,
+            4,
+        )
+    )
+
+    assert len(results) == 4
+    log_files = [
+        path
+        for path in tmp_path.iterdir()
+        if path.name.startswith(log_file.name) and not path.name.endswith(".lock")
+    ]
+    events = [
+        json.loads(line)
+        for path in log_files
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(log_files) > 1
+    rotation_events = [
+        event for event in events if event["component"] == "test.process_rotation"
+    ]
+    assert len(rotation_events) == 720
