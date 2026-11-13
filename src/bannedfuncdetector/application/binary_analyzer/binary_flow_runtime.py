@@ -37,16 +37,19 @@ def _analysis_error(
         context=binary_path,
         message=str(exc),
     )
+    extra: dict[str, object] = {
+        "operation": "binary_analysis",
+        "event_name": "analysis_error",
+        "error_type": type(exc).__name__,
+        "error_category": category,
+        "error_phase": phase,
+    }
+    if isinstance(exc, OSError) and exc.errno is not None:
+        extra["error_code"] = exc.errno
     logger.error(
         str(error),
         exc_info=(type(exc), exc, exc.__traceback__),
-        extra={
-            "operation": "binary_analysis",
-            "event_name": "analysis_error",
-            "error_type": type(exc).__name__,
-            "error_category": category,
-            "error_phase": phase,
-        },
+        extra=extra,
     )
     return err(ExecutionFailure(error=error, logged=True))
 

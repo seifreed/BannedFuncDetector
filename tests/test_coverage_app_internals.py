@@ -12,6 +12,7 @@ no unittest.mock, no pragma: no cover directives.
 from __future__ import annotations
 
 import concurrent.futures
+import errno
 from typing import Any
 
 import pytest
@@ -147,7 +148,7 @@ class TestAnalysisError:
         request = _make_request(runtime, binary_path=str(binary))
 
         def detect_impl(r2, functions, params):
-            raise RuntimeError("boom from detect")
+            raise PermissionError(errno.EACCES, "boom from detect")
 
         result = run_detection_with_cleanup(
             str(binary),
@@ -161,9 +162,10 @@ class TestAnalysisError:
             record for record in caplog.records if record.event_name == "analysis_error"
         )
         assert record.operation == "binary_analysis"
-        assert record.error_type == "RuntimeError"
+        assert record.error_type == "PermissionError"
         assert record.error_category == result.error.error.category
         assert record.error_phase == "during detection"
+        assert record.error_code == errno.EACCES
 
         import json
 
@@ -172,6 +174,7 @@ class TestAnalysisError:
         event = json.loads(_JsonLogFormatter().format(record))
         assert event["error_category"] == record.error_category
         assert event["error_phase"] == record.error_phase
+        assert event["error_code"] == errno.EACCES
 
     def test_run_detection_cleanup_failure_on_success_path(self, tmp_path):
         """
@@ -958,17 +961,18 @@ class TestDirectoryResults:
         )
 
         try:
-            raise OSError("disk unreadable")
-        except OSError as exc:
+            raise PermissionError(errno.EACCES, "disk unreadable")
+        except PermissionError as exc:
             error_result_from_exception(
                 exc, context="sample.bin", logger_message="analyzing sample.bin"
             )
 
         record = next(record for record in caplog.records if record.exc_info)
-        assert record.error_type == "OSError"
+        assert record.error_type == "PermissionError"
         assert record.operation == "directory_analysis"
         assert record.event_name == "analysis_error"
         assert record.error_category == "I/O error"
+        assert record.error_code == errno.EACCES
         assert "disk unreadable" in str(record.exc_info[1])
 
     def test_collect_directory_results_does_not_repeat_logged_error(self, caplog):

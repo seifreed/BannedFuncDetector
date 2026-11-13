@@ -52,12 +52,14 @@ def error_result_from_exception(
     error = directory_error_from_exception(exc, context=context)
 
     if logger_message is not None:
-        extra: dict[str, str] = {
+        extra: dict[str, object] = {
             "operation": "directory_analysis",
             "event_name": "analysis_error",
             "error_type": type(exc).__name__,
             "error_category": error.category,
         }
+        if isinstance(exc, OSError) and exc.errno is not None:
+            extra["error_code"] = exc.errno
         logger.error(
             "%s %s: %s",
             error.category,
