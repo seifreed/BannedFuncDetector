@@ -220,7 +220,7 @@ if result.is_ok():
 
 ## Logging and diagnostics
 
-The CLI uses Python's standard `logging` module and writes to stderr. Text output is the default. Set `BFD_LOG_FORMAT=json` for one JSON object per line with a UTC timestamp, level, service, component, message, and available operation fields. Set `BFD_ENVIRONMENT` to attach a deployment environment label. `BFD_LOG_LEVEL` accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; `-v` selects `DEBUG` unless the environment variable overrides it.
+The CLI uses Python's standard `logging` module and writes to stderr by default. Set `BFD_LOG_DESTINATION=stdout` to write to stdout or `BFD_LOG_DESTINATION=file:/path/to/bfd.log` for a rotating file (10 MiB per file, five backups). Existing root handlers supplied by a host application are retained and take precedence. Text output is the default. Set `BFD_LOG_FORMAT=json` for one JSON object per line with a UTC timestamp, level, service, component, message, and available operation fields. Set `BFD_ENVIRONMENT` to attach a deployment environment label. `BFD_LOG_LEVEL` accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; `-v` selects `DEBUG` unless the environment variable overrides it.
 
 CLI runs receive a `request_id`; directory jobs pass the same ID to worker processes. `BFD_LOG_LEVEL` also applies to those workers. Analysis completion events include `operation`, `event_name`, `duration_ms`, and `outcome`. Exception traces and inferred `error_type` are included when available. No trace/span IDs are generated because the application does not use distributed tracing.
 
@@ -229,7 +229,7 @@ The formatter redacts common credential fields (such as `password`, `access_toke
 Example:
 
 ```sh
-BFD_LOG_FORMAT=json BFD_LOG_LEVEL=INFO bannedfunc --file ./sample.bin
+BFD_LOG_FORMAT=json BFD_LOG_LEVEL=INFO BFD_LOG_DESTINATION=stderr bannedfunc --file ./sample.bin
 ```
 
 ---

@@ -8,7 +8,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 
 - Components use the standard-library `logging` API and module-named loggers.
 - CLI setup is in `bannedfuncdetector.cli_bootstrap.configure_logging`; text is the default and JSON can be selected with `BFD_LOG_FORMAT=json`. `BFD_LOG_LEVEL` selects a standard Python level, and invalid names fall back to `INFO`.
-- The default destination is stderr. Existing host handlers are retained; `configure_logging` adds request-context and sanitizing filters to them without replacing their destination or formatter. The application does not configure local log files, rotation, remote collectors, or a vendor SDK; deployments can collect stderr using their process supervisor.
+- `BFD_LOG_DESTINATION` selects `stderr` (default), `stdout`, or `file:<path>`. File output uses `RotatingFileHandler` with a 10 MiB limit and five backups. If the host already configured root handlers, they are retained and take precedence; request-context and sanitizing filters are added without replacing their destinations or formatters. No remote collector or vendor SDK is required.
 - JSON records include UTC `timestamp`, `level`, `service`, `component`, and `message`. Analysis completion adds `operation`, `event_name`, `duration_ms`, and `outcome`. Exception records include a sanitized `stack_trace`.
 - A generated `request_id` scopes each CLI run and each public library call; it is explicitly included in directory worker payloads and restored after nested calls. It is not a W3C trace ID. The project does not make distributed calls between independently deployed services, so distributed spans and metrics are not configured.
 - Credential-like fields, URL userinfo/path/query, and Unicode control/line separators are redacted or escaped. Messages and stack traces are capped at 16,384 characters. Message/exception formatting failures fall back to safe placeholders rather than escaping into application code. Requirement-check failures record command result metadata rather than subprocess output.
@@ -41,16 +41,16 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
 | Security and privacy | 2 | 9 | Credential/cookie/URL pattern redaction and Unicode line-separator escaping apply to configured handlers; arbitrary sensitive values remain undetectable. |
 | Performance and resilience | 4 | 9 | Bounded worker queue and draining shutdown; saturation drops records safely and parent output is synchronous. |
-| Configuration and portability | 2 | 8 | Environment-configurable level/format applies to workers and parent; stderr remains the only built-in destination. |
+| Configuration and portability | 2 | 9 | Environment selects level, format, environment, and stream/file destination; existing host handlers remain respected. |
 | Error handling | 4 | 9 | Duplicate directory errors are suppressed; handled directory exceptions retain type and stack trace, while legacy paths still vary. |
 | Testing and verification | 3 | 9 | 100% line coverage plus real process and sink-failure tests; cross-platform CI results remain unverified. |
 
-The current **provisional score is 8.6/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
+The current **provisional score is 8.7/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom executor behavior, evaluating destination/retention needs for actual deployments, and confirming CI on each supported OS. Regex redaction remains heuristic; the bounded queue intentionally drops records under pressure to keep analysis non-blocking.
+This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom process-executor behavior, confirming deployment retention needs, and getting CI results on each supported OS. Regex redaction remains heuristic; the bounded queue intentionally drops records under pressure to keep analysis non-blocking.
 
 ## Verification evidence
 
-The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `446a1d3`, the full suite passed with 100% line coverage; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON fields, secret redaction, ASCII and Unicode injection, bounded events, unsafe message/exception formatters, request IDs for built-in process and custom thread workers, duplicate-error suppression, operation completion, concurrent configuration, saturated queues, and failed stream destinations. GitHub Actions has not completed for the latest pushes; its 3.13–3.15 Ubuntu/macOS/Windows matrix is still queued, so cross-platform validation remains outstanding.
+The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `ad41e4f`, the full suite passed with 100% line coverage; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON fields, secret redaction, ASCII and Unicode injection, bounded events, unsafe message/exception formatters, request IDs for built-in process and custom thread workers, duplicate-error suppression, operation completion, concurrent configuration, saturated queues, failed destinations, and file rotation. GitHub Actions has not completed for the latest pushes; its 3.13–3.15 Ubuntu/macOS/Windows matrix is still queued, so cross-platform validation remains outstanding.
