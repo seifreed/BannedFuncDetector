@@ -236,7 +236,7 @@ BFD_LOG_FORMAT=json BFD_LOG_LEVEL=INFO BFD_LOG_DESTINATION=stderr bannedfunc --f
 
 ## Requirements
 
-- Python 3.13+ (tested on 3.13, 3.14 y 3.15)
+- **Supported Python versions:** 3.13, 3.14, and **3.15**. Python 3.15 is tested on Ubuntu, macOS, and Windows in the [CI matrix](.github/workflows/ci.yml).
 - radare2 (required)
 - r2ghidra/r2dec (optional decompilers)
 - decai plugin (optional, for AI-assisted decompilation — see "AI decompilation" above)
