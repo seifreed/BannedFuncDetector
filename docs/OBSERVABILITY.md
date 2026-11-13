@@ -67,7 +67,7 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 
 | Dimension | Baseline | Current provisional | Current evidence / remaining gap |
 |---|---:|---:|---|
-| Architecture and decoupling | 5 | 9 | Standard `logging`, serialized configuration, and parent queue listener; no pluggable backend protocol. |
+| Architecture and decoupling | 5 | 10 | Standard `logging` handlers provide backend substitution; host root handlers are retained, and the process listener decouples worker logging from analysis code. |
 | Functional coverage | 6 | 9 | Binary/directory outcomes, report writes, directory summary writes, and optional-service pings/model fetches carry duration; some lower-level events still lack operation fields. |
 | Event quality | 3 | 9.5 | Major success, empty, fallback, and failure outcomes carry useful operation metadata, including process exit codes without output; some legacy messages remain uneven. |
 | Structure and consistency | 1 | 9.5 | JSON UTC schema and normalized error fields include analysis category/phase for binary and directory paths; other legacy event-specific data still remains in `message`. |
@@ -78,7 +78,7 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Error handling | 4 | 9.5 | Duplicate directory errors are suppressed; binary and directory failures carry structured category, phase, and OS error code when available, while captured exceptions retain type and stack trace. Legacy paths still vary. |
 | Testing and verification | 3 | 9 | 100% line coverage plus real process and sink-failure tests; cross-platform CI results remain unverified. |
 
-The current **provisional score is 9.2/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
+The current **provisional score is 9.3/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
 
 ## Remaining work
 
