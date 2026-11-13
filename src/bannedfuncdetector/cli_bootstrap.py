@@ -64,10 +64,14 @@ _SENSITIVE_VALUE = re.compile(
     r"(?:bearer\s+|basic\s+)?|"
     r"\b(?:bearer|basic)\s+)[^\s,;]+"
 )
+_URL_WITH_PRIVATE_PARTS = re.compile(
+    r"(?i)\b(https?://)(?:[^/@\s]+@)?([^/?#\s]+)(?:[/?#][^\s]*)?"
+)
 
 
 def _safe_message(value: str) -> str:
     redacted = _SENSITIVE_VALUE.sub(r"\1[REDACTED]", value)
+    redacted = _URL_WITH_PRIVATE_PARTS.sub(r"\1\2", redacted)
     return "".join(
         character
         if character >= " " and character != "\x7f"

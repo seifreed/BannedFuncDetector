@@ -11,7 +11,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 - Logs go to stderr. The application does not configure local log files, rotation, remote collectors, or a vendor SDK; deployments can collect stderr using their process supervisor.
 - JSON records include UTC `timestamp`, `level`, `service`, `component`, and `message`. Analysis completion adds `operation`, `event_name`, `duration_ms`, and `outcome`. Exception records include a sanitized `stack_trace`.
 - A generated `request_id` scopes each CLI run and each public library call; it is explicitly included in directory worker payloads and restored after nested calls. It is not a W3C trace ID. The project does not make distributed calls between independently deployed services, so distributed spans and metrics are not configured.
-- Credential-like fields and control characters are redacted/escaped by the configured formatter. Requirement-check failures record command result metadata rather than subprocess output.
+- Credential-like fields, URL userinfo/path/query, and control characters are redacted/escaped by the configured formatter. Requirement-check failures record command result metadata rather than subprocess output.
 
 ## Event levels
 
@@ -24,7 +24,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 
 ## Security and limits
 
-Redaction is defense in depth and uses patterns, not a complete data-loss-prevention engine. New log calls must avoid credentials, cookies, binary contents, full HTTP bodies, and confidential data at their source. Do not log arbitrary request/response bodies or subprocess output. Control characters are escaped to reduce log forging. JSON encoding keeps event values on one physical line.
+Redaction is defense in depth and uses patterns, not a complete data-loss-prevention engine. URL logs are reduced to scheme and authority, dropping userinfo, path, and query. New log calls must avoid credentials, cookies, binary contents, full HTTP bodies, and confidential data at their source. Do not log arbitrary request/response bodies or subprocess output. Control characters are escaped to reduce log forging. JSON encoding keeps event values on one physical line.
 
 The default stream handler is synchronous in the parent process. The default directory `ProcessPoolExecutor` path forwards worker records through a bounded 10,000-record queue to one parent `QueueListener`, preventing worker writes from interleaving. The standard `QueueHandler` is non-blocking; a saturated queue may drop records. Injected custom executors retain their own logging behavior. There is no sampling or rate limiting. Deployments that need durable, centralized, or high-volume collection should provide a process-level logging collector and validate worker output under their operating system.
 
