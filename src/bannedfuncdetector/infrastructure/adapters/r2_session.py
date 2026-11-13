@@ -15,6 +15,7 @@ import time
 from collections.abc import Callable
 
 from bannedfuncdetector.analyzer_exceptions import TransientR2Error
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 from bannedfuncdetector.constants import DECOMPILER_TIMEOUT
 from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.result import Result, err, ok
@@ -104,11 +105,14 @@ def open_binary_with_r2(
             if attempt == _OPEN_RETRY_ATTEMPTS or not is_transient_r2_setup_error(exc):
                 raise
             logger.warning(
-                "Transient r2 setup failure for %s on attempt %s/%s: %s",
-                binary_path,
+                "Transient R2 setup failure on attempt %s/%s",
                 attempt,
                 _OPEN_RETRY_ATTEMPTS,
-                exc,
+                extra={
+                    "event_name": "r2_setup_retry",
+                    "outcome": "retrying",
+                    **safe_exception_fields(exc),
+                },
             )
             time.sleep(_OPEN_RETRY_DELAY_SECONDS)
     raise RuntimeError(f"Failed to open binary with r2: {binary_path}") from last_error

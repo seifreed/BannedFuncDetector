@@ -1022,7 +1022,8 @@ class TestDirectoryResults:
             iter([("sample.bin", Err(failure))]), False, lambda *_: None
         )
 
-        assert "Analysis failed for sample.bin" in caplog.text
+        assert "Analysis failed" in caplog.text
+        assert "sample.bin" not in caplog.text
         record = next(record for record in caplog.records if record.event_name == "analysis_error")
         assert record.operation == "directory_analysis"
         assert record.error_category == "I/O error"

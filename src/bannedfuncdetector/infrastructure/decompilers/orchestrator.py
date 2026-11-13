@@ -20,6 +20,7 @@ from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
 from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
 from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 from bannedfuncdetector.domain.types import (
     DecompilationResultType,
     DecompiledCode,
@@ -74,7 +75,12 @@ def _search_single_banned_function(
         return search_banned_call_in_text(decompiled_code, insecure_func)
     except (TypeError, ValueError, AttributeError) as exc:
         logger.debug(
-            f"Error searching for pattern {insecure_func} in {func_name}: {exc}"
+            "Banned-function search failed",
+            extra={
+                "event_name": "banned_function_search_failed",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
         )
         return False
 
@@ -162,9 +168,7 @@ def _handle_decompilation_error(
     """Handle decompilation failure and return the failure tuple."""
     if current_index % log_interval == 0:
         logger.error(
-            "Decompilation failed for %s: %s",
-            func_name,
-            error,
+            "Decompilation failed",
             extra={
                 "operation": "function_decompilation",
                 "event_name": "decompilation_failed",

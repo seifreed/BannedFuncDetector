@@ -57,7 +57,10 @@ def open_results_if_configured(
         return False
     path = results_file_path(output_dir, binary_path, output.get("format", "json"))
     if not os.path.isfile(path):
-        logger.warning("open_results is enabled but no report was found at %s", path)
+        logger.warning(
+            "Saved report was not found",
+            extra={"event_name": "report_missing", "outcome": "degraded"},
+        )
         return False
     try:
         launcher(path)

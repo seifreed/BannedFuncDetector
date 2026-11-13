@@ -377,18 +377,11 @@ def configure_logging(verbose: bool = False) -> None:
     if destination_error is not None:
         logger = logging.getLogger(__name__)
         logger.warning(
-            "Configured log destination failed; using stderr: %s",
-            destination_error,
-            exc_info=(
-                type(destination_error),
-                destination_error,
-                destination_error.__traceback__,
-            )
-            if destination_error.__traceback__
-            else None,
+            "Configured log destination failed; using stderr",
             extra={
-                "error_type": type(destination_error).__name__,
                 "event_name": "logging_destination_fallback",
+                "outcome": "degraded",
+                **safe_exception_fields(destination_error),
             },
         )
 

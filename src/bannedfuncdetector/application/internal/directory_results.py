@@ -142,9 +142,7 @@ def collect_directory_results(
                 if failure.phase is not None:
                     extra["error_phase"] = failure.phase
                 logger.error(
-                    "Analysis failed for %s: %s",
-                    executable_file,
-                    result.error,
+                    "Analysis failed",
                     extra=extra,
                 )
             if hasattr(result.error, "operational_notices"):
