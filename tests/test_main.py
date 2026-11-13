@@ -553,6 +553,7 @@ def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
             logging.getLogger("test.logging").exception("operation failed")
         event = json.loads(capsys.readouterr().err)
         assert "stack_trace" in event
+        assert event["error_type"] == "RuntimeError"
         assert "hidden-value" not in event["stack_trace"]
         assert "REDACTED" in event["stack_trace"]
     finally:

@@ -143,6 +143,8 @@ class _SanitizingFilter(logging.Filter):
         record.msg = _safe_message(record.getMessage())
         record.args = ()
         if record.exc_info:
+            if record.exc_info[0] is not None and not hasattr(record, "error_type"):
+                record.error_type = record.exc_info[0].__name__
             record.exc_text = _safe_message(
                 logging.Formatter().formatException(record.exc_info)
             )
