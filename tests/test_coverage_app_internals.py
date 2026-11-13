@@ -1096,7 +1096,7 @@ class TestDirectoryRunners:
         assert file_path == str(binary)
         assert isinstance(result, Err)
 
-    def test_parallel_runner_uses_custom_executor(self, tmp_path):
+    def test_parallel_runner_uses_custom_executor(self, tmp_path, caplog):
         """
         Purpose: Cover lines 93 and 102 — the custom executor_factory and
         completed_futures override paths in iter_parallel_directory_results.
@@ -1119,6 +1119,7 @@ class TestDirectoryRunners:
             DirectoryWorkerJob,
         )
         from bannedfuncdetector.domain.result import Ok, Err, ok
+        import logging
 
         binary = tmp_path / "p_target.bin"
         binary.write_bytes(b"\x00" * 32)
@@ -1133,6 +1134,7 @@ class TestDirectoryRunners:
             )
             from bannedfuncdetector.domain.entities import AnalysisResult
 
+            logging.getLogger("test.custom_worker").info("custom worker event")
             report = AnalysisResult(
                 binary_path=job.executable_file,
                 functions=(),
@@ -1165,6 +1167,13 @@ class TestDirectoryRunners:
         assert len(results) == 1
         _, result = results[0]
         assert isinstance(result, (Ok, Err))
+        worker_record = next(
+            record
+            for record in caplog.records
+            if record.name == "test.custom_worker"
+            and record.getMessage() == "custom worker event"
+        )
+        assert worker_record.request_id
 
 
 # ===========================================================================
