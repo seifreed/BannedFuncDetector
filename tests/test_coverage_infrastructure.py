@@ -895,37 +895,43 @@ def test_decompile_function_runtime_error_from_decompilation():
 # ===========================================================================
 
 
-def test_handle_processing_exception_verbose_at_interval():
+def test_handle_processing_exception_at_interval(caplog):
     """
     Purpose: Cover lines 78-81 — verbose=True and current_index % log_interval==0
     causes the error to be logged.
     """
     exc = ValueError("unexpected data")
+    caplog.set_level("ERROR", logger="bannedfuncdetector.infrastructure.decompilers.orchestrator")
     result, ok_flag = _handle_processing_exception(
         func_name="main",
         exception=exc,
-        verbose=True,
         log_interval=1,
         current_index=0,
     )
     assert ok_flag is False
     assert result.is_err()
+    event = next(
+        record for record in caplog.records
+        if record.event_name == "decompilation_processing_failed"
+    )
+    assert event.error_type == "ValueError"
+    assert event.error_category == "Runtime error"
+    assert "unexpected data" not in caplog.text
 
 
-def test_handle_processing_exception_silent_at_non_interval():
-    """
-    Cover non-verbose path: no logging, same Err structure returned.
-    """
+def test_handle_processing_exception_silent_at_non_interval(caplog):
+    """The interval cap avoids repeating equivalent failures in one batch."""
     exc = KeyError("missing_key")
+    caplog.set_level("ERROR", logger="bannedfuncdetector.infrastructure.decompilers.orchestrator")
     result, ok_flag = _handle_processing_exception(
         func_name="helper",
         exception=exc,
-        verbose=False,
         log_interval=10,
         current_index=3,
     )
     assert ok_flag is False
     assert result.is_err()
+    assert not caplog.records
 
 
 # ===========================================================================
@@ -944,7 +950,7 @@ def _make_simple_config():
     )
 
 
-def test_process_single_function_empty_decompilation():
+def test_process_single_function_empty_decompilation(caplog):
     """
     Purpose: Cover line 49 — decompile_result.unwrap() returns empty string;
     err about empty result is returned.
@@ -955,6 +961,7 @@ def test_process_single_function_empty_decompilation():
 
     config = _make_simple_config()
     func = FunctionDescriptor(name="fn", address=0x1000, size=50)
+    caplog.set_level("ERROR", logger="bannedfuncdetector.infrastructure.decompilers.orchestrator")
     result, success = _process_single_function(
         r2=FakeR2(),
         func=func,
@@ -969,9 +976,12 @@ def test_process_single_function_empty_decompilation():
     assert success is False
     assert result.is_err()
     assert "Empty decompilation" in result.error
+    event = next(record for record in caplog.records if record.event_name == "decompilation_failed")
+    assert event.operation == "function_decompilation"
+    assert event.outcome == "error"
 
 
-def test_process_single_function_raises_runtime_error():
+def test_process_single_function_raises_runtime_error(caplog):
     """
     Purpose: Cover lines 53-54 — RuntimeError from decompile_function_impl
     is caught and returns (err, False).
@@ -982,6 +992,7 @@ def test_process_single_function_raises_runtime_error():
 
     config = _make_simple_config()
     func = FunctionDescriptor(name="crash_fn", address=0x2000, size=50)
+    caplog.set_level("ERROR", logger="bannedfuncdetector.infrastructure.decompilers.orchestrator")
     result, success = _process_single_function(
         r2=FakeR2(),
         func=func,
@@ -995,6 +1006,13 @@ def test_process_single_function_raises_runtime_error():
     )
     assert success is False
     assert result.is_err()
+    event = next(
+        record for record in caplog.records
+        if record.event_name == "decompilation_processing_failed"
+    )
+    assert event.operation == "function_decompilation"
+    assert event.error_type == "RuntimeError"
+    assert "r2 crashed" not in caplog.text
 
 
 # ===========================================================================

@@ -56,10 +56,8 @@ def decompile_function(
     except (KeyError, AttributeError, TypeError) as exc:
         return err(f"Configuration error decompiling {function_name}: {str(exc)}")
     except (RuntimeError, ValueError) as exc:
-        logger.error(f"Runtime error decompiling {function_name}: {exc}")
         return err(f"Runtime error decompiling {function_name}: {str(exc)}")
     except DecompilationError as exc:
-        logger.error(f"Decompilation error for {function_name}: {exc}")
         return err(f"Decompilation error: {str(exc)}")
 
 
@@ -158,27 +156,44 @@ def _log_final_summary(
 def _handle_decompilation_error(
     func_name: str,
     error: str,
-    verbose: bool,
     log_interval: int,
     current_index: int,
 ) -> tuple[Result[BannedFunction, str], bool]:
     """Handle decompilation failure and return the failure tuple."""
-    if verbose and current_index % log_interval == 0:
-        logger.error(f"Error: Decompilation of {func_name} failed: {error}")
+    if current_index % log_interval == 0:
+        logger.error(
+            "Decompilation failed for %s: %s",
+            func_name,
+            error,
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "decompilation_failed",
+                "outcome": "error",
+            },
+        )
     return err(f"Decompilation failed: {error}"), False
 
 
 def _handle_processing_exception(
     func_name: str,
     exception: Exception,
-    verbose: bool,
     log_interval: int,
     current_index: int,
 ) -> tuple[Result[BannedFunction, str], bool]:
     """Handle exceptions during function processing."""
     error_type = classify_error(exception)
-    if verbose and current_index % log_interval == 0:
-        logger.error(f"{error_type} processing {func_name}: {exception}")
+    if current_index % log_interval == 0:
+        logger.error(
+            "%s processing %s",
+            error_type,
+            func_name,
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "decompilation_processing_failed",
+                "error_type": type(exception).__name__,
+                "error_category": error_type,
+            },
+        )
     return err(f"{error_type}: {str(exception)}"), False
 
 
@@ -208,12 +223,17 @@ def _process_single_function(
 
         if isinstance(decompile_result, Err):
             return _handle_decompilation_error(
-                func_name, decompile_result.error, verbose, log_interval, current_index
+                func_name, decompile_result.error, log_interval, current_index
             )
 
         decompiled = decompile_result.unwrap()
         if not decompiled:
-            return err(f"Empty decompilation result for {func_name}"), False
+            return _handle_decompilation_error(
+                func_name,
+                "Empty decompilation result",
+                log_interval,
+                current_index,
+            )
 
         detection_result = _search_banned_in_decompiled(
             decompiled, func, verbose, banned_functions
@@ -221,7 +241,7 @@ def _process_single_function(
         return detection_result, True
     except (KeyError, AttributeError, RuntimeError, ValueError, TypeError) as exc:
         return _handle_processing_exception(
-            func_name, exc, verbose, log_interval, current_index
+            func_name, exc, log_interval, current_index
         )
 
 
