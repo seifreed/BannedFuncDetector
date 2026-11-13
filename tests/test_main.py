@@ -434,7 +434,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert "\\u2028" in event["message"]
         assert "\\u2029" in event["message"]
         assert str(Path.home()) not in event["message"]
-        assert "~/input.bin" in event["message"]
+        assert str(Path("~") / "input.bin") in event["message"]
         assert "id-secret" not in event["request_id"]
         assert event["operation"] == "password=[REDACTED]"
         assert event["event_name"] == "safe-event\\x0aFORGED"
