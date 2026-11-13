@@ -61,6 +61,7 @@ def test_saved_report_emits_completion_event(tmp_path, caplog, verbose, level):
     assert record.operation == "report_write"
     assert record.outcome == "success"
     assert record.duration_ms >= 0
+    assert str(tmp_path) not in record.getMessage()
 
 
 def test_text_format(tmp_path):

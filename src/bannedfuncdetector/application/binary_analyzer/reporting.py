@@ -131,8 +131,7 @@ def _save_analysis_results(
 
     logger.log(
         logging.INFO if verbose else logging.DEBUG,
-        "Analysis report saved to %s",
-        output_file,
+        "Analysis report saved",
         extra={
             "operation": "report_write",
             "event_name": "report_saved",

@@ -114,3 +114,4 @@ def test_persist_summary_emits_completion_event(tmp_path, caplog, verbose, level
     assert record.operation == "directory_summary_write"
     assert record.outcome == "success"
     assert record.duration_ms >= 0
+    assert str(tmp_path) not in record.getMessage()

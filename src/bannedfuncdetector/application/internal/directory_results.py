@@ -149,8 +149,7 @@ def persist_directory_summary(
         json.dump(directory_outcome_to_dict(summary), handle, indent=4)
     logger.log(
         logging.INFO if verbose else logging.DEBUG,
-        "Directory analysis summary saved to %s",
-        summary_file,
+        "Directory analysis summary saved",
         extra={
             "operation": "directory_summary_write",
             "event_name": "directory_summary_saved",
