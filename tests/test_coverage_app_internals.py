@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import errno
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -1141,6 +1142,7 @@ class TestDirectoryRunners:
         """
         from bannedfuncdetector.application.analysis_runtime import (
             BinaryRuntimeServices,
+            DirectoryRuntimeServices,
         )
         from bannedfuncdetector.application.contracts import AnalysisRuntime
         from bannedfuncdetector.application.internal import DirectoryScanPlan
@@ -1168,11 +1170,18 @@ class TestDirectoryRunners:
 
             logging.getLogger("test.custom_worker").info("custom worker event")
             report = AnalysisResult(
-                binary_path=job.executable_file,
-                functions=(),
-                banned_functions=(),
+                file_name=Path(job.executable_file).name,
+                file_path=job.executable_file,
+                total_functions=0,
+                detected_functions=(),
+                analysis_date="2026-01-01T00:00:00Z",
             )
             return ok(BinaryAnalysisOutcome(report=report))
+
+        from bannedfuncdetector.infrastructure.logging_config import (
+            configure_logging,
+            configure_worker_logging,
+        )
 
         runtime = AnalysisRuntime(
             config=config,
@@ -1182,6 +1191,10 @@ class TestDirectoryRunners:
                 r2_closer=_make_closer_ok(),
             ),
             config_factory=lambda d: FakeConfigRepository(d),
+            directory=DirectoryRuntimeServices(
+                configure_logging=configure_logging,
+                configure_worker_logging=configure_worker_logging,
+            ),
         )
         plan = DirectoryScanPlan(
             runtime=runtime,

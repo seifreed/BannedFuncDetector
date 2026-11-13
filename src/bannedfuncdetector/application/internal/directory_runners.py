@@ -21,10 +21,6 @@ from bannedfuncdetector.application.observability import (
     operation_context,
 )
 from bannedfuncdetector.domain.result import Result
-from bannedfuncdetector.infrastructure.logging_config import (
-    configure_logging,
-    configure_worker_logging,
-)
 
 from .directory_results import (
     error_result_from_exception,
@@ -111,9 +107,16 @@ def iter_parallel_directory_results(
     completed_iterator = plan.completed_futures or concurrent.futures.as_completed
 
     listener = None
-    initargs: tuple[object, ...] = ()
-    if plan.parallel_executor_factory is None:
-        configure_logging(verbose=plan.verbose)
+    initargs: tuple[Any, ...] = ()
+    initializer: Any = None
+    configure_logging = plan.runtime.directory.configure_logging
+    configure_worker_logging = plan.runtime.directory.configure_worker_logging
+    if (
+        plan.parallel_executor_factory is None
+        and configure_logging is not None
+        and configure_worker_logging is not None
+    ):
+        configure_logging(plan.verbose)
         log_queue = multiprocessing.get_context().Queue(maxsize=_LOG_QUEUE_MAXSIZE)
         listener = _DrainingQueueListener(
             log_queue, *logging.getLogger().handlers, respect_handler_level=True
@@ -122,7 +125,11 @@ def iter_parallel_directory_results(
         initargs = (log_queue,)
         listener.start()
     else:
-        initializer = functools.partial(configure_logging, verbose=plan.verbose)
+        initializer = (
+            functools.partial(configure_logging, plan.verbose)
+            if configure_logging is not None
+            else None
+        )
 
     try:
         if initargs:

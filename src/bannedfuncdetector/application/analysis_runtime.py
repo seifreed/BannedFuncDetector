@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         ExecutorFactory,
     )
     from collections.abc import Callable
+    from typing import Any
     from bannedfuncdetector.application.analysis_error import ExecutionFailure
 
 
@@ -34,6 +35,8 @@ class DirectoryRuntimeServices:
     worker_entrypoint: "Callable[[DirectoryWorkerJob], Result[BinaryAnalysisOutcome, ExecutionFailure]] | None" = (None)
     executor_factory: "ExecutorFactory | None" = None
     completed_futures: "CompletedFutures | None" = None
+    configure_logging: "Callable[[bool], None] | None" = None
+    configure_worker_logging: "Callable[[bool, Any], None] | None" = None
 
 
 @dataclass(frozen=True, kw_only=True)

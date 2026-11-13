@@ -140,6 +140,10 @@ def _default_orchestrator_factory(
 def create_application_wiring(config_path: str | None = None) -> AnalysisRuntime:
     """Build the explicit wiring used by outer-layer entry points."""
     from .infrastructure.decompilers.orchestrator import create_decompiler_orchestrator
+    from .infrastructure.logging_config import (
+        configure_logging,
+        configure_worker_logging,
+    )
 
     config = create_config_from_file(config_path)
     return AnalysisRuntime(
@@ -152,6 +156,8 @@ def create_application_wiring(config_path: str | None = None) -> AnalysisRuntime
         ),
         directory=DirectoryRuntimeServices(
             file_finder=_default_file_finder,
+            configure_logging=configure_logging,
+            configure_worker_logging=configure_worker_logging,
         ),
         config_factory=create_config_from_dict,
         r2_factory=create_r2_client,
