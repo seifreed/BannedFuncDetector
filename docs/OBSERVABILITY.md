@@ -10,7 +10,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 - CLI setup is in `bannedfuncdetector.cli_bootstrap.configure_logging`; text is the default and JSON can be selected with `BFD_LOG_FORMAT=json`. `BFD_LOG_LEVEL` selects a standard Python level, and invalid names fall back to `INFO`.
 - Logs go to stderr. The application does not configure local log files, rotation, remote collectors, or a vendor SDK; deployments can collect stderr using their process supervisor.
 - JSON records include UTC `timestamp`, `level`, `service`, `component`, and `message`. Analysis completion adds `operation`, `event_name`, `duration_ms`, and `outcome`. Exception records include a sanitized `stack_trace`.
-- A generated `request_id` scopes a CLI run and is explicitly included in directory worker payloads. It is not a W3C trace ID. The project does not make distributed calls between independently deployed services, so distributed spans and metrics are not configured.
+- A generated `request_id` scopes each CLI run and each public library call; it is explicitly included in directory worker payloads and restored after nested calls. It is not a W3C trace ID. The project does not make distributed calls between independently deployed services, so distributed spans and metrics are not configured.
 - Credential-like fields and control characters are redacted/escaped by the configured formatter. Requirement-check failures record command result metadata rather than subprocess output.
 
 ## Event levels
@@ -32,23 +32,25 @@ The default stream handler is synchronous in the parent process. The default dir
 
 The pre-change baseline was **3.0/10**, assessed from source before structured formatting, redaction, correlation, and operation-level duration events were added.
 
-| Dimension | Baseline | Evidence at baseline |
-|---|---:|---|
-| Architecture and decoupling | 5 | Standard `logging`, but only `cli_bootstrap.py` configured the root logger. |
-| Functional coverage | 6 | Logs existed across analysis, configuration, adapters, and reporting; operation outcomes were not consistently measurable. |
-| Event quality | 3 | Many f-string messages and plain-text errors; useful context varied by module. |
-| Structure and consistency | 1 | No normalized JSON event schema. |
-| Context and correlation | 0 | No operation or worker correlation ID. |
-| Security and privacy | 2 | No common formatter-level secret or control-character handling; dependency diagnostics included raw stdout/stderr. |
-| Performance and resilience | 4 | Standard handlers were thread-safe, but output was synchronous and had no explicit volume controls. |
-| Configuration and portability | 2 | CLI verbosity selected a level; format and level were not environment-configurable. |
-| Error handling | 4 | Errors were often text-only, with inconsistent exception context and duplicate logging across layers. |
-| Testing and verification | 3 | Existing tests checked verbosity, not the structured, privacy, and correlation contracts. |
+| Dimension | Baseline | Current provisional | Current evidence / remaining gap |
+|---|---:|---:|---|
+| Architecture and decoupling | 5 | 8 | Standard `logging`, CLI bootstrap, and parent queue listener; no pluggable backend protocol. |
+| Functional coverage | 6 | 8 | Binary/directory outcomes include duration; some lower-level events still lack operation fields. |
+| Event quality | 3 | 7 | Exceptions and outcomes carry useful context; many legacy f-string events remain. |
+| Structure and consistency | 1 | 8 | JSON UTC schema and allowlisted event fields; most legacy message data remains in `message`. |
+| Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
+| Security and privacy | 2 | 7 | Credential/cookie pattern redaction and control escaping; regex cannot identify arbitrary sensitive values. |
+| Performance and resilience | 4 | 8 | Bounded worker queue and draining shutdown; saturation drops logs and parent output is synchronous. |
+| Configuration and portability | 2 | 7 | Environment-configurable level/format and stderr output; no file rotation or destination selection. |
+| Error handling | 4 | 8 | CLI suppresses duplicate ERROR records already emitted by binary flow; other modules still vary in exception details. |
+| Testing and verification | 3 | 10 | 100% line coverage plus real process log propagation tests; cross-platform CI results remain external evidence. |
+
+The current **provisional score is 8.0/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. The remaining review should measure duplicate errors across application and CLI boundaries; add coverage for context isolation under parallel execution and formatter behavior with preconfigured host handlers; inspect every logged exception and external integration for unnecessary data; and decide whether process-level collection is sufficient for supported deployment modes. The current regex redaction and synchronous multi-process stderr behavior are known limits.
+This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom executor behavior and preconfigured host handlers, evaluating destination/retention needs for actual deployments, and confirming CI on each supported OS. Regex redaction remains heuristic; the bounded queue may drop records under pressure.
 
 ## Verification evidence
 
-The source tree has a 100% line-coverage gate in `pyproject.toml`. Logging tests cover JSON fields, redaction, control-character escaping, exception stack traces, request IDs, and operation completion. Full suite results should be recorded from the current revision before making any final score claim.
+The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `3bd14b3`, the full suite passed with 1,257 tests and 100% line coverage; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON fields, redaction, control-character escaping, exception stack traces, request IDs, duplicate-error suppression, operation completion, and real process log forwarding. Re-run all checks after subsequent changes and inspect remote CI results before making a final score claim.

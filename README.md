@@ -224,7 +224,7 @@ The CLI uses Python's standard `logging` module and writes to stderr. Text outpu
 
 CLI runs receive a `request_id`; directory jobs pass the same ID to worker processes. Analysis completion events include `operation`, `event_name`, `duration_ms`, and `outcome`. Exception traces are included for logged analysis errors. No trace/span IDs are generated because the application does not use distributed tracing.
 
-The formatter redacts common credential fields (such as `password`, `access_token`, `api_key`, and `client_secret`) and escapes control characters. This is a defense in depth measure, not a substitute for minimizing sensitive data at the source: do not log credentials, request/file contents, or confidential data. Logs are not written to local files or sent to a service by the application; configure stderr collection and retention in the deployment environment.
+The formatter redacts common credential fields (such as `password`, `access_token`, `api_key`, `client_secret`, and cookie headers) and escapes control characters. This is a defense in depth measure, not a substitute for minimizing sensitive data at the source: do not log credentials, request/file contents, or confidential data. Logs are not written to local files or sent to a service by the application; configure stderr collection and retention in the deployment environment.
 
 Example:
 
