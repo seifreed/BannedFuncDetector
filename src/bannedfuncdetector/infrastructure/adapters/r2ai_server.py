@@ -46,7 +46,7 @@ def _is_affirmative(response: str) -> bool:
 def _ping_server(server_url: str, timeout: int) -> bool:
     """Return True if the server responds with HTTP 200."""
     response = requests.get(f"{server_url}/ping", timeout=timeout)
-    return response.status_code == 200
+    return bool(response.status_code == 200)
 
 
 def _wait_for_server(server_url: str, attempts: int = 10, timeout: int = 1) -> bool:
