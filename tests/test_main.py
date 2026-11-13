@@ -488,7 +488,8 @@ def test_preconfigured_handlers_keep_destination_and_receive_sanitizer(monkeypat
     handler.setFormatter(
         logging.Formatter(
             "%(api_key)s %(cookie)s %(nested)s %(payload)s %(many_keys)s "
-            "%(truncated_list)s %(too_deep)s %(message)s"
+            "%(truncated_list)s %(too_deep)s %(huge_number)s %(not_finite)s "
+            "%(message)s"
         )
     )
     root.handlers[:] = [handler]
@@ -507,6 +508,8 @@ def test_preconfigured_handlers_keep_destination_and_receive_sanitizer(monkeypat
             "many_keys": {f"field_{index}": index for index in range(33)},
             "too_deep": {"a": {"b": {"c": {"d": "deep-private"}}}},
             "truncated_list": ["x" * 1000 for _ in range(32)],
+            "huge_number": 2**100,
+            "not_finite": float("nan"),
         }
         logging.getLogger("test.logging").warning(
             "https://user:pass@service.test/path?token=hidden",
@@ -531,6 +534,8 @@ def test_preconfigured_handlers_keep_destination_and_receive_sanitizer(monkeypat
         assert "deep-private" not in stream.getvalue()
         assert "[nested value omitted]" in stream.getvalue()
         assert "[truncated]" in stream.getvalue()
+        assert "number omitted" in stream.getvalue()
+        assert "nan" not in stream.getvalue()
         assert "before\\\\x0aforged-line" in stream.getvalue()
         assert "forged-line\n" not in stream.getvalue()
     finally:

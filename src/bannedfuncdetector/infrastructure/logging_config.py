@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import json
 import logging.handlers
+import math
 import os
 import re
 import sys
@@ -99,8 +100,12 @@ def _safe_field_value(value: Any, remaining_chars: list[int], depth: int = 0) ->
             )
         remaining_chars[0] = max(0, remaining_chars[0] - len(safe_value))
         return safe_value
-    if value is None or isinstance(value, (bool, int, float)):
+    if value is None or isinstance(value, bool):
         return value
+    if isinstance(value, int):
+        return value if value.bit_length() <= 64 else "[number omitted]"
+    if isinstance(value, float):
+        return value if math.isfinite(value) else "[non-finite number omitted]"
     if isinstance(value, BaseException):
         return type(value).__name__
     if depth >= _MAX_LOG_FIELD_DEPTH:
