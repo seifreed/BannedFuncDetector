@@ -478,6 +478,22 @@ def test_new_request_id_changes_between_cli_runs():
     assert new_request_id() != new_request_id()
 
 
+def test_library_log_context_is_unique_and_restores_parent():
+    from bannedfuncdetector.cli_bootstrap import (
+        ensure_request_id,
+        log_context,
+        new_log_context,
+    )
+
+    with log_context("outer"):
+        with new_log_context() as first_id:
+            assert ensure_request_id() == first_id
+            assert first_id != "outer"
+        assert ensure_request_id() == "outer"
+        with new_log_context() as second_id:
+            assert second_id != first_id
+
+
 def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
     import json
 

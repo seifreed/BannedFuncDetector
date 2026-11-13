@@ -5,7 +5,12 @@ import os
 import logging
 
 from .cli import parse_arguments
-from .cli_bootstrap import configure_logging, new_request_id, validate_requirements
+from .cli_bootstrap import (
+    configure_logging,
+    new_log_context,
+    new_request_id,
+    validate_requirements,
+)
 from .cli_dispatch import dispatch_cli_analysis
 from .infrastructure.validators import check_python_version, check_requirements
 from .presentation.reporting import display_final_results
@@ -41,17 +46,18 @@ def analyze_file(
     Convenience wrapper that builds the default application wiring internally.
     Returns ``Ok(outcome)`` on success or ``Err(failure)`` on error.
     """
-    wiring = create_application_wiring()
-    request = BinaryAnalysisRequest.for_runtime(
-        wiring,
-        output_dir=output_dir,
-        decompiler_type=decompiler_type,
-        verbose=verbose,
-        force_decompiler=force_decompiler,
-        skip_banned=skip_banned,
-        skip_analysis=skip_analysis,
-    )
-    return _analyze_binary(file_path, request=request)
+    with new_log_context():
+        wiring = create_application_wiring()
+        request = BinaryAnalysisRequest.for_runtime(
+            wiring,
+            output_dir=output_dir,
+            decompiler_type=decompiler_type,
+            verbose=verbose,
+            force_decompiler=force_decompiler,
+            skip_banned=skip_banned,
+            skip_analysis=skip_analysis,
+        )
+        return _analyze_binary(file_path, request=request)
 
 
 def analyze_directory(
@@ -71,19 +77,20 @@ def analyze_directory(
     Convenience wrapper that builds the default application wiring internally.
     Returns ``Ok(outcome)`` on success or ``Err(failure)`` on error.
     """
-    wiring = create_application_wiring()
-    request = DirectoryAnalysisRequest.for_runtime(
-        wiring,
-        output_dir=output_dir,
-        decompiler_type=decompiler_type,
-        parallel=parallel,
-        max_workers=max_workers,
-        verbose=verbose,
-        force_decompiler=force_decompiler,
-        skip_banned=skip_banned,
-        skip_analysis=skip_analysis,
-    )
-    return _analyze_directory(directory, request=request)
+    with new_log_context():
+        wiring = create_application_wiring()
+        request = DirectoryAnalysisRequest.for_runtime(
+            wiring,
+            output_dir=output_dir,
+            decompiler_type=decompiler_type,
+            parallel=parallel,
+            max_workers=max_workers,
+            verbose=verbose,
+            force_decompiler=force_decompiler,
+            skip_banned=skip_banned,
+            skip_analysis=skip_analysis,
+        )
+        return _analyze_directory(directory, request=request)
 
 
 def main() -> int:
