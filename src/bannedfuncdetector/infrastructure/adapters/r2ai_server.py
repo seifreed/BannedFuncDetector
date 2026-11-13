@@ -212,19 +212,21 @@ def get_r2ai_models(
         >>> isinstance(models, list)
         True
     """
-    models, error_type, error_code = _fetch_r2ai_models(server_url, timeout)
+    models, error_type, error_code, duration_ms = _fetch_r2ai_models(server_url, timeout)
     if error_type is not None:
-        _log_model_fetch_failure(error_type, error_code)
+        _log_model_fetch_failure(error_type, error_code, duration_ms)
     return models
 
 
 def _fetch_r2ai_models(
     server_url: str, timeout: int
-) -> tuple[list[Any], str | None, int | None]:
+) -> tuple[list[Any], str | None, int | None, float]:
+    started = time.perf_counter()
     try:
         response = requests.get(f"{server_url}/models", timeout=timeout)
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
         if response.status_code != 200:
-            return [], "HTTPStatusError", response.status_code
+            return [], "HTTPStatusError", response.status_code, duration_ms
         models_data = response.json()
         # Accept both {"models": [...]} and a bare [...] top-level array.
         if isinstance(models_data, dict):
@@ -233,15 +235,18 @@ def _fetch_r2ai_models(
             models = models_data
         else:
             models = []
-        return models, None, None
+        return models, None, None, duration_ms
     except (requests.RequestException, json.JSONDecodeError, ValueError, KeyError) as exc:
-        return [], type(exc).__name__, None
+        return [], type(exc).__name__, None, round((time.perf_counter() - started) * 1000, 2)
 
 
-def _log_model_fetch_failure(error_type: str, error_code: int | None) -> None:
+def _log_model_fetch_failure(
+    error_type: str, error_code: int | None, duration_ms: float
+) -> None:
     extra: dict[str, Any] = {
         "event_name": "optional_service_models_failed",
         "error_type": error_type,
+        "duration_ms": duration_ms,
     }
     if error_code is not None:
         extra["error_code"] = error_code
@@ -256,9 +261,9 @@ def _log_available_models(server_url: str, timeout: int) -> None:
         server_url: URL of the r2ai-server.
         timeout: Request timeout in seconds.
     """
-    models, error_type, error_code = _fetch_r2ai_models(server_url, timeout)
+    models, error_type, error_code, duration_ms = _fetch_r2ai_models(server_url, timeout)
     if error_type is not None:
-        _log_model_fetch_failure(error_type, error_code)
+        _log_model_fetch_failure(error_type, error_code, duration_ms)
         return
     if models:
         logger.info("Models available in r2ai-server: %d", len(models))

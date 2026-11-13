@@ -124,6 +124,7 @@ def test_r2ai_model_fetch_failure_is_logged_once(monkeypatch, caplog):
     assert len(warnings) == 1
     assert warnings[0].event_name == "optional_service_models_failed"
     assert warnings[0].error_type == "ConnectionError"
+    assert warnings[0].duration_ms >= 0
     assert "private-value" not in caplog.text
 
     class ModelsErrorResponse:
@@ -143,6 +144,7 @@ def test_r2ai_model_fetch_failure_is_logged_once(monkeypatch, caplog):
     assert len(warnings) == 1
     assert warnings[0].error_type == "HTTPStatusError"
     assert warnings[0].error_code == 503
+    assert warnings[0].duration_ms >= 0
 
 
 def test_check_r2ai_server_available_success_no_models():
