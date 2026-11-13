@@ -26,7 +26,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 
 Redaction is defense in depth and uses patterns, not a complete data-loss-prevention engine. New log calls must avoid credentials, cookies, binary contents, full HTTP bodies, and confidential data at their source. Do not log arbitrary request/response bodies or subprocess output. Control characters are escaped to reduce log forging. JSON encoding keeps event values on one physical line.
 
-The default stream handler is synchronous. It is suitable for this local CLI and does not add a service dependency, but there is no queue-based backpressure, sampling, rate limiting, or cross-process aggregation. Workers inherit stderr and may write concurrently. Deployments that need durable, centralized, or high-volume collection should provide a process-level logging collector and validate worker output under their operating system.
+The default stream handler is synchronous in the parent process. The default directory `ProcessPoolExecutor` path forwards worker records through a bounded 10,000-record queue to one parent `QueueListener`, preventing worker writes from interleaving. The standard `QueueHandler` is non-blocking; a saturated queue may drop records. Injected custom executors retain their own logging behavior. There is no sampling or rate limiting. Deployments that need durable, centralized, or high-volume collection should provide a process-level logging collector and validate worker output under their operating system.
 
 ## Baseline score
 

@@ -9,7 +9,7 @@ import multiprocessing
 from concurrent.futures import Future
 from collections.abc import Callable, Iterator
 from logging.handlers import QueueListener
-from typing import Iterable, Protocol, TypeAlias
+from typing import Any, Iterable, Protocol, TypeAlias, cast
 
 from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
@@ -36,6 +36,12 @@ from .directory_workers import (
 from .execution_plans import DirectoryScanPlan, DirectoryWorkerJob
 
 logger = logging.getLogger(__name__)
+_LOG_QUEUE_MAXSIZE = 10_000
+
+
+class _DrainingQueueListener(QueueListener):
+    def enqueue_sentinel(self) -> None:
+        cast(Any, self.queue).put(None)
 
 
 class ExecutorLike(Protocol):
@@ -105,8 +111,8 @@ def iter_parallel_directory_results(
     initargs: tuple[object, ...] = ()
     if plan.parallel_executor_factory is None:
         configure_logging(verbose=plan.verbose)
-        log_queue = multiprocessing.get_context().Queue()
-        listener = QueueListener(
+        log_queue = multiprocessing.get_context().Queue(maxsize=_LOG_QUEUE_MAXSIZE)
+        listener = _DrainingQueueListener(
             log_queue, *logging.getLogger().handlers, respect_handler_level=True
         )
         initializer = functools.partial(configure_worker_logging, plan.verbose)
