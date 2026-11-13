@@ -39,6 +39,12 @@ The default stream handler is synchronous in the parent process. The default dir
 
 For local troubleshooting, run `BFD_LOG_LEVEL=DEBUG bannedfunc --file ./sample.bin`. To produce machine-readable output, use `BFD_LOG_FORMAT=json BFD_LOG_DESTINATION=file:./bfd.jsonl bannedfunc --directory ./samples`. Inspect recent events with `tail -n 50 ./bfd.jsonl`; when `jq` is installed, filter failures with `jq 'select(.level == "ERROR")' ./bfd.jsonl`. Text mode writes to stderr by default, leaving stdout available to scripts and report output.
 
+A JSON event captured locally while writing a report:
+
+```json
+{"timestamp":"2026-11-13T17:02:00.174531Z","level":"DEBUG","service":"bannedfuncdetector","component":"bannedfuncdetector.application.binary_analyzer.reporting","message":"Analysis report saved","operation":"report_write","event_name":"report_saved","duration_ms":0.18,"outcome":"success"}
+```
+
 New events should use a module logger and lazy `%s` formatting. Put stable machine-readable names in `extra`, and keep the message short and free of secrets. For example, directory analysis emits `operation="directory_analysis"`, `event_name="analysis_finished"`, `duration_ms`, and `outcome`. A comparable operation event is:
 
 ```python
@@ -66,7 +72,7 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Event quality | 3 | 8.5 | Failures and result persistence carry useful outcomes and duration; legacy messages remain unstructured. |
 | Structure and consistency | 1 | 9 | JSON UTC schema and normalized text fields; most legacy event-specific data still remains in `message`. |
 | Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
-| Security and privacy | 2 | 9 | Credential/cookie/URL pattern redaction and Unicode line-separator escaping apply to configured handlers; arbitrary sensitive values remain undetectable. |
+| Security and privacy | 2 | 9 | Credential/cookie/URL pattern redaction and Unicode line-separator escaping apply to configured handlers; artifact persistence events omit paths, while arbitrary sensitive values remain undetectable. |
 | Performance and resilience | 4 | 9 | Bounded worker queue, draining shutdown, size caps, and process-safe rotating file handler; queue overflow may drop records and stream output is synchronous. |
 | Configuration and portability | 2 | 9 | Environment selects level, format, environment, and stream/file destination; existing host handlers remain respected. |
 | Error handling | 4 | 9 | Duplicate directory errors are suppressed; handled directory exceptions retain type and stack trace, while legacy paths still vary. |
@@ -76,8 +82,8 @@ The current **provisional score is 8.9/10**, the arithmetic mean of the ten curr
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. Remaining work includes completing a semantic review of legacy log events and exception paths, checking deployment retention needs, and getting CI results on each supported OS. The GitHub Actions run for `86d74f1` is queued and has not executed. Regex redaction remains heuristic; the bounded default queue intentionally drops records under pressure to keep analysis non-blocking. Redaction must not replace safe logging at the source.
+This is an interim implementation, not a 10/10 claim. Remaining work includes completing a semantic review of legacy log events and exception paths, checking deployment retention needs, and getting CI results on each supported OS. The GitHub Actions run for `a1690c9` is queued and has not executed. Regex redaction remains heuristic; the bounded default queue intentionally drops records under pressure to keep analysis non-blocking. Redaction must not replace safe logging at the source.
 
 ## Verification evidence
 
-The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `e72e7b0`, the full suite passed with 100% line coverage on macOS under Python 3.13, 3.14, and 3.15. At `86d74f1`, the full suite passed with 100% line coverage on Python 3.15; Ruff, mypy, and Bandit passed on the same source. The real-process stress test wrote 720 structured events from four workers across a size rotation and verified every event remained parseable and present. Integration tests verify endpoint credentials, URL paths/query, remote model strings, exception text, structured fields, home-directory redaction, quoted secrets, cookie headers, and POSIX file modes do not leak. Earlier verification at `2705d97` also passed package build, `pip check`, and `pip-audit -r requirements.txt`; the dependency audit reported no known vulnerabilities. Focused logging/process tests passed locally on Python 3.13 and 3.14. `actionlint` passed for the CI concurrency update in `dad8210`. The latest GitHub Actions matrix for `86d74f1` is queued on Ubuntu, macOS, and Windows; cross-platform remote validation remains outstanding.
+The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `e72e7b0`, the full suite passed with 100% line coverage on macOS under Python 3.13, 3.14, and 3.15. At `a1690c9`, the full suite passed with 100% line coverage on Python 3.15; Ruff, mypy, and Bandit passed on the same source. The full suite without coverage and the focused logging, output, and r2ai tests passed locally on Python 3.13 and 3.14. The real-process stress test wrote 720 structured events from four workers across a size rotation and verified every event remained parseable and present. Integration tests verify endpoint credentials, URL paths/query, remote model strings, exception text, structured fields, home-directory redaction, quoted secrets, cookie headers, and POSIX file modes do not leak. Package build, `pip check`, and `pip-audit -r requirements.txt` passed at `a1690c9`; the build reports existing setuptools license-metadata deprecations, and the dependency audit reported no known vulnerabilities. `actionlint` passed for the CI concurrency update in `dad8210`. The GitHub Actions matrix for `a1690c9` has eight queued jobs on Ubuntu, macOS, and Windows with no steps started; cross-platform remote validation remains outstanding.
