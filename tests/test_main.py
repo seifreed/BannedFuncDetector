@@ -394,6 +394,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
             "request access_token=abc123 client_secret=private "
             "Cookie: session=secret-value "
             "https://user:password@service.test/path?api_key=url-secret\nINJECTED"
+            "\x85NEXT\u2028LINE\u2029PARAGRAPH"
         )
         event = json.loads(capsys.readouterr().err)
         assert event["level"] == "WARNING"
@@ -407,6 +408,9 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert "url-secret" not in event["message"]
         assert "https://service.test" in event["message"]
         assert "\\x0a" in event["message"]
+        assert "\\x85" in event["message"]
+        assert "\\u2028" in event["message"]
+        assert "\\u2029" in event["message"]
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
@@ -583,7 +587,13 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
     from bannedfuncdetector.cli_bootstrap import _TextLogFormatter
 
     record = logging.LogRecord(
-        "test.logging", logging.ERROR, __file__, 1, "worker failed", (), None
+        "test.logging",
+        logging.ERROR,
+        __file__,
+        1,
+        "worker failed\u2028forged line",
+        (),
+        None,
     )
     record.stack_trace = "RuntimeError: api_key=hidden-value"
 
@@ -591,6 +601,7 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
 
     assert "hidden-value" not in output
     assert "REDACTED" in output
+    assert "\\u2028" in output
 
 
 def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):

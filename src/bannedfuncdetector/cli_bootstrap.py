@@ -75,11 +75,14 @@ def _safe_message(value: str) -> str:
     redacted = _SENSITIVE_VALUE.sub(r"\1[REDACTED]", value)
     redacted = _URL_WITH_PRIVATE_PARTS.sub(r"\1\2", redacted)
     return "".join(
-        character
-        if character >= " " and character != "\x7f"
-        else f"\\x{ord(character):02x}"
+        character if character.isprintable() else _escape_character(character)
         for character in redacted
     )
+
+
+def _escape_character(character: str) -> str:
+    codepoint = ord(character)
+    return f"\\x{codepoint:02x}" if codepoint <= 0xFF else ascii(character)[1:-1]
 
 
 class _JsonLogFormatter(logging.Formatter):
