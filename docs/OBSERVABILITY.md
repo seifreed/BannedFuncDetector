@@ -62,8 +62,8 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Dimension | Baseline | Current provisional | Current evidence / remaining gap |
 |---|---:|---:|---|
 | Architecture and decoupling | 5 | 9 | Standard `logging`, serialized configuration, and parent queue listener; no pluggable backend protocol. |
-| Functional coverage | 6 | 8 | Binary/directory outcomes include duration; some lower-level events still lack operation fields. |
-| Event quality | 3 | 8 | Exceptions and outcomes carry useful context and error type; legacy messages remain unstructured. |
+| Functional coverage | 6 | 8.5 | Binary/directory outcomes, report writes, directory summary writes, and failed model fetches carry duration; some lower-level events still lack operation fields. |
+| Event quality | 3 | 8.5 | Failures and result persistence carry useful outcomes and duration; legacy messages remain unstructured. |
 | Structure and consistency | 1 | 9 | JSON UTC schema and normalized text fields; most legacy event-specific data still remains in `message`. |
 | Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
 | Security and privacy | 2 | 9 | Credential/cookie/URL pattern redaction and Unicode line-separator escaping apply to configured handlers; arbitrary sensitive values remain undetectable. |
@@ -72,12 +72,12 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Error handling | 4 | 9 | Duplicate directory errors are suppressed; handled directory exceptions retain type and stack trace, while legacy paths still vary. |
 | Testing and verification | 3 | 9 | 100% line coverage plus real process and sink-failure tests; cross-platform CI results remain unverified. |
 
-The current **provisional score is 8.8/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
+The current **provisional score is 8.9/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. Remaining work includes completing a semantic review of legacy log events and exception paths, checking deployment retention needs, and getting CI results on each supported OS. Regex redaction remains heuristic; the bounded default queue intentionally drops records under pressure to keep analysis non-blocking. Redaction must not replace safe logging at the source.
+This is an interim implementation, not a 10/10 claim. Remaining work includes completing a semantic review of legacy log events and exception paths, checking deployment retention needs, and getting CI results on each supported OS. The GitHub Actions run for `86d74f1` is queued and has not executed. Regex redaction remains heuristic; the bounded default queue intentionally drops records under pressure to keep analysis non-blocking. Redaction must not replace safe logging at the source.
 
 ## Verification evidence
 
-The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `e72e7b0`, the full suite passed with 100% line coverage on macOS under Python 3.13, 3.14, and 3.15. At `2705d97`, the full suite passed with 1,277 tests and 100% line coverage on Python 3.15. The real-process stress test wrote 720 structured events from four workers across a size rotation and verified every event remained parseable and present. Integration tests verify endpoint credentials, URL paths/query, remote model strings, exception text, structured fields, home-directory redaction, quoted secrets, cookie headers, and POSIX file modes do not leak. Ruff, mypy, Bandit, package build, `pip check`, and `pip-audit -r requirements.txt` passed for that revision; the dependency audit reported no known vulnerabilities. Focused logging/process tests passed locally on Python 3.13 and 3.14. `actionlint` passed for the CI concurrency update in `dad8210`. The latest GitHub Actions matrix for `dad8210` remains queued on Ubuntu, macOS, and Windows; cross-platform remote validation remains outstanding.
+The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `e72e7b0`, the full suite passed with 100% line coverage on macOS under Python 3.13, 3.14, and 3.15. At `86d74f1`, the full suite passed with 100% line coverage on Python 3.15; Ruff, mypy, and Bandit passed on the same source. The real-process stress test wrote 720 structured events from four workers across a size rotation and verified every event remained parseable and present. Integration tests verify endpoint credentials, URL paths/query, remote model strings, exception text, structured fields, home-directory redaction, quoted secrets, cookie headers, and POSIX file modes do not leak. Earlier verification at `2705d97` also passed package build, `pip check`, and `pip-audit -r requirements.txt`; the dependency audit reported no known vulnerabilities. Focused logging/process tests passed locally on Python 3.13 and 3.14. `actionlint` passed for the CI concurrency update in `dad8210`. The latest GitHub Actions matrix for `86d74f1` is queued on Ubuntu, macOS, and Windows; cross-platform remote validation remains outstanding.
