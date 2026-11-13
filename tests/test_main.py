@@ -389,12 +389,15 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
     try:
         root.handlers.clear()
         configure_logging()
-        logging.getLogger("test.logging").warning("request token=abc123\nINJECTED")
+        logging.getLogger("test.logging").warning(
+            "request access_token=abc123 client_secret=private\nINJECTED"
+        )
         event = json.loads(capsys.readouterr().err)
         assert event["level"] == "WARNING"
         assert event["service"] == "bannedfuncdetector"
         assert event["component"] == "test.logging"
         assert "abc123" not in event["message"]
+        assert "private" not in event["message"]
         assert "\\x0a" in event["message"]
     finally:
         root.handlers[:] = saved_handlers

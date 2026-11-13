@@ -38,7 +38,9 @@ def log_context(request_id: str | None) -> Iterator[None]:
 
 
 _SENSITIVE_VALUE = re.compile(
-    r"(?i)(\b(?:password|passwd|token|api[_-]?key|secret)\b\s*[=:]\s*|"
+    r"(?i)(\b(?:password|passwd|(?:access|refresh|id)?[_-]?token|"
+    r"api[_-]?key|client[_-]?secret|secret|session(?:id)?|private[_-]?key)"
+    r"\b\s*[=:]\s*[\"']?|"
     r"\bauthorization\s*:\s*(?:bearer\s+|basic\s+)?|"
     r"\b(?:bearer|basic)\s+)[^\s,;]+"
 )
