@@ -606,6 +606,18 @@ def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
         root.setLevel(saved_level)
 
 
+def test_log_messages_are_bounded():
+    from bannedfuncdetector.cli_bootstrap import (
+        _MAX_LOG_MESSAGE_CHARS,
+        _safe_message,
+    )
+
+    message = _safe_message("x" * (_MAX_LOG_MESSAGE_CHARS + 100))
+
+    assert len(message) == _MAX_LOG_MESSAGE_CHARS
+    assert message.endswith("[truncated]")
+
+
 def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
     from bannedfuncdetector.cli_bootstrap import configure_logging
 

@@ -24,6 +24,7 @@ _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "bannedfuncdetector_request_id", default=None
 )
 _logging_configuration_lock = threading.Lock()
+_MAX_LOG_MESSAGE_CHARS = 16_384
 
 
 def ensure_request_id() -> str:
@@ -73,12 +74,18 @@ _URL_WITH_PRIVATE_PARTS = re.compile(
 
 
 def _safe_message(value: str) -> str:
+    truncated = len(value) > _MAX_LOG_MESSAGE_CHARS
+    value = value[:_MAX_LOG_MESSAGE_CHARS]
     redacted = _SENSITIVE_VALUE.sub(r"\1[REDACTED]", value)
     redacted = _URL_WITH_PRIVATE_PARTS.sub(r"\1\2", redacted)
-    return "".join(
+    escaped = "".join(
         character if character.isprintable() else _escape_character(character)
         for character in redacted
     )
+    if truncated or len(escaped) > _MAX_LOG_MESSAGE_CHARS:
+        marker = "[truncated]"
+        return escaped[: _MAX_LOG_MESSAGE_CHARS - len(marker)] + marker
+    return escaped
 
 
 def _escape_character(character: str) -> str:
