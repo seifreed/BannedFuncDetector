@@ -220,7 +220,7 @@ if result.is_ok():
 
 ## Logging and diagnostics
 
-The CLI uses Python's standard `logging` module and writes to stderr. Text output is the default. Set `BFD_LOG_FORMAT=json` for one JSON object per line with a UTC timestamp, level, service, component, message, and available operation fields. `BFD_LOG_LEVEL` accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; `-v` selects `DEBUG` unless the environment variable overrides it.
+The CLI uses Python's standard `logging` module and writes to stderr. Text output is the default. Set `BFD_LOG_FORMAT=json` for one JSON object per line with a UTC timestamp, level, service, component, message, and available operation fields. Set `BFD_ENVIRONMENT` to attach a deployment environment label. `BFD_LOG_LEVEL` accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; `-v` selects `DEBUG` unless the environment variable overrides it.
 
 CLI runs receive a `request_id`; directory jobs pass the same ID to worker processes. Analysis completion events include `operation`, `event_name`, `duration_ms`, and `outcome`. Exception traces are included for logged analysis errors. No trace/span IDs are generated because the application does not use distributed tracing.
 

@@ -91,6 +91,9 @@ class _JsonLogFormatter(logging.Formatter):
             "component": record.name,
             "message": _safe_message(record.getMessage()),
         }
+        environment = os.getenv("BFD_ENVIRONMENT")
+        if environment:
+            event["environment"] = _safe_message(environment)
         request_id = getattr(record, "request_id", None) or _request_id.get()
         if request_id is not None:
             event["request_id"] = request_id

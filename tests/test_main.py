@@ -382,6 +382,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
     from bannedfuncdetector.cli_bootstrap import configure_logging
 
     monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    monkeypatch.setenv("BFD_ENVIRONMENT", "test")
     monkeypatch.delenv("BFD_LOG_LEVEL", raising=False)
     root = logging.getLogger()
     saved_handlers = root.handlers[:]
@@ -398,6 +399,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert event["level"] == "WARNING"
         assert event["service"] == "bannedfuncdetector"
         assert event["component"] == "test.logging"
+        assert event["environment"] == "test"
         assert "abc123" not in event["message"]
         assert "private" not in event["message"]
         assert "secret-value" not in event["message"]
