@@ -522,11 +522,23 @@ class TestFunctionAnalysisError:
         assert result.is_err()
         assert "Analysis error analyzing function" in result.error
 
-    def test_runtime_error_produces_runtime_prefix(self):
-        exc = RuntimeError("segfault")
+    def test_runtime_error_produces_runtime_prefix_and_safe_log(self, caplog):
+        secret = "customer-confidential-value"
+        caplog.set_level(
+            "ERROR",
+            logger="bannedfuncdetector.application.binary_analyzer.function_analysis",
+        )
+        exc = RuntimeError(secret)
         result = _function_analysis_error(exc)
         assert result.is_err()
         assert "RUNTIME" in result.error.upper() or "analyzing function" in result.error
+        event = caplog.records[-1]
+        assert event.operation == "function_analysis"
+        assert event.event_name == "function_analysis_failed"
+        assert event.error_type == "RuntimeError"
+        assert event.error_category == "Runtime error"
+        assert secret in result.error
+        assert secret not in caplog.text
 
     def test_os_error_produces_io_prefix(self):
         exc = OSError("permission denied")
@@ -825,24 +837,48 @@ class TestR2FunctionDiscoveryService:
 class TestLogParallelFutureErrorCancelledError:
     """Lines 22-24 — CancelledError branch when verbose is True."""
 
-    def test_cancelled_error_does_not_raise(self):
+    def test_cancelled_error_is_structured(self, caplog):
         exc = concurrent.futures.CancelledError()
-        # verbose=True ensures we enter the branch rather than returning early
+        caplog.set_level(
+            "WARNING",
+            logger="bannedfuncdetector.application.function_detection_support",
+        )
         log_parallel_future_error(exc, verbose=True)
+        event = caplog.records[-1]
+        assert event.operation == "function_analysis"
+        assert event.event_name == "function_analysis_cancelled"
+        assert event.outcome == "cancelled"
 
-    def test_cancelled_error_with_verbose_false_returns_early(self):
+    def test_cancelled_error_is_logged_when_not_verbose(self, caplog):
         exc = concurrent.futures.CancelledError()
-        # verbose=False: function returns at line 21 before reaching line 22-24
+        caplog.set_level(
+            "WARNING",
+            logger="bannedfuncdetector.application.function_detection_support",
+        )
         log_parallel_future_error(exc, verbose=False)
+        assert caplog.records[-1].event_name == "function_analysis_cancelled"
 
-    def test_regular_exception_with_verbose_true_uses_classify_prefix(self):
-        exc = RuntimeError("something failed")
-        # Should not raise; exercises the else-branch at line 25-26
-        log_parallel_future_error(exc, verbose=True)
+    def test_regular_exception_is_safe_and_logged_when_not_verbose(self, caplog):
+        secret = "customer-confidential-value"
+        exc = RuntimeError(secret)
+        caplog.set_level(
+            "ERROR",
+            logger="bannedfuncdetector.application.function_detection_support",
+        )
+        log_parallel_future_error(exc, verbose=False)
+        event = caplog.records[-1]
+        assert event.event_name == "function_analysis_task_failed"
+        assert event.error_type == "RuntimeError"
+        assert secret not in caplog.text
 
-    def test_os_error_with_verbose_true_classifies_as_io(self):
+    def test_os_error_is_logged_when_not_verbose(self, caplog):
         exc = OSError("disk full")
-        log_parallel_future_error(exc, verbose=True)
+        caplog.set_level(
+            "ERROR",
+            logger="bannedfuncdetector.application.function_detection_support",
+        )
+        log_parallel_future_error(exc, verbose=False)
+        assert caplog.records[-1].error_category == "I/O error"
 
 
 # ---------------------------------------------------------------------------

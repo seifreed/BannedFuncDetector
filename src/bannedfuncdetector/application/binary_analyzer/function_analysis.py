@@ -21,11 +21,21 @@ logger = logging.getLogger(__name__)
 
 def _function_analysis_error(exc: Exception) -> Result[BannedFunction, str]:
     """Convert handled function-analysis exceptions into Result errors."""
+    category = classify_error(exc)
     if isinstance(exc, AnalysisError):
         prefix = "Analysis error analyzing function"
     else:
-        prefix = f"{classify_error(exc)} analyzing function"
-    logger.error(f"{prefix}: {exc}")
+        prefix = f"{category} analyzing function"
+    logger.error(
+        "Function analysis failed",
+        extra={
+            "operation": "function_analysis",
+            "event_name": "function_analysis_failed",
+            "error_type": type(exc).__name__,
+            "error_category": category,
+            "outcome": "error",
+        },
+    )
     return err(f"{prefix}: {exc}")
 
 

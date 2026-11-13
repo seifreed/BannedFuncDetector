@@ -23,13 +23,27 @@ def log_function_result(detection: BannedFunction, verbose: bool) -> None:
 
 
 def log_parallel_future_error(exc: BaseException, verbose: bool) -> None:
-    if not verbose:
-        return
     if isinstance(exc, concurrent.futures.CancelledError):
-        logger.warning("Function analysis task was cancelled")
+        logger.warning(
+            "Function analysis task was cancelled",
+            extra={
+                "operation": "function_analysis",
+                "event_name": "function_analysis_cancelled",
+                "outcome": "cancelled",
+            },
+        )
         return
     prefix = classify_error(exc) if isinstance(exc, Exception) else "Error"
-    logger.error(f"{prefix} analyzing a function: {exc}")
+    logger.error(
+        "Parallel function analysis task failed",
+        extra={
+            "operation": "function_analysis",
+            "event_name": "function_analysis_task_failed",
+            "error_type": type(exc).__name__,
+            "error_category": prefix,
+            "outcome": "error",
+        },
+    )
 
 
 def build_function_analysis_request(
