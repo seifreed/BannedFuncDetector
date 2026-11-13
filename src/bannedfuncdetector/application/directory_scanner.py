@@ -20,6 +20,7 @@ from bannedfuncdetector.application.internal.directory_preparation import (
 from bannedfuncdetector.application.internal.directory_execution import (
     run_directory_analysis,
 )
+from bannedfuncdetector.cli_bootstrap import operation_context
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +30,19 @@ def analyze_directory(
     *,
     request: DirectoryAnalysisRequest,
 ) -> DirectoryAnalysisResultType:
-    started = time.perf_counter()
-    result = _analyze_directory(directory, request=request)
-    logger.info(
-        "Directory analysis finished",
-        extra={
-            "operation": "directory_analysis",
-            "event_name": "analysis_finished",
-            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-            "outcome": "error" if isinstance(result, Err) else "success",
-        },
-    )
-    return result
+    with operation_context("directory_analysis"):
+        started = time.perf_counter()
+        result = _analyze_directory(directory, request=request)
+        logger.info(
+            "Directory analysis finished",
+            extra={
+                "operation": "directory_analysis",
+                "event_name": "analysis_finished",
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "outcome": "error" if isinstance(result, Err) else "success",
+            },
+        )
+        return result
 
 
 def _analyze_directory(

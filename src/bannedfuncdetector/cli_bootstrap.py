@@ -25,6 +25,9 @@ from concurrent_log_handler import ConcurrentRotatingFileHandler
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "bannedfuncdetector_request_id", default=None
 )
+_operation: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "bannedfuncdetector_operation", default=None
+)
 _logging_configuration_lock = threading.Lock()
 _MAX_LOG_MESSAGE_CHARS = 16_384
 _LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
@@ -62,6 +65,15 @@ def log_context(request_id: str | None) -> Iterator[None]:
         yield
     finally:
         _request_id.reset(token)
+
+
+@contextmanager
+def operation_context(operation: str) -> Iterator[None]:
+    token = _operation.set(operation)
+    try:
+        yield
+    finally:
+        _operation.reset(token)
 
 
 _SENSITIVE_NAMES = (
@@ -176,6 +188,9 @@ class _TextLogFormatter(logging.Formatter):
         request_id = getattr(record, "request_id", None) or _request_id.get()
         if request_id is not None:
             fields.append(f"request_id={_safe_message(str(request_id))}")
+        operation = getattr(record, "operation", None) or _operation.get()
+        if operation is not None:
+            fields.append(f"operation={_safe_message(str(operation))}")
         message = " ".join(fields) + f" {_safe_record_message(record)}"
         if record.exc_info:
             message += "\n" + _safe_exception_text(record.exc_info)
@@ -189,6 +204,10 @@ class _RequestContextFilter(logging.Filter):
         request_id = _request_id.get()
         if request_id is not None:
             record.request_id = request_id
+        if getattr(record, "operation", None) is None:
+            operation = _operation.get()
+            if operation is not None:
+                record.operation = operation
         return True
 
 
@@ -362,5 +381,6 @@ __all__ = [
     "log_context",
     "new_log_context",
     "new_request_id",
+    "operation_context",
     "validate_requirements",
 ]

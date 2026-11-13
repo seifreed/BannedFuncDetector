@@ -20,6 +20,7 @@ from bannedfuncdetector.cli_bootstrap import (
     configure_worker_logging,
     ensure_request_id,
     log_context,
+    operation_context,
 )
 from bannedfuncdetector.domain.result import Result
 
@@ -148,7 +149,7 @@ def _run_worker_with_context(
     worker: Callable[[DirectoryWorkerJob], BinaryAnalysisResultType],
     job: DirectoryWorkerJob,
 ) -> BinaryAnalysisResultType:
-    with log_context(job.request_id):
+    with log_context(job.request_id), operation_context("directory_analysis"):
         return worker(job)
 
 

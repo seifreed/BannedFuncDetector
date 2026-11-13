@@ -546,6 +546,40 @@ def test_new_request_id_changes_between_cli_runs():
     assert new_request_id() != new_request_id()
 
 
+def test_operation_context_is_nested_restored_and_overridable(monkeypatch, capsys):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging, operation_context
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        logger = logging.getLogger("test.operation")
+        with operation_context("directory_analysis"):
+            logger.info("directory event")
+            with operation_context("binary_analysis"):
+                logger.info("binary event")
+                logger.info("explicit event", extra={"operation": "custom_operation"})
+            logger.info("directory event resumed")
+        logger.info("outside event")
+
+        events = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+        assert [event.get("operation") for event in events] == [
+            "directory_analysis",
+            "binary_analysis",
+            "custom_operation",
+            "directory_analysis",
+            None,
+        ]
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_library_log_context_is_unique_and_restores_parent():
     from bannedfuncdetector.cli_bootstrap import (
         ensure_request_id,
@@ -782,7 +816,7 @@ def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
 
 
 def test_text_formatter_sanitizes_forwarded_stack_trace():
-    from bannedfuncdetector.cli_bootstrap import _TextLogFormatter
+    from bannedfuncdetector.cli_bootstrap import _TextLogFormatter, operation_context
 
     record = logging.LogRecord(
         "test.logging",
@@ -797,6 +831,8 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
     record.stack_trace = "RuntimeError: api_key=hidden-value"
 
     output = _TextLogFormatter().format(record)
+    with operation_context("binary_analysis"):
+        scoped_output = _TextLogFormatter().format(record)
 
     assert output.split(" ", 4)[0].endswith("Z")
     assert output.split(" ", 4)[1:4] == [
@@ -807,6 +843,7 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
     assert "hidden-value" not in output
     assert "REDACTED" in output
     assert "\\u2028" in output
+    assert "operation=binary_analysis" in scoped_output
 
 
 def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):
