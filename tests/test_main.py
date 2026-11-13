@@ -448,9 +448,23 @@ def test_json_logging_includes_context_request_id(monkeypatch, capsys):
         root.handlers.clear()
         configure_logging()
         with log_context("run-123"):
-            logging.getLogger("test.logging").info("analysis started")
+            logging.getLogger("test.logging").info(
+                "analysis started",
+                extra={
+                    "operation": "binary_analysis",
+                    "event_name": "analysis_finished",
+                    "duration_ms": 12.5,
+                    "outcome": "success",
+                    "error_type": "RuntimeError",
+                },
+            )
         event = json.loads(capsys.readouterr().err)
         assert event["request_id"] == "run-123"
+        assert event["operation"] == "binary_analysis"
+        assert event["event_name"] == "analysis_finished"
+        assert event["duration_ms"] == 12.5
+        assert event["outcome"] == "success"
+        assert event["error_type"] == "RuntimeError"
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
