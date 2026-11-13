@@ -545,6 +545,30 @@ class TestLoadConfig:
         assert len(errors) == 1
         assert errors[0].operation == "config_load"
         assert errors[0].error_type == "JSONDecodeError"
+        assert errors[0].error_line == 1
+        assert errors[0].error_column is not None
+
+    def test_config_exception_text_is_not_logged(self, tmp_path, monkeypatch, caplog):
+        from bannedfuncdetector.infrastructure import config_storage
+
+        secret = "customer-confidential-value"
+
+        def fail_loading(_path):
+            raise ValueError(secret)
+
+        monkeypatch.setattr(config_storage, "load_config_from_file", fail_loading)
+        with caplog.at_level(
+            logging.ERROR, logger="bannedfuncdetector.infrastructure.config_storage"
+        ):
+            result = load_config(str(tmp_path / "private.json"))
+
+        event = next(
+            record for record in caplog.records if record.event_name == "configuration_load_failed"
+        )
+        assert isinstance(result, dict)
+        assert event.error_type == "ValueError"
+        assert event.exc_info is None
+        assert secret not in caplog.text
 
     def test_logs_read_permission_error_once(self, tmp_path, monkeypatch, caplog):
         import builtins
