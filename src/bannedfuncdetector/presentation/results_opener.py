@@ -17,6 +17,7 @@ from typing import Any
 
 from bannedfuncdetector.application.binary_analyzer.reporting import results_file_path
 from bannedfuncdetector.domain.protocols import IConfigRepository
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,14 @@ def open_results_if_configured(
     try:
         launcher(path)
     except (OSError, ValueError) as exc:
-        logger.warning("open_results could not open %s: %s", path, exc)
+        logger.warning(
+            "Saved report could not be opened",
+            extra={
+                "event_name": "report_open_failed",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
+        )
         return False
     return True
 

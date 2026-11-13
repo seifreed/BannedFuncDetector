@@ -439,7 +439,7 @@ class TestIsExecutableFileFallbackPaths:
                 # for the actual target so the per-file except is reached.
                 if path.endswith(".py"):
                     return "Python script"
-                raise RuntimeError("boom on target")
+                raise RuntimeError("password=private-value")
 
         original_magic = fd_mod.magic
         try:
@@ -449,7 +449,14 @@ class TestIsExecutableFileFallbackPaths:
                 with caplog.at_level("DEBUG"):
                     # PE magic bytes still classify it after the libmagic failure.
                     assert fd_mod.is_executable_file(target, "pe") is True
-            assert any("libmagic failed on" in r.message for r in caplog.records)
+            fallback = next(
+                record
+                for record in caplog.records
+                if getattr(record, "event_name", None)
+                == "file_type_detection_fallback"
+            )
+            assert fallback.error_type == "RuntimeError"
+            assert "private-value" not in fallback.message
         finally:
             fd_mod.magic = original_magic
 

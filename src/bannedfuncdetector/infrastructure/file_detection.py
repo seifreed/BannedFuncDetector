@@ -16,6 +16,7 @@ import os
 from typing import Any
 
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
+from .logging_config import safe_exception_fields
 
 
 def _try_import_magic(module_name: str = "magic") -> Any | None:
@@ -125,7 +126,12 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
         detected_type = magic_module.from_file(file_path)
     except Exception as exc:
         logger.debug(
-            "libmagic failed on %s, falling back to magic bytes: %s", file_path, exc
+            "libmagic failed; falling back to magic bytes",
+            extra={
+                "event_name": "file_type_detection_fallback",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
         )
         return None
 
@@ -181,16 +187,22 @@ def is_executable_file(file_path: str, file_type: str = "pe") -> bool:
 
     except (OSError, IOError) as e:
         logger.warning(
-            "File access error for %s, falling back to magic bytes: %s",
-            file_path,
-            str(e),
+            "File access failed; falling back to magic bytes",
+            extra={
+                "event_name": "file_access_fallback",
+                "outcome": "degraded",
+                **safe_exception_fields(e),
+            },
         )
         return _check_magic_bytes(file_path, file_type)
     except (RuntimeError, ValueError, TypeError) as e:
         logger.warning(
-            "Magic detection failed for %s, falling back to magic bytes: %s",
-            file_path,
-            str(e),
+            "Magic detection failed; falling back to magic bytes",
+            extra={
+                "event_name": "magic_detection_fallback",
+                "outcome": "degraded",
+                **safe_exception_fields(e),
+            },
         )
         return _check_magic_bytes(file_path, file_type)
 
@@ -230,11 +242,25 @@ def _check_magic_bytes(file_path: str, file_type: str) -> bool:
 
     except (OSError, IOError) as e:
         # File access or read errors
-        logger.error("Failed to read file %s: %s", file_path, str(e))
+        logger.error(
+            "File read failed",
+            extra={
+                "event_name": "file_read_failed",
+                "outcome": "error",
+                **safe_exception_fields(e),
+            },
+        )
         return False
     except (ValueError, TypeError) as e:
         # Invalid data during processing
-        logger.error("Data error checking file %s: %s", file_path, str(e))
+        logger.error(
+            "File data could not be checked",
+            extra={
+                "event_name": "file_check_invalid_data",
+                "outcome": "error",
+                **safe_exception_fields(e),
+            },
+        )
         return False
 
 

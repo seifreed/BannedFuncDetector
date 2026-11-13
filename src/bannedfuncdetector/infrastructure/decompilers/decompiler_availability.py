@@ -9,6 +9,7 @@ from typing import Any, cast
 import requests
 
 from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 from .decompiler_types import DecompilerType
 
@@ -91,10 +92,24 @@ def _check_r2_plugin_available(check_cmd: str, expected: str | list[str]) -> boo
             return any(exp in result for exp in expected)
         return expected in result
     except (RuntimeError, ValueError, OSError, IOError) as exc:
-        logger.error(f"Error checking r2 plugin: {exc}")
+        logger.error(
+            "R2 plugin availability check failed",
+            extra={
+                "event_name": "r2_plugin_availability_failed",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
         return False
     except (AttributeError, TypeError) as exc:
-        logger.error(f"Data error checking r2 plugin: {exc}")
+        logger.error(
+            "R2 plugin availability data was invalid",
+            extra={
+                "event_name": "r2_plugin_availability_invalid_data",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
         return False
 
 
@@ -116,7 +131,14 @@ def _check_decai_service_available(url: str) -> bool:
         logger.warning("decai plugin is available but cannot connect to Ollama")
         return False
     except (RuntimeError, ValueError, OSError, IOError) as exc:
-        logger.error(f"Error checking decai availability: {exc}")
+        logger.error(
+            "DecAI availability check failed",
+            extra={
+                "event_name": "decai_availability_failed",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
         return False
 
 

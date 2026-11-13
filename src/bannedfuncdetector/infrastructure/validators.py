@@ -16,6 +16,7 @@ from .adapters.r2_client import R2Client
 from ..constants import MIN_PYTHON_VERSION
 from .decompilers.orchestrator import check_decompiler_available
 from .file_detection import is_executable_file
+from .logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 
@@ -246,11 +247,25 @@ def _check_available_decompilers() -> None:
         # RuntimeError: r2pipe execution failure
         # ValueError: Invalid decompiler data
         # OSError/IOError: File system errors
-        logger.error(f"Error checking decompilers: {str(e)}")
+        logger.error(
+            "Decompiler availability check failed",
+            extra={
+                "event_name": "decompiler_availability_failed",
+                "outcome": "error",
+                **safe_exception_fields(e),
+            },
+        )
     except (AttributeError, TypeError) as e:
         # AttributeError: r2 client issues
         # TypeError: Invalid data types
-        logger.error(f"Data error checking decompilers: {str(e)}")
+        logger.error(
+            "Decompiler availability data was invalid",
+            extra={
+                "event_name": "decompiler_availability_invalid_data",
+                "outcome": "error",
+                **safe_exception_fields(e),
+            },
+        )
 
 
 def _check_file_type_detection() -> None:

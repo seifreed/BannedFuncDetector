@@ -13,6 +13,7 @@ from .cli_bootstrap import (
 )
 from .cli_dispatch import dispatch_cli_analysis
 from .infrastructure.validators import check_python_version, check_requirements
+from .infrastructure.logging_config import safe_exception_fields
 from .presentation.reporting import display_final_results
 from .factories import create_application_wiring
 from .application.binary_analyzer import analyze_binary as _analyze_binary
@@ -119,7 +120,14 @@ def main() -> int:
     try:
         os.makedirs(args.output, exist_ok=True)
     except OSError as exc:
-        logger.error("Cannot use output directory '%s': %s", args.output, exc)
+        logger.error(
+            "Output directory could not be created",
+            extra={
+                "event_name": "output_directory_create_failed",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
         return 1
     result = dispatch_cli_analysis(
         args,
