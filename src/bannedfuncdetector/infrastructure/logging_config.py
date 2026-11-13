@@ -11,6 +11,7 @@ import sys
 import contextvars
 import copy
 import threading
+import traceback
 import uuid
 from queue import Full
 from types import TracebackType
@@ -146,9 +147,23 @@ def _safe_exception_text(
     | tuple[None, None, None],
 ) -> str:
     try:
-        return _safe_message(logging.Formatter().formatException(exc_info))
+        traceback_object = exc_info[2]
+        if traceback_object is None:
+            return ""
+        frames = traceback.extract_tb(traceback_object)
+        summaries = [
+            traceback.FrameSummary(
+                frame.filename,
+                frame.lineno,
+                frame.name,
+                lookup_line=False,
+                line="",
+            )
+            for frame in frames
+        ]
+        return _safe_message("".join(traceback.format_list(summaries)))
     except Exception as exc:
-        return f"[exception formatting failed: {type(exc).__name__}]"
+        return f"[stack trace formatting failed: {type(exc).__name__}]"
 
 
 class _JsonLogFormatter(logging.Formatter):

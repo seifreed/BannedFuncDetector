@@ -616,7 +616,7 @@ def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
         assert "stack_trace" in event
         assert event["error_type"] == "RuntimeError"
         assert "hidden-value" not in event["stack_trace"]
-        assert "REDACTED" in event["stack_trace"]
+        assert "tests/test_main.py" in event["stack_trace"]
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
@@ -635,7 +635,7 @@ def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
         def __str__(self):
             raise RuntimeError("secret exception detail")
 
-    def fail_exception_formatter(_formatter, _exc_info):
+    def fail_traceback_formatter(_frames):
         raise RuntimeError("secret formatter detail")
 
     monkeypatch.setenv("BFD_LOG_FORMAT", "json")
@@ -647,7 +647,9 @@ def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
         configure_logging()
         logger = logging.getLogger("test.logging")
         logger.warning("bad value: %s", BadValue())
-        monkeypatch.setattr(logging.Formatter, "formatException", fail_exception_formatter)
+        import traceback
+
+        monkeypatch.setattr(traceback, "format_list", fail_traceback_formatter)
         try:
             raise BadException()
         except BadException:
@@ -658,9 +660,7 @@ def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
         ]
         assert events[0]["message"] == "[log message formatting failed: ValueError]"
         assert events[1]["error_type"] == "BadException"
-        assert events[1]["stack_trace"] == (
-            "[exception formatting failed: RuntimeError]"
-        )
+        assert events[1]["stack_trace"] == "[stack trace formatting failed: RuntimeError]"
         assert "secret" not in events[1]["stack_trace"]
     finally:
         root.handlers[:] = saved_handlers
@@ -816,9 +816,9 @@ def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
         except RuntimeError:
             logging.getLogger("test.logging").exception("operation failed")
         output = capsys.readouterr().err
-        assert "Traceback" in output
+        assert 'File "' in output
         assert "hidden-value" not in output
-        assert "REDACTED" in output
+        assert "tests/test_main.py" in output
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
@@ -883,7 +883,8 @@ def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):
         assert all(record.request_id == "worker-run" for record in records)
         assert all(record.exc_info is None for record in records)
         assert records[0].message == "worker message"
-        assert "queue exception" in records[1].stack_trace
+        assert records[1].stack_trace
+        assert "queue exception" not in records[1].stack_trace
         assert records[1].message == "worker error"
     finally:
         root.handlers[:] = saved_handlers

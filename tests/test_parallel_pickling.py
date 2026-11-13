@@ -140,7 +140,8 @@ def test_process_workers_forward_logs_to_parent_with_request_context(
     assert {record.request_id for record in worker_logs} == {"test-run-id"}
     stack_traces = [getattr(record, "stack_trace", None) for record in worker_logs]
     assert sum(trace is not None for trace in stack_traces) == 2
-    assert all("worker diagnostic" in trace for trace in stack_traces if trace)
+    assert all("test_parallel_pickling.py" in trace for trace in stack_traces if trace)
+    assert all("worker diagnostic" not in trace for trace in stack_traces if trace)
 
 
 def test_process_log_listener_with_inline_executor(monkeypatch, caplog) -> None:
@@ -224,7 +225,8 @@ def test_custom_process_executor_keeps_request_context_and_structured_logs(
     assert all(event["component"] == "test.process_worker" for event in events)
     failure = next(event for event in events if event["message"] == "worker failed safely")
     assert failure["error_type"] == "RuntimeError"
-    assert "worker diagnostic" in failure["stack_trace"]
+    assert "test_parallel_pickling.py" in failure["stack_trace"]
+    assert "worker diagnostic" not in failure["stack_trace"]
 
 
 def test_custom_processes_write_and_rotate_one_file_without_losing_events(

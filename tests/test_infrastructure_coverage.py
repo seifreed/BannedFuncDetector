@@ -972,7 +972,9 @@ class TestLogError:
             logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
         ):
             raise_key_error()
-        assert any("no_key" in r.message for r in caplog.records)
+        record = next(r for r in caplog.records if r.event_name == "operation_error")
+        assert record.error_type == "KeyError"
+        assert "no_key" not in record.getMessage()
 
     def test_runtime_error_logged_by_default(self, caplog):
         @handle_errors("processing")
@@ -983,10 +985,11 @@ class TestLogError:
             logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
         ):
             raise_runtime_error()
-        record = next(r for r in caplog.records if "bad state" in r.message)
+        record = next(r for r in caplog.records if r.event_name == "operation_error")
         assert record.event_name == "operation_error"
         assert record.error_type == "RuntimeError"
         assert record.exc_info is not None
+        assert "bad state" not in record.getMessage()
 
     def test_runtime_error_not_logged_when_flag_disabled(self, caplog):
         @handle_errors("processing", log_runtime_errors=False)
@@ -1008,7 +1011,9 @@ class TestLogError:
             logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
         ):
             raise_os_error()
-        assert any("disk full" in r.message for r in caplog.records)
+        record = next(r for r in caplog.records if r.event_name == "operation_error")
+        assert record.error_type == "OSError"
+        assert "disk full" not in record.getMessage()
 
     def test_io_error_not_logged_when_flag_disabled(self, caplog):
         @handle_errors("reading file", log_io_errors=False)
@@ -1162,7 +1167,9 @@ class TestHandleErrors:
             logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
         ):
             analyze()
-        assert any("logged analysis error" in r.message for r in caplog.records)
+        record = next(r for r in caplog.records if r.event_name == "operation_error")
+        assert record.error_type == "AnalysisError"
+        assert "logged analysis error" not in record.getMessage()
 
     def test_analysis_error_not_logged_when_runtime_logging_disabled(self, caplog):
         @handle_errors(
@@ -1224,7 +1231,9 @@ class TestHandleErrorsSync:
             logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
         ):
             raise_os_error()
-        assert any("disk problem" in r.message for r in caplog.records)
+        record = next(r for r in caplog.records if r.event_name == "operation_error")
+        assert record.error_type == "OSError"
+        assert "disk problem" not in record.getMessage()
 
     def test_exception_not_logged_when_log_errors_false(self, caplog):
         @handle_errors_sync("quiet op", log_errors=False)
