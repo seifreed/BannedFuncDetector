@@ -126,7 +126,7 @@ class TestAnalysisError:
     is NOT an AnalysisError, so classify_error is called instead.
     """
 
-    def test_analysis_error_non_analysis_error_exception(self, tmp_path):
+    def test_analysis_error_non_analysis_error_exception(self, tmp_path, caplog):
         """
         Arrange: build a detect_impl that raises a plain RuntimeError
         (not an AnalysisError), which forces the classify_error branch.
@@ -157,6 +157,21 @@ class TestAnalysisError:
 
         assert isinstance(result, Err)
         assert "boom from detect" in str(result.error)
+        record = next(
+            record for record in caplog.records if record.event_name == "analysis_error"
+        )
+        assert record.operation == "binary_analysis"
+        assert record.error_type == "RuntimeError"
+        assert record.error_category == result.error.error.category
+        assert record.error_phase == "during detection"
+
+        import json
+
+        from bannedfuncdetector.cli_bootstrap import _JsonLogFormatter
+
+        event = json.loads(_JsonLogFormatter().format(record))
+        assert event["error_category"] == record.error_category
+        assert event["error_phase"] == record.error_phase
 
     def test_run_detection_cleanup_failure_on_success_path(self, tmp_path):
         """

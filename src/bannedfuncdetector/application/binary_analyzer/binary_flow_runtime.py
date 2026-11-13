@@ -40,7 +40,13 @@ def _analysis_error(
     logger.error(
         str(error),
         exc_info=(type(exc), exc, exc.__traceback__),
-        extra={"event_name": "analysis_error", "error_type": type(exc).__name__},
+        extra={
+            "operation": "binary_analysis",
+            "event_name": "analysis_error",
+            "error_type": type(exc).__name__,
+            "error_category": category,
+            "error_phase": phase,
+        },
     )
     return err(ExecutionFailure(error=error, logged=True))
 
