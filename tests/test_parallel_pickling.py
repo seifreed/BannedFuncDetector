@@ -15,9 +15,32 @@ application wiring the way the process pool does.
 from __future__ import annotations
 
 import functools
+import logging
 import pickle
 
 from bannedfuncdetector.factories import create_application_wiring
+
+
+def _logging_worker(job):
+    from bannedfuncdetector.application.analysis_error import (
+        BinaryExecutionError,
+        ExecutionFailure,
+    )
+    from bannedfuncdetector.domain.result import err
+
+    worker_logger = logging.getLogger("test.process_worker")
+    worker_logger.warning("worker completed %s", job.executable_file)
+    try:
+        raise RuntimeError("worker diagnostic")
+    except RuntimeError:
+        worker_logger.exception("worker failed safely")
+    return err(
+        ExecutionFailure(
+            error=BinaryExecutionError(
+                category="Test", context=job.executable_file, message="logged"
+            )
+        )
+    )
 
 
 def test_application_wiring_orchestrator_factory_is_serializable() -> None:
@@ -65,3 +88,39 @@ def test_default_orchestrator_factory_builds_orchestrator() -> None:
     orchestrator = _default_orchestrator_factory(config)
 
     assert isinstance(orchestrator, IDecompilerOrchestrator)
+
+
+def test_process_workers_forward_logs_to_parent_with_request_context(
+    monkeypatch, caplog
+) -> None:
+    from bannedfuncdetector.application.internal.directory_runners import (
+        iter_parallel_directory_results,
+    )
+    from bannedfuncdetector.application.internal.execution_plans import (
+        DirectoryScanPlan,
+    )
+    import bannedfuncdetector.application.internal.directory_runners as runners
+
+    runtime = create_application_wiring()
+    monkeypatch.setattr(runners, "ensure_request_id", lambda: "test-run-id")
+    caplog.set_level(logging.WARNING, logger="test.process_worker")
+    plan = DirectoryScanPlan(
+        runtime=runtime,
+        worker_entrypoint=_logging_worker,
+    )
+
+    results = list(
+        iter_parallel_directory_results(
+            ["first.bin", "second.bin"], plan, max_workers=2
+        )
+    )
+
+    assert len(results) == 2
+    worker_logs = [
+        record for record in caplog.records if record.name == "test.process_worker"
+    ]
+    assert len(worker_logs) == 4
+    assert {record.request_id for record in worker_logs} == {"test-run-id"}
+    stack_traces = [getattr(record, "stack_trace", None) for record in worker_logs]
+    assert sum(trace is not None for trace in stack_traces) == 2
+    assert all("worker diagnostic" in trace for trace in stack_traces if trace)

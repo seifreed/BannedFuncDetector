@@ -5,15 +5,22 @@ from __future__ import annotations
 import concurrent.futures
 import functools
 import logging
+import multiprocessing
 from concurrent.futures import Future
 from collections.abc import Callable, Iterator
+from logging.handlers import QueueListener
 from typing import Iterable, Protocol, TypeAlias
 
 from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.cli_bootstrap import configure_logging, ensure_request_id
+from bannedfuncdetector.cli_bootstrap import (
+    configure_logging,
+    configure_worker_logging,
+    ensure_request_id,
+    log_context,
+)
 from bannedfuncdetector.domain.result import Result
 
 from .directory_results import (
@@ -88,23 +95,55 @@ def iter_parallel_directory_results(
         for executable_file in executable_files
     ]
     worker = plan.worker_entrypoint or analyze_binary_job_from_worker_payload
+    worker_call = functools.partial(_run_worker_with_context, worker)
     pool_factory = (
         plan.parallel_executor_factory or concurrent.futures.ProcessPoolExecutor
     )
     completed_iterator = plan.completed_futures or concurrent.futures.as_completed
 
-    # Worker processes start without the parent's logging config, so their
-    # output (incomplete-scan warnings, and DEBUG diagnostics under -v) would be
-    # silently dropped. The initializer reconfigures logging in each worker at
-    # the run's verbosity so --parallel -v matches sequential -v.
-    initializer = functools.partial(configure_logging, verbose=plan.verbose)
-    with pool_factory(max_workers=max_workers, initializer=initializer) as executor:
-        futures: dict[concurrent.futures.Future[BinaryAnalysisResultType], str] = {
-            executor.submit(worker, job): job.executable_file for job in jobs
-        }
+    listener = None
+    initargs: tuple[object, ...] = ()
+    if plan.parallel_executor_factory is None:
+        configure_logging(verbose=plan.verbose)
+        log_queue = multiprocessing.get_context().Queue()
+        listener = QueueListener(
+            log_queue, *logging.getLogger().handlers, respect_handler_level=True
+        )
+        initializer = functools.partial(configure_worker_logging, plan.verbose)
+        initargs = (log_queue,)
+        listener.start()
+    else:
+        initializer = functools.partial(configure_logging, verbose=plan.verbose)
 
-        for future in completed_iterator(futures.keys()):
-            yield handle_directory_future(future, futures[future])
+    try:
+        if initargs:
+            executor_context = pool_factory(
+                max_workers=max_workers, initializer=initializer, initargs=initargs
+            )
+        else:
+            executor_context = pool_factory(
+                max_workers=max_workers, initializer=initializer
+            )
+        with executor_context as executor:
+            futures: dict[concurrent.futures.Future[BinaryAnalysisResultType], str] = {
+                executor.submit(worker_call, job): job.executable_file for job in jobs
+            }
+
+            for future in completed_iterator(futures.keys()):
+                yield handle_directory_future(future, futures[future])
+    finally:
+        if listener is not None:
+            listener.stop()
+            log_queue.close()
+            log_queue.join_thread()
+
+
+def _run_worker_with_context(
+    worker: Callable[[DirectoryWorkerJob], BinaryAnalysisResultType],
+    job: DirectoryWorkerJob,
+) -> BinaryAnalysisResultType:
+    with log_context(job.request_id):
+        return worker(job)
 
 
 def iter_sequential_directory_results(
@@ -149,10 +188,13 @@ def iter_sequential_directory_results(
             RuntimeError,
             ValueError,
         ) as exc:
-            yield executable_file, error_result_from_exception(
-                exc,
-                context=executable_file,
-                logger_message=f"analyzing {executable_file}",
+            yield (
+                executable_file,
+                error_result_from_exception(
+                    exc,
+                    context=executable_file,
+                    logger_message=f"analyzing {executable_file}",
+                ),
             )
 
 

@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import logging
 import json
+import logging.handlers
 import os
 import re
 import sys
 import contextvars
+import copy
 import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from collections.abc import Iterator
+from typing import Any
 
 
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -74,7 +77,7 @@ class _JsonLogFormatter(logging.Formatter):
             "component": record.name,
             "message": _safe_message(record.getMessage()),
         }
-        request_id = _request_id.get()
+        request_id = getattr(record, "request_id", None) or _request_id.get()
         if request_id is not None:
             event["request_id"] = request_id
         for field in (
@@ -87,8 +90,11 @@ class _JsonLogFormatter(logging.Formatter):
             value = getattr(record, field, None)
             if value is not None:
                 event[field] = value
+        stack_trace = getattr(record, "stack_trace", None)
         if record.exc_info:
-            event["stack_trace"] = _safe_message(self.formatException(record.exc_info))
+            stack_trace = self.formatException(record.exc_info)
+        if stack_trace:
+            event["stack_trace"] = _safe_message(stack_trace)
         return json.dumps(event, ensure_ascii=True)
 
 
@@ -97,7 +103,30 @@ class _TextLogFormatter(logging.Formatter):
         message = f"[{record.levelname}] {_safe_message(record.getMessage())}"
         if record.exc_info:
             message += "\n" + _safe_message(self.formatException(record.exc_info))
+        elif getattr(record, "stack_trace", None):
+            message += "\n" + _safe_message(getattr(record, "stack_trace"))
         return message
+
+
+class _RequestContextFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        request_id = _request_id.get()
+        if request_id is not None:
+            record.request_id = request_id
+        return True
+
+
+class _ContextQueueHandler(logging.handlers.QueueHandler):
+    def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
+        prepared = copy.copy(record)
+        if record.exc_info:
+            prepared.stack_trace = logging.Formatter().formatException(record.exc_info)
+        prepared.message = record.getMessage()
+        prepared.msg = prepared.message
+        prepared.args = None
+        prepared.exc_info = None
+        prepared.exc_text = None
+        return prepared
 
 
 def configure_logging(verbose: bool = False) -> None:
@@ -119,7 +148,17 @@ def configure_logging(verbose: bool = False) -> None:
     if not root_logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(formatter)
+        handler.addFilter(_RequestContextFilter())
         root_logger.addHandler(handler)
+
+
+def configure_worker_logging(verbose: bool, log_queue: Any) -> None:
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+    handler = _ContextQueueHandler(log_queue)
+    handler.addFilter(_RequestContextFilter())
+    root_logger.addHandler(handler)
 
 
 def validate_requirements(
@@ -141,6 +180,7 @@ def validate_requirements(
 
 __all__ = [
     "configure_logging",
+    "configure_worker_logging",
     "ensure_request_id",
     "log_context",
     "new_request_id",
