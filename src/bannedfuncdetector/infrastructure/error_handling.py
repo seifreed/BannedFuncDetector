@@ -66,7 +66,17 @@ def _log_error(
         should_log: Whether to log this error.
     """
     if should_log:
-        logger.error(f"{category} in {func_name}: {exception}")
+        logger.error(
+            "%s in %s: %s",
+            category,
+            func_name,
+            exception,
+            exc_info=(type(exception), exception, exception.__traceback__),
+            extra={
+                "event_name": "operation_error",
+                "error_type": type(exception).__name__,
+            },
+        )
 
 
 @overload
@@ -273,7 +283,17 @@ def handle_errors_sync(
                 IOError,
             ) as e:
                 if log_errors:
-                    logger.error(f"Error in {func.__name__} ({operation_name}): {e}")
+                    logger.error(
+                        "Error in %s (%s): %s",
+                        func.__name__,
+                        operation_name,
+                        e,
+                        exc_info=(type(e), e, e.__traceback__),
+                        extra={
+                            "event_name": "operation_error",
+                            "error_type": type(e).__name__,
+                        },
+                    )
                 if reraise:
                     raise
                 return default_value if default_value is not None else False

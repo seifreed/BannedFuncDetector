@@ -948,7 +948,10 @@ class TestLogError:
             logging.ERROR, logger="bannedfuncdetector.infrastructure.error_handling"
         ):
             raise_runtime_error()
-        assert any("bad state" in r.message for r in caplog.records)
+        record = next(r for r in caplog.records if "bad state" in r.message)
+        assert record.event_name == "operation_error"
+        assert record.error_type == "RuntimeError"
+        assert record.exc_info is not None
 
     def test_runtime_error_not_logged_when_flag_disabled(self, caplog):
         @handle_errors("processing", log_runtime_errors=False)
