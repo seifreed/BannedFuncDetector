@@ -149,7 +149,13 @@ class _JsonLogFormatter(logging.Formatter):
 
 class _TextLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        message = f"[{record.levelname}] {_safe_record_message(record)}"
+        timestamp = datetime.fromtimestamp(record.created, timezone.utc).isoformat()
+        timestamp = timestamp.replace("+00:00", "Z")
+        fields = [timestamp, record.levelname, _safe_message(record.name)]
+        request_id = getattr(record, "request_id", None) or _request_id.get()
+        if request_id is not None:
+            fields.append(f"request_id={_safe_message(str(request_id))}")
+        message = " ".join(fields) + f" {_safe_record_message(record)}"
         if record.exc_info:
             message += "\n" + _safe_exception_text(record.exc_info)
         elif getattr(record, "stack_trace", None):

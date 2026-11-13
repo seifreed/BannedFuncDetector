@@ -735,10 +735,17 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
         (),
         None,
     )
+    record.request_id = "worker-run"
     record.stack_trace = "RuntimeError: api_key=hidden-value"
 
     output = _TextLogFormatter().format(record)
 
+    assert output.split(" ", 4)[0].endswith("Z")
+    assert output.split(" ", 4)[1:4] == [
+        "ERROR",
+        "test.logging",
+        "request_id=worker-run",
+    ]
     assert "hidden-value" not in output
     assert "REDACTED" in output
     assert "\\u2028" in output
