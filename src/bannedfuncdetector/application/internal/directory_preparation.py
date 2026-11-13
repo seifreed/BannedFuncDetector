@@ -13,7 +13,7 @@ from bannedfuncdetector.application.analysis_error import (
 )
 from .directory_results import directory_error_from_exception
 from bannedfuncdetector.domain.result import Err, Result, err, ok
-from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
+from bannedfuncdetector.application.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 

@@ -16,7 +16,7 @@ import os
 from typing import Any
 
 from ..constants import PE_MAGIC_BYTES_SIZE, PE_SIGNATURE
-from .logging_config import safe_exception_fields
+from ..application.observability import safe_exception_fields
 
 
 def _try_import_magic(module_name: str = "magic") -> Any | None:

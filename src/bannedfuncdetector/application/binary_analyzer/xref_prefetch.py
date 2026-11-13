@@ -23,7 +23,7 @@ from collections.abc import Iterator, Sequence
 from typing import Any
 
 from bannedfuncdetector.domain.protocols import IR2Client
-from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
+from bannedfuncdetector.application.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 

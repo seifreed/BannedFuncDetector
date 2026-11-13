@@ -11,7 +11,7 @@ from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.result import Result, err, ok
 from bannedfuncdetector.domain.types import classify_error
 from bannedfuncdetector.application.dto_mappers import function_descriptor_from_dto
-from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
+from bannedfuncdetector.application.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 

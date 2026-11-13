@@ -16,7 +16,7 @@ from .adapters.r2_client import R2Client
 from ..constants import MIN_PYTHON_VERSION
 from .decompilers.orchestrator import check_decompiler_available
 from .file_detection import is_executable_file
-from .logging_config import safe_exception_fields
+from ..application.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-"""Logging configuration, context propagation, and output safety."""
+"""Logging configuration and output safety."""
 
 from __future__ import annotations
 
@@ -8,82 +8,31 @@ import logging.handlers
 import os
 import re
 import sys
-import contextvars
 import copy
 import threading
 import traceback
-import uuid
 from queue import Full
 from types import TracebackType
-from contextlib import contextmanager
 from datetime import datetime, timezone
-from collections.abc import Iterator
 from typing import Any
 
+from bannedfuncdetector.application.observability import (
+    current_operation,
+    current_request_id,
+    ensure_request_id,
+    log_context,
+    new_log_context,
+    new_request_id,
+    operation_context,
+    safe_exception_fields,
+)
 from concurrent_log_handler import ConcurrentRotatingFileHandler
 
 
-_request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "bannedfuncdetector_request_id", default=None
-)
-_operation: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "bannedfuncdetector_operation", default=None
-)
 _logging_configuration_lock = threading.Lock()
 _MAX_LOG_MESSAGE_CHARS = 16_384
 _LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
 _LOG_FILE_BACKUP_COUNT = 5
-
-
-def safe_exception_fields(exc: BaseException) -> dict[str, str | int]:
-    """Return diagnostic exception metadata without exposing its message."""
-    fields: dict[str, str | int] = {"error_type": type(exc).__name__}
-    error_code = getattr(exc, "errno", None)
-    if isinstance(error_code, int):
-        fields["error_code"] = error_code
-    return fields
-
-
-def ensure_request_id() -> str:
-    request_id = _request_id.get()
-    if request_id is None:
-        request_id = uuid.uuid4().hex
-        _request_id.set(request_id)
-    return request_id
-
-
-def new_request_id() -> str:
-    request_id = uuid.uuid4().hex
-    _request_id.set(request_id)
-    return request_id
-
-
-@contextmanager
-def new_log_context() -> Iterator[str]:
-    request_id = uuid.uuid4().hex
-    token = _request_id.set(request_id)
-    try:
-        yield request_id
-    finally:
-        _request_id.reset(token)
-
-
-@contextmanager
-def log_context(request_id: str | None) -> Iterator[None]:
-    token = _request_id.set(request_id)
-    try:
-        yield
-    finally:
-        _request_id.reset(token)
-
-
-@contextmanager
-def operation_context(operation: str) -> Iterator[None]:
-    token = _operation.set(operation)
-    try:
-        yield
-    finally:
-        _operation.reset(token)
 
 
 _SENSITIVE_NAMES = (
@@ -180,7 +129,7 @@ class _JsonLogFormatter(logging.Formatter):
         environment = os.getenv("BFD_ENVIRONMENT")
         if environment:
             event["environment"] = _safe_message(environment)
-        request_id = getattr(record, "request_id", None) or _request_id.get()
+        request_id = getattr(record, "request_id", None) or current_request_id()
         if request_id is not None:
             event["request_id"] = _safe_message(str(request_id))
         for field in (
@@ -212,10 +161,10 @@ class _TextLogFormatter(logging.Formatter):
         timestamp = datetime.fromtimestamp(record.created, timezone.utc).isoformat()
         timestamp = timestamp.replace("+00:00", "Z")
         fields = [timestamp, record.levelname, _safe_message(record.name)]
-        request_id = getattr(record, "request_id", None) or _request_id.get()
+        request_id = getattr(record, "request_id", None) or current_request_id()
         if request_id is not None:
             fields.append(f"request_id={_safe_message(str(request_id))}")
-        operation = getattr(record, "operation", None) or _operation.get()
+        operation = getattr(record, "operation", None) or current_operation()
         if operation is not None:
             fields.append(f"operation={_safe_message(str(operation))}")
         message = " ".join(fields) + f" {_safe_record_message(record)}"
@@ -228,11 +177,11 @@ class _TextLogFormatter(logging.Formatter):
 
 class _RequestContextFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        request_id = _request_id.get()
+        request_id = current_request_id()
         if request_id is not None:
             record.request_id = request_id
         if getattr(record, "operation", None) is None:
-            operation = _operation.get()
+            operation = current_operation()
             if operation is not None:
                 record.operation = operation
         return True
@@ -326,10 +275,10 @@ class _ContextQueueHandler(logging.handlers.QueueHandler):
         record.outcome = "degraded"
         if dropped_count is not None:
             record.dropped_count = dropped_count
-        request_id = _request_id.get()
+        request_id = current_request_id()
         if request_id is not None:
             record.request_id = request_id
-        operation = _operation.get()
+        operation = current_operation()
         if operation is not None:
             record.operation = operation
         self._overflow_handler.handle(record)

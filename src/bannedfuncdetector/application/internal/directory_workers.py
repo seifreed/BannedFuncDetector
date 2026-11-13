@@ -16,7 +16,7 @@ from bannedfuncdetector.domain.result import Result
 
 from ..analysis_runtime import BinaryRuntimeServices
 from ..contracts.analysis import AnalysisRuntime, BinaryAnalysisRequest
-from bannedfuncdetector.infrastructure.logging_config import log_context
+from bannedfuncdetector.application.observability import log_context
 from .execution_plans import DirectoryWorkerJob
 
 

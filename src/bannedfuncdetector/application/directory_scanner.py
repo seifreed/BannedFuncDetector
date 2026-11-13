@@ -20,7 +20,7 @@ from bannedfuncdetector.application.internal.directory_preparation import (
 from bannedfuncdetector.application.internal.directory_execution import (
     run_directory_analysis,
 )
-from bannedfuncdetector.infrastructure.logging_config import operation_context
+from bannedfuncdetector.application.observability import operation_context
 
 logger = logging.getLogger(__name__)
 

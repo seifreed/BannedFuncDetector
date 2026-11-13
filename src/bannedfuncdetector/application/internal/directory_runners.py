@@ -15,14 +15,16 @@ from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.infrastructure.logging_config import (
-    configure_logging,
-    configure_worker_logging,
+from bannedfuncdetector.application.observability import (
     ensure_request_id,
     log_context,
     operation_context,
 )
 from bannedfuncdetector.domain.result import Result
+from bannedfuncdetector.infrastructure.logging_config import (
+    configure_logging,
+    configure_worker_logging,
+)
 
 from .directory_results import (
     error_result_from_exception,

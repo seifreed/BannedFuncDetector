@@ -17,7 +17,7 @@ from typing import Any
 
 from bannedfuncdetector.application.binary_analyzer.reporting import results_file_path
 from bannedfuncdetector.domain.protocols import IConfigRepository
-from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
+from bannedfuncdetector.application.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 

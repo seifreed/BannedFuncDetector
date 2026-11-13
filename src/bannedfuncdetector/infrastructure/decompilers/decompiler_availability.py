@@ -9,7 +9,7 @@ from typing import Any, cast
 import requests
 
 from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
-from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
+from bannedfuncdetector.application.observability import safe_exception_fields
 
 from .decompiler_types import DecompilerType
 
