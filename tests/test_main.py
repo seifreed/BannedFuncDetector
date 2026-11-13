@@ -387,6 +387,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
     saved_handlers = root.handlers[:]
     saved_level = root.level
     try:
+        root.handlers.clear()
         configure_logging()
         logging.getLogger("test.logging").warning("request token=abc123\nINJECTED")
         event = json.loads(capsys.readouterr().err)
@@ -425,6 +426,7 @@ def test_json_logging_includes_context_request_id(monkeypatch, capsys):
     saved_handlers = root.handlers[:]
     saved_level = root.level
     try:
+        root.handlers.clear()
         configure_logging()
         with log_context("run-123"):
             logging.getLogger("test.logging").info("analysis started")

@@ -68,6 +68,16 @@ class _JsonLogFormatter(logging.Formatter):
         request_id = _request_id.get()
         if request_id is not None:
             event["request_id"] = request_id
+        for field in (
+            "operation",
+            "event_name",
+            "duration_ms",
+            "outcome",
+            "error_type",
+        ):
+            value = getattr(record, field, None)
+            if value is not None:
+                event[field] = value
         if record.exc_info:
             event["stack_trace"] = _safe_message(self.formatException(record.exc_info))
         return json.dumps(event, ensure_ascii=True)
@@ -75,7 +85,10 @@ class _JsonLogFormatter(logging.Formatter):
 
 class _TextLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        return f"[{record.levelname}] {_safe_message(record.getMessage())}"
+        message = f"[{record.levelname}] {_safe_message(record.getMessage())}"
+        if record.exc_info:
+            message += "\n" + _safe_message(self.formatException(record.exc_info))
+        return message
 
 
 def configure_logging(verbose: bool = False) -> None:
@@ -91,9 +104,12 @@ def configure_logging(verbose: bool = False) -> None:
     level = getattr(logging, configured_level, logging.INFO)
     log_format = os.getenv("BFD_LOG_FORMAT", "text").lower()
     formatter = _JsonLogFormatter() if log_format == "json" else _TextLogFormatter()
-    logging.basicConfig(level=level, handlers=[logging.StreamHandler()], force=True)
-    for handler in logging.getLogger().handlers:
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    if not root_logger.handlers:
+        handler = logging.StreamHandler()
         handler.setFormatter(formatter)
+        root_logger.addHandler(handler)
 
 
 def validate_requirements(

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import pytest
@@ -412,7 +413,7 @@ def test_analyze_binary_reports_real_finalization_errors(compiled_binary, tmp_pa
     assert "while finalizing analysis" in str(result.error)
 
 
-def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary):
+def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary, caplog):
     class DummyR2:
         def cmd(self, _command):
             return ""
@@ -438,6 +439,7 @@ def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary):
         ),
     ).unwrap()
 
+    caplog.set_level(logging.INFO, logger=binary_flow_runtime.__name__)
     result = binary_flow_runtime.run_detection_with_cleanup(
         compiled_binary,
         BinaryAnalysisRequest(
@@ -453,6 +455,14 @@ def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary):
     assert result.unwrap().operational_notices
     assert "cleanup failed" in result.unwrap().operational_notices[0].message
     assert result.unwrap().operational_notices[0].file_path == compiled_binary
+    completion = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None) == "analysis_finished"
+    )
+    assert completion.operation == "binary_analysis"
+    assert completion.duration_ms >= 0
+    assert completion.outcome == "success"
 
 
 def test_analyze_directory_missing(tmp_path):

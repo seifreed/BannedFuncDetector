@@ -1,5 +1,8 @@
 """Directory-analysis use case boundary."""
 
+import logging
+import time
+
 from bannedfuncdetector.domain.result import Err, err, ok
 from bannedfuncdetector.application.types import DirectoryAnalysisResultType
 from bannedfuncdetector.application.contracts import DirectoryAnalysisRequest
@@ -18,8 +21,29 @@ from bannedfuncdetector.application.internal.directory_execution import (
     run_directory_analysis,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def analyze_directory(
+    directory: str,
+    *,
+    request: DirectoryAnalysisRequest,
+) -> DirectoryAnalysisResultType:
+    started = time.perf_counter()
+    result = _analyze_directory(directory, request=request)
+    logger.info(
+        "Directory analysis finished",
+        extra={
+            "operation": "directory_analysis",
+            "event_name": "analysis_finished",
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            "outcome": "error" if isinstance(result, Err) else "success",
+        },
+    )
+    return result
+
+
+def _analyze_directory(
     directory: str,
     *,
     request: DirectoryAnalysisRequest,

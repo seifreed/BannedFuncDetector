@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Callable
 
 from bannedfuncdetector.analyzer_exceptions import AnalysisError
@@ -36,7 +37,11 @@ def _analysis_error(
         context=binary_path,
         message=str(exc),
     )
-    logger.error(str(error))
+    logger.error(
+        str(error),
+        exc_info=(type(exc), exc, exc.__traceback__),
+        extra={"event_name": "analysis_error", "error_type": type(exc).__name__},
+    )
     return err(ExecutionFailure(error=error))
 
 
@@ -58,9 +63,7 @@ def _finalize_analysis(
 ) -> BinaryAnalysisResultType:
     report = _create_analysis_report(binary_path, functions, results)
     if output_dir:
-        _save_analysis_results(
-            report, output_dir, binary_path, verbose, output_format
-        )
+        _save_analysis_results(report, output_dir, binary_path, verbose, output_format)
     return ok(BinaryAnalysisOutcome(report=report))
 
 
@@ -93,6 +96,28 @@ def resolve_analysis_setup(
 
 
 def run_detection_with_cleanup(
+    binary_path: str,
+    request: BinaryAnalysisRequest,
+    *,
+    detect_impl: Callable[
+        [IR2Client, list[FunctionDescriptor], BinaryScanPlan], list[BannedFunction]
+    ],
+) -> BinaryAnalysisResultType:
+    started = time.perf_counter()
+    result = _run_detection_with_cleanup(binary_path, request, detect_impl=detect_impl)
+    logger.info(
+        "Binary analysis finished",
+        extra={
+            "operation": "binary_analysis",
+            "event_name": "analysis_finished",
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            "outcome": "error" if isinstance(result, Err) else "success",
+        },
+    )
+    return result
+
+
+def _run_detection_with_cleanup(
     binary_path: str,
     request: BinaryAnalysisRequest,
     *,
