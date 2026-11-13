@@ -937,6 +937,22 @@ class TestDirectoryResults:
         assert isinstance(result, Err)
         assert "file not found on disk" in str(result.error)
 
+    def test_error_result_from_exception_logs_stack_trace(self, caplog):
+        from bannedfuncdetector.application.internal.directory_results import (
+            error_result_from_exception,
+        )
+
+        try:
+            raise OSError("disk unreadable")
+        except OSError as exc:
+            error_result_from_exception(
+                exc, context="sample.bin", logger_message="analyzing sample.bin"
+            )
+
+        record = next(record for record in caplog.records if record.exc_info)
+        assert record.error_type == "OSError"
+        assert "disk unreadable" in str(record.exc_info[1])
+
 
 # ===========================================================================
 # 9. directory_runners.py — lines 93, 102, 120-121

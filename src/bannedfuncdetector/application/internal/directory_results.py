@@ -51,7 +51,14 @@ def error_result_from_exception(
     error = directory_error_from_exception(exc, context=context)
 
     if logger_message is not None:
-        logger.error("%s %s: %s", error.category, logger_message, exc)
+        logger.error(
+            "%s %s: %s",
+            error.category,
+            logger_message,
+            exc,
+            exc_info=(type(exc), exc, exc.__traceback__),
+            extra={"error_type": type(exc).__name__},
+        )
     return err(ExecutionFailure(error=error, logged=True))
 
 
