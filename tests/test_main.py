@@ -1,4 +1,5 @@
 import argparse
+import errno
 import logging
 import os
 import runpy
@@ -1161,6 +1162,32 @@ def test_requirement_failure_does_not_log_process_output(monkeypatch, caplog):
     assert event.operation == "requirement_check"
     assert event.outcome == "error"
     assert event.error_code == 1
+
+
+def test_requirement_exception_log_omits_exception_text(monkeypatch, caplog):
+    from bannedfuncdetector.infrastructure import validators
+
+    def fail(_command):
+        raise PermissionError(errno.EACCES, "token=private-value")
+
+    monkeypatch.setattr(validators, "_run_command", fail)
+    caplog.set_level(logging.ERROR, logger=validators.__name__)
+
+    assert not validators._check_single_requirement(
+        {
+            "name": "sample",
+            "command": ["python", "--version"],
+            "expected": "Python",
+        }
+    )
+
+    record = next(
+        record for record in caplog.records if record.event_name == "requirement_command_failed"
+    )
+    assert record.operation == "requirement_check"
+    assert record.error_type == "PermissionError"
+    assert record.error_code == errno.EACCES
+    assert "private-value" not in caplog.text
 
 
 def test_check_single_requirement_blocked_command(caplog):

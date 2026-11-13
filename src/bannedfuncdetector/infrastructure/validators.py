@@ -119,8 +119,9 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
     Returns:
         bool: True if requirement is met, False otherwise.
     """
+    name = str(req.get("name", "unknown"))
     try:
-        logger.info(f"Checking {req['name']}...")
+        logger.info("Checking %s...", name)
         command = req["command"]
         if not command or command[0] not in ALLOWED_REQUIREMENT_EXECUTABLES:
             logger.error(
@@ -136,33 +137,50 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
         result = _run_command(command)
 
         if result.returncode != 0 or req["expected"] not in result.stdout:
-            extra: dict[str, object] = {
+            failure_extra: dict[str, object] = {
                 "operation": "requirement_check",
                 "event_name": "requirement_check_failed",
                 "outcome": "error",
             }
             if result.returncode != 0:
-                extra["error_code"] = result.returncode
+                failure_extra["error_code"] = result.returncode
             logger.error(
                 "Requirement check failed for %s (exit_code=%s, output_matched=%s)",
-                req["name"],
+                name,
                 result.returncode,
                 req["expected"] in result.stdout,
-                extra=extra,
+                extra=failure_extra,
             )
             return False
 
-        logger.info(f"{req['name']} is installed correctly.")
+        logger.info("%s is installed correctly.", name)
         return True
     except (OSError, IOError, RuntimeError) as e:
         # OSError/IOError: File not found or system error
         # RuntimeError: command runner reported non-zero return code check failure
-        logger.error(f"Error checking {req['name']}: {str(e)}")
+        command_extra: dict[str, object] = {
+            "operation": "requirement_check",
+            "event_name": "requirement_command_failed",
+            "outcome": "error",
+            "error_type": type(e).__name__,
+        }
+        if isinstance(e, OSError) and e.errno is not None:
+            command_extra["error_code"] = e.errno
+        logger.error("Requirement command failed for %s", name, extra=command_extra)
         return False
     except (KeyError, TypeError) as e:
         # KeyError: Missing required fields in req dict
         # TypeError: Invalid data types
-        logger.error(f"Configuration error checking {req['name']}: {str(e)}")
+        logger.error(
+            "Invalid configuration for requirement %s",
+            name,
+            extra={
+                "operation": "requirement_check",
+                "event_name": "requirement_configuration_error",
+                "outcome": "error",
+                "error_type": type(e).__name__,
+            },
+        )
         return False
 
 
