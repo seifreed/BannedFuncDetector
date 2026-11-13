@@ -130,6 +130,20 @@ class _RequestContextFilter(logging.Filter):
         return True
 
 
+class _SanitizingFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = _safe_message(record.getMessage())
+        record.args = ()
+        if record.exc_info:
+            record.exc_text = _safe_message(
+                logging.Formatter().formatException(record.exc_info)
+            )
+        stack_trace = getattr(record, "stack_trace", None)
+        if stack_trace:
+            record.stack_trace = _safe_message(stack_trace)
+        return True
+
+
 class _ContextQueueHandler(logging.handlers.QueueHandler):
     def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
         prepared = copy.copy(record)
@@ -162,8 +176,18 @@ def configure_logging(verbose: bool = False) -> None:
     if not root_logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(formatter)
-        handler.addFilter(_RequestContextFilter())
         root_logger.addHandler(handler)
+    for configured_handler in root_logger.handlers:
+        if not any(
+            isinstance(item, _RequestContextFilter)
+            for item in configured_handler.filters
+        ):
+            configured_handler.addFilter(_RequestContextFilter())
+        if not any(
+            isinstance(item, _SanitizingFilter)
+            for item in configured_handler.filters
+        ):
+            configured_handler.addFilter(_SanitizingFilter())
 
 
 def configure_worker_logging(verbose: bool, log_queue: Any) -> None:
@@ -172,6 +196,7 @@ def configure_worker_logging(verbose: bool, log_queue: Any) -> None:
     root_logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     handler = _ContextQueueHandler(log_queue)
     handler.addFilter(_RequestContextFilter())
+    handler.addFilter(_SanitizingFilter())
     root_logger.addHandler(handler)
 
 

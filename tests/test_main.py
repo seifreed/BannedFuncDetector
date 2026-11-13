@@ -441,6 +441,37 @@ def test_invalid_logging_level_falls_back_to_info(monkeypatch):
         root.setLevel(saved_level)
 
 
+def test_preconfigured_handlers_keep_destination_and_receive_sanitizer(monkeypatch):
+    from io import StringIO
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    root.handlers[:] = [handler]
+    try:
+        configure_logging()
+        logging.getLogger("test.logging").warning(
+            "https://user:pass@service.test/path?token=hidden"
+        )
+        try:
+            raise RuntimeError("client_secret=trace-hidden")
+        except RuntimeError:
+            logging.getLogger("test.logging").exception("operation failed")
+        assert root.handlers == [handler]
+        assert "user" not in stream.getvalue()
+        assert "hidden" not in stream.getvalue()
+        assert "trace-hidden" not in stream.getvalue()
+        assert "https://service.test" in stream.getvalue()
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_json_logging_includes_context_request_id(monkeypatch, capsys):
     import json
 

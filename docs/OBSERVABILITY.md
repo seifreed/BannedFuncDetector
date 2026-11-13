@@ -8,7 +8,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 
 - Components use the standard-library `logging` API and module-named loggers.
 - CLI setup is in `bannedfuncdetector.cli_bootstrap.configure_logging`; text is the default and JSON can be selected with `BFD_LOG_FORMAT=json`. `BFD_LOG_LEVEL` selects a standard Python level, and invalid names fall back to `INFO`.
-- Logs go to stderr. The application does not configure local log files, rotation, remote collectors, or a vendor SDK; deployments can collect stderr using their process supervisor.
+- The default destination is stderr. Existing host handlers are retained; `configure_logging` adds request-context and sanitizing filters to them without replacing their destination or formatter. The application does not configure local log files, rotation, remote collectors, or a vendor SDK; deployments can collect stderr using their process supervisor.
 - JSON records include UTC `timestamp`, `level`, `service`, `component`, and `message`. Analysis completion adds `operation`, `event_name`, `duration_ms`, and `outcome`. Exception records include a sanitized `stack_trace`.
 - A generated `request_id` scopes each CLI run and each public library call; it is explicitly included in directory worker payloads and restored after nested calls. It is not a W3C trace ID. The project does not make distributed calls between independently deployed services, so distributed spans and metrics are not configured.
 - Credential-like fields, URL userinfo/path/query, and control characters are redacted/escaped by the configured formatter. Requirement-check failures record command result metadata rather than subprocess output.
@@ -39,17 +39,17 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Event quality | 3 | 7 | Exceptions and outcomes carry useful context; many legacy f-string events remain. |
 | Structure and consistency | 1 | 8 | JSON UTC schema and allowlisted event fields; most legacy message data remains in `message`. |
 | Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
-| Security and privacy | 2 | 7 | Credential/cookie pattern redaction and control escaping; regex cannot identify arbitrary sensitive values. |
+| Security and privacy | 2 | 8 | Credential/cookie/URL pattern redaction and control escaping also apply to retained host handlers; arbitrary sensitive values remain undetectable. |
 | Performance and resilience | 4 | 8 | Bounded worker queue and draining shutdown; saturation drops logs and parent output is synchronous. |
 | Configuration and portability | 2 | 7 | Environment-configurable level/format and stderr output; no file rotation or destination selection. |
-| Error handling | 4 | 8 | CLI suppresses duplicate ERROR records already emitted by binary flow; other modules still vary in exception details. |
+| Error handling | 4 | 8 | CLI suppresses duplicate ERROR records already emitted by binary flow; shared error decorators include type and stack trace, while other modules still vary. |
 | Testing and verification | 3 | 10 | 100% line coverage plus real process log propagation tests; cross-platform CI results remain external evidence. |
 
-The current **provisional score is 8.0/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
+The current **provisional score is 8.1/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom executor behavior and preconfigured host handlers, evaluating destination/retention needs for actual deployments, and confirming CI on each supported OS. Regex redaction remains heuristic; the bounded queue may drop records under pressure.
+This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom executor behavior, evaluating destination/retention needs for actual deployments, and confirming CI on each supported OS. Regex redaction remains heuristic; the bounded queue may drop records under pressure.
 
 ## Verification evidence
 
