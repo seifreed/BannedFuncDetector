@@ -174,11 +174,26 @@ class _RequestContextFilter(logging.Filter):
 class _SanitizingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.msg = _safe_record_message(record)
-        record.args = ()
         if record.exc_info:
             if record.exc_info[0] is not None and not hasattr(record, "error_type"):
                 record.error_type = record.exc_info[0].__name__
             record.exc_text = _safe_exception_text(record.exc_info)
+        elif record.levelno >= logging.ERROR and not hasattr(record, "error_type"):
+            args = record.args
+            candidates = (
+                args.values()
+                if isinstance(args, dict)
+                else args
+                if isinstance(args, tuple)
+                else (args,)
+            )
+            error = next(
+                (value for value in candidates if isinstance(value, BaseException)),
+                None,
+            )
+            if error is not None:
+                record.error_type = type(error).__name__
+        record.args = ()
         stack_trace = getattr(record, "stack_trace", None)
         if stack_trace:
             record.stack_trace = _safe_message(stack_trace)

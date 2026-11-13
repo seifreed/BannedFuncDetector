@@ -606,6 +606,30 @@ def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
         root.setLevel(saved_level)
 
 
+def test_exception_arguments_set_structured_error_type(monkeypatch, capsys):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        logging.getLogger("test.logging").error(
+            "operation failed: %s", RuntimeError("diagnostic")
+        )
+
+        event = json.loads(capsys.readouterr().err)
+        assert event["error_type"] == "RuntimeError"
+        assert "diagnostic" in event["message"]
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_log_messages_are_bounded():
     from bannedfuncdetector.cli_bootstrap import (
         _MAX_LOG_MESSAGE_CHARS,
