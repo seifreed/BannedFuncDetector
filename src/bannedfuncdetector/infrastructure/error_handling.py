@@ -67,10 +67,9 @@ def _log_error(
     """
     if should_log:
         logger.error(
-            "%s in %s: %s",
+            "%s in %s",
             category,
             func_name,
-            exception,
             exc_info=(type(exception), exception, exception.__traceback__),
             extra={
                 "event_name": "operation_error",
@@ -284,10 +283,9 @@ def handle_errors_sync(
             ) as e:
                 if log_errors:
                     logger.error(
-                        "Error in %s (%s): %s",
+                        "Operation failed in %s (%s)",
                         func.__name__,
                         operation_name,
-                        e,
                         exc_info=(type(e), e, e.__traceback__),
                         extra={
                             "event_name": "operation_error",

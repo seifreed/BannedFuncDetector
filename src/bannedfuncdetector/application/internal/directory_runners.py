@@ -200,7 +200,6 @@ def iter_sequential_directory_results(
                 error_result_from_exception(
                     exc,
                     context=executable_file,
-                    logger_message=f"analyzing {executable_file}",
                 ),
             )
 

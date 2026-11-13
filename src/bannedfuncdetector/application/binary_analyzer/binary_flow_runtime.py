@@ -47,7 +47,7 @@ def _analysis_error(
     if isinstance(exc, OSError) and exc.errno is not None:
         extra["error_code"] = exc.errno
     logger.error(
-        str(error),
+        "Binary analysis failed",
         exc_info=(type(exc), exc, exc.__traceback__),
         extra=extra,
     )

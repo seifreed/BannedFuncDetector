@@ -932,13 +932,13 @@ class TestDirectoryPreparation:
 
 class TestDirectoryResults:
     """
-    Purpose: Cover line 64 — error_result_from_exception with logger_message=None,
-    which skips the logger.error call inside the function.
+    Purpose: verify normalized exception logs retain diagnostics without duplicating
+    caller-facing exception text.
     """
 
     def test_error_result_from_exception_no_logger_message(self):
         """
-        Arrange: a plain OSError as the exception; logger_message=None.
+        Arrange: a plain OSError as the exception.
         Act: call error_result_from_exception.
         Assert: Err result is returned and contains the exception's message.
         """
@@ -948,9 +948,7 @@ class TestDirectoryResults:
         from bannedfuncdetector.domain.result import Err
 
         exc = OSError("file not found on disk")
-        result = error_result_from_exception(
-            exc, context="/some/binary.exe", logger_message=None
-        )
+        result = error_result_from_exception(exc, context="/some/binary.exe")
 
         assert isinstance(result, Err)
         assert "file not found on disk" in str(result.error)
@@ -964,7 +962,7 @@ class TestDirectoryResults:
             raise PermissionError(errno.EACCES, "disk unreadable")
         except PermissionError as exc:
             error_result_from_exception(
-                exc, context="sample.bin", logger_message="analyzing sample.bin"
+                exc, context="sample.bin"
             )
 
         record = next(record for record in caplog.records if record.exc_info)
@@ -973,6 +971,7 @@ class TestDirectoryResults:
         assert record.event_name == "analysis_error"
         assert record.error_category == "I/O error"
         assert record.error_code == errno.EACCES
+        assert "disk unreadable" not in record.getMessage()
         assert "disk unreadable" in str(record.exc_info[1])
 
     def test_collect_directory_results_does_not_repeat_logged_error(self, caplog):
