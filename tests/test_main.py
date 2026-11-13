@@ -399,6 +399,11 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
             "https://user:password@service.test/path?api_key=url-secret\nINJECTED"
             "\x85NEXT\u2028LINE\u2029PARAGRAPH file=%s",
             Path.home() / "input.bin",
+            extra={
+                "request_id": "access_token=id-secret",
+                "operation": "password=operation-secret",
+                "event_name": "safe-event\nFORGED",
+            },
         )
         event = json.loads(capsys.readouterr().err)
         assert event["level"] == "WARNING"
@@ -420,6 +425,9 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert "\\u2029" in event["message"]
         assert str(Path.home()) not in event["message"]
         assert "~/input.bin" in event["message"]
+        assert "id-secret" not in event["request_id"]
+        assert event["operation"] == "password=[REDACTED]"
+        assert event["event_name"] == "safe-event\\x0aFORGED"
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)

@@ -141,7 +141,7 @@ class _JsonLogFormatter(logging.Formatter):
             event["environment"] = _safe_message(environment)
         request_id = getattr(record, "request_id", None) or _request_id.get()
         if request_id is not None:
-            event["request_id"] = request_id
+            event["request_id"] = _safe_message(str(request_id))
         for field in (
             "operation",
             "event_name",
@@ -151,7 +151,7 @@ class _JsonLogFormatter(logging.Formatter):
         ):
             value = getattr(record, field, None)
             if value is not None:
-                event[field] = value
+                event[field] = _safe_message(value) if isinstance(value, str) else value
         stack_trace = getattr(record, "stack_trace", None)
         if record.exc_info:
             stack_trace = _safe_exception_text(record.exc_info)
