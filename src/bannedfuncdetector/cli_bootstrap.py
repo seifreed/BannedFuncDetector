@@ -66,14 +66,16 @@ def log_context(request_id: str | None) -> Iterator[None]:
 
 _SENSITIVE_NAMES = (
     r"password|passwd|(?:access|refresh|id)?[_-]?token|api[_-]?key|"
-    r"client[_-]?secret|secret|session(?:id)?|private[_-]?key"
+    r"client[_-]?secret|secret|session(?:id)?|private[_-]?key|"
+    r"authorization|set-cookie|cookie"
 )
 _SENSITIVE_VALUE = re.compile(
     rf"(?i)(\b(?:{_SENSITIVE_NAMES})\b[\"']?\s*[=:]\s*|"
-    rf"--(?:{_SENSITIVE_NAMES})\s+)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
-    r"(\bauthorization\s*:\s*)(?:bearer\s+|basic\s+)?"
+    rf"--(?:{_SENSITIVE_NAMES})\s+)(?!\[REDACTED\])"
     r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
-    r"(\b(?:bearer|basic)\s+)[^\s,;]+"
+    r"(\bauthorization\s*:\s*)(?!\[REDACTED\])(?:bearer\s+|basic\s+)?"
+    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
+    r"(\b(?:bearer|basic)\s+)(?!\[REDACTED\])[^\s,;]+"
 )
 _COOKIE_HEADER = re.compile(
     r"(?i)(\b(?:set-cookie|cookie)\s*:\s*)"
