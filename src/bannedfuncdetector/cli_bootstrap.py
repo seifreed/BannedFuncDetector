@@ -28,6 +28,12 @@ def ensure_request_id() -> str:
     return request_id
 
 
+def new_request_id() -> str:
+    request_id = uuid.uuid4().hex
+    _request_id.set(request_id)
+    return request_id
+
+
 @contextmanager
 def log_context(request_id: str | None) -> Iterator[None]:
     token = _request_id.set(request_id)
@@ -135,5 +141,6 @@ __all__ = [
     "configure_logging",
     "ensure_request_id",
     "log_context",
+    "new_request_id",
     "validate_requirements",
 ]

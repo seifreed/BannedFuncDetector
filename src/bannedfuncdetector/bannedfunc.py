@@ -5,7 +5,7 @@ import os
 import logging
 
 from .cli import parse_arguments
-from .cli_bootstrap import configure_logging, ensure_request_id, validate_requirements
+from .cli_bootstrap import configure_logging, new_request_id, validate_requirements
 from .cli_dispatch import dispatch_cli_analysis
 from .infrastructure.validators import check_python_version, check_requirements
 from .presentation.reporting import display_final_results
@@ -89,7 +89,7 @@ def analyze_directory(
 def main() -> int:
     """Run the CLI entry point."""
     args = parse_arguments()
-    ensure_request_id()
+    new_request_id()
     configure_logging(verbose=args.verbose)
     check_python_version()
     validate_requirements(

@@ -440,6 +440,12 @@ def test_json_logging_includes_context_request_id(monkeypatch, capsys):
         root.setLevel(saved_level)
 
 
+def test_new_request_id_changes_between_cli_runs():
+    from bannedfuncdetector.cli_bootstrap import new_request_id
+
+    assert new_request_id() != new_request_id()
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""
