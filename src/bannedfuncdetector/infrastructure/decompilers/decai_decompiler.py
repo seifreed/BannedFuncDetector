@@ -11,7 +11,7 @@ import logging
 from typing import Any
 
 from bannedfuncdetector.domain.protocols import IR2Client
-from bannedfuncdetector.application.observability import safe_exception_fields
+from bannedfuncdetector.observability import safe_exception_fields
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     BaseR2Decompiler,
     DECAI_PREFERRED_MODELS,

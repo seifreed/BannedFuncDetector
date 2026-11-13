@@ -713,8 +713,15 @@ def test_safe_exception_fields_keep_type_and_numeric_code_only():
 
 
 def test_safe_stack_trace_omits_exception_text_and_handles_missing_traceback():
-    from bannedfuncdetector.application.observability import safe_stack_trace
+    from bannedfuncdetector.application.observability import (
+        current_request_id as legacy_current_request_id,
+        safe_stack_trace,
+    )
     from bannedfuncdetector.infrastructure.logging_config import _safe_exception_text
+    from bannedfuncdetector.observability import (
+        current_request_id,
+        new_request_id,
+    )
 
     exc = RuntimeError("token=private-value")
     assert safe_stack_trace(exc) == ""
@@ -728,6 +735,7 @@ def test_safe_stack_trace_omits_exception_text_and_handles_missing_traceback():
     assert "test_main.py" in stack_trace
     assert " in test_safe_stack_trace_omits_exception_text_and_handles_missing_traceback" in stack_trace
     assert "token=private-value" not in stack_trace
+    assert new_request_id() == current_request_id() == legacy_current_request_id()
 
 
 def test_configure_logging_supports_stdout_destination(monkeypatch, capsys):

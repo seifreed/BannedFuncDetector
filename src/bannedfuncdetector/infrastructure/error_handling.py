@@ -13,7 +13,7 @@ import logging
 from typing import TypeVar, Callable, ParamSpec, overload
 
 from bannedfuncdetector.domain.error_types import ErrorCategory
-from bannedfuncdetector.application.observability import safe_stack_trace
+from bannedfuncdetector.observability import safe_stack_trace
 from bannedfuncdetector.domain.result import Result, err
 
 # Configure module logger

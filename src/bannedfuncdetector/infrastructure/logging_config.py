@@ -16,7 +16,7 @@ from types import TracebackType
 from datetime import datetime, timezone
 from typing import Any
 
-from bannedfuncdetector.application.observability import (
+from bannedfuncdetector.observability import (
     current_operation,
     current_request_id,
     ensure_request_id,

@@ -15,7 +15,7 @@ import time
 from collections.abc import Callable
 
 from bannedfuncdetector.analyzer_exceptions import TransientR2Error
-from bannedfuncdetector.application.observability import safe_exception_fields
+from bannedfuncdetector.observability import safe_exception_fields
 from bannedfuncdetector.constants import DECOMPILER_TIMEOUT
 from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.result import Result, err, ok

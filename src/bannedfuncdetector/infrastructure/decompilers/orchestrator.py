@@ -20,7 +20,7 @@ from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
 from bannedfuncdetector.domain.banned_functions import get_banned_functions_set
 from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
-from bannedfuncdetector.application.observability import safe_exception_fields
+from bannedfuncdetector.observability import safe_exception_fields
 from bannedfuncdetector.domain.types import (
     DecompilationResultType,
     DecompiledCode,

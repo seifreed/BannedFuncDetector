@@ -11,7 +11,7 @@ from bannedfuncdetector.constants import (
     MIN_VALID_CODE_LENGTH,
 )
 from bannedfuncdetector.domain.protocols import IR2Client
-from bannedfuncdetector.application.observability import safe_exception_fields
+from bannedfuncdetector.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 

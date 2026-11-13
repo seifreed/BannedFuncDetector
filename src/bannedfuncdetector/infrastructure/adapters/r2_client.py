@@ -17,7 +17,7 @@ import r2pipe
 
 from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 from bannedfuncdetector.domain.protocols import IR2Client
-from bannedfuncdetector.application.observability import safe_exception_fields
+from bannedfuncdetector.observability import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 _TRANSIENT_ERRNOS = {errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT, errno.EINTR}
