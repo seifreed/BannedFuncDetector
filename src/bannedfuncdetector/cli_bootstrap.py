@@ -64,10 +64,13 @@ def log_context(request_id: str | None) -> Iterator[None]:
         _request_id.reset(token)
 
 
+_SENSITIVE_NAMES = (
+    r"password|passwd|(?:access|refresh|id)?[_-]?token|api[_-]?key|"
+    r"client[_-]?secret|secret|session(?:id)?|private[_-]?key"
+)
 _SENSITIVE_VALUE = re.compile(
-    r"(?i)(\b(?:password|passwd|(?:access|refresh|id)?[_-]?token|"
-    r"api[_-]?key|client[_-]?secret|secret|session(?:id)?|private[_-]?key)"
-    r"\b\s*[=:]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
+    rf"(?i)(\b(?:{_SENSITIVE_NAMES})\b[\"']?\s*[=:]\s*|"
+    rf"--(?:{_SENSITIVE_NAMES})\s+)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
     r"(\bauthorization\s*:\s*)(?:bearer\s+|basic\s+)?"
     r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
     r"(\b(?:bearer|basic)\s+)[^\s,;]+"

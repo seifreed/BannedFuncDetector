@@ -396,6 +396,8 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
             "request access_token=abc123 client_secret=private "
             "password='quoted secret value' "
             "client_secret=\"multi word secret\" "
+            'payload={"password": "json-secret", "api_key": "json-key"} '
+            "--api-key cli-secret --password='cli quoted secret' "
             "Cookie: session=secret-value; tracking=private-cookie\n"
             "https://user:password@service.test/path?api_key=url-secret\nINJECTED"
             "\x85NEXT\u2028LINE\u2029PARAGRAPH file=%s",
@@ -416,6 +418,10 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert "secret-value" not in event["message"]
         assert "quoted secret value" not in event["message"]
         assert "multi word secret" not in event["message"]
+        assert "json-secret" not in event["message"]
+        assert "json-key" not in event["message"]
+        assert "cli-secret" not in event["message"]
+        assert "cli quoted secret" not in event["message"]
         assert "private-cookie" not in event["message"]
         assert "user" not in event["message"]
         assert "url-secret" not in event["message"]
