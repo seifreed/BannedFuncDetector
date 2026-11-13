@@ -378,6 +378,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
     monkeypatch, capsys
 ):
     import json
+    from pathlib import Path
 
     from bannedfuncdetector.cli_bootstrap import configure_logging
 
@@ -394,7 +395,8 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
             "request access_token=abc123 client_secret=private "
             "Cookie: session=secret-value "
             "https://user:password@service.test/path?api_key=url-secret\nINJECTED"
-            "\x85NEXT\u2028LINE\u2029PARAGRAPH"
+            "\x85NEXT\u2028LINE\u2029PARAGRAPH file=%s",
+            Path.home() / "input.bin",
         )
         event = json.loads(capsys.readouterr().err)
         assert event["level"] == "WARNING"
@@ -411,6 +413,8 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert "\\x85" in event["message"]
         assert "\\u2028" in event["message"]
         assert "\\u2029" in event["message"]
+        assert str(Path.home()) not in event["message"]
+        assert "~/input.bin" in event["message"]
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)

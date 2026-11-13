@@ -82,6 +82,9 @@ def _safe_message(value: str) -> str:
     value = value[:_MAX_LOG_MESSAGE_CHARS]
     redacted = _SENSITIVE_VALUE.sub(r"\1[REDACTED]", value)
     redacted = _URL_WITH_PRIVATE_PARTS.sub(r"\1\2", redacted)
+    home_directory = os.path.expanduser("~")
+    if home_directory != "~":
+        redacted = redacted.replace(home_directory, "~")
     escaped = "".join(
         character if character.isprintable() else _escape_character(character)
         for character in redacted
