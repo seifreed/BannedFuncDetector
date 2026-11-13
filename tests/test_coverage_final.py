@@ -1885,7 +1885,7 @@ class TestPresentationReporting:
         # None is falsy; should log warning and return
         display_final_results(None)
 
-    def test_display_final_results_with_operational_notices(self):
+    def test_display_final_results_with_operational_notices(self, caplog):
         """
         Purpose: presentation/reporting.display_final_results — operational
         notices with and without file_path are logged.
@@ -1909,7 +1909,7 @@ class TestPresentationReporting:
             message="cleanup failed", file_path="/bin/ls"
         )
         notice_without_path = OperationalNotice(
-            message="general notice", file_path=None
+            message="api_key=notice-private", file_path=None
         )
         outcome = BinaryAnalysisOutcome(
             report=report,
@@ -1917,6 +1917,16 @@ class TestPresentationReporting:
         )
 
         display_final_results(outcome)
+
+        notice_events = [
+            record for record in caplog.records
+            if getattr(record, "event_name", None) == "operational_notice"
+        ]
+        assert len(notice_events) == 2
+        assert notice_events[0].file_name == "ls"
+        assert notice_events[0].outcome == "degraded"
+        assert all(record.getMessage() == "Operational notice" for record in notice_events)
+        assert "notice-private" not in caplog.text
 
     def test_detected_function_is_logged_once_as_structured_event(self, caplog):
         from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome

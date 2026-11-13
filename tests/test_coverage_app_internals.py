@@ -259,7 +259,8 @@ class TestAnalysisError:
         assert isinstance(result, Err)
         failure = result.error
         notice_messages = [n.message for n in failure.operational_notices]
-        assert any("cleanup also failed" in msg for msg in notice_messages)
+        assert any("cleanup failed" in msg for msg in notice_messages)
+        assert all("cleanup also failed" not in msg for msg in notice_messages)
 
 
 # ===========================================================================
@@ -692,7 +693,8 @@ class TestSetupBinaryAnalysis:
         assert isinstance(result, Err)
         failure = result.error
         notice_messages = [n.message for n in failure.operational_notices]
-        assert any("cleanup exploded" in msg for msg in notice_messages)
+        assert "cleanup failed" in notice_messages
+        assert all("cleanup exploded" not in msg for msg in notice_messages)
 
 
 # ===========================================================================

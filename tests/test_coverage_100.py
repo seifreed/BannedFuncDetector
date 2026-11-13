@@ -212,14 +212,13 @@ class TestSessionSetup:
 
     def test_closer_returns_err_with_non_str_error_hits_line_58(self):
         """
-        Purpose: session_setup.py:58 — when _extract_functions returns Err
-        AND the closer's Err.error is not a str, the code converts it with
-        str(): `cleanup_message = str(cleanup_message)`.
+        Purpose: a non-string cleanup error payload must be reported without
+        converting arbitrary payload text into a log or notice.
 
         Arrange: FakeR2 returning no functions (empty aflj → Err), closer
         returning Err(42) where 42 is int (not str).
         Act: call setup_binary_analysis.
-        Assert: Err containing operational notice whose message contains "42".
+        Assert: Err containing a generic cleanup notice that omits the payload.
         """
         from bannedfuncdetector.application.binary_analyzer.session_setup import (
             setup_binary_analysis,
@@ -233,7 +232,7 @@ class TestSessionSetup:
         )
 
         def closer_returning_non_str_err(r2):
-            return err(42)  # .error is int, not str → triggers str() at line 58
+            return err(42)  # .error is int, not str
 
         runtime = self._make_runtime(fake_r2, closer_returning_non_str_err)
         plan = self._make_plan(runtime)
@@ -244,7 +243,8 @@ class TestSessionSetup:
         failure = result.error
         notices = failure.operational_notices
         assert len(notices) == 1
-        assert "42" in notices[0].message
+        assert notices[0].message == "cleanup failed"
+        assert "42" not in notices[0].message
 
     def test_extract_functions_third_type_hits_defensive_fallback_line_86(self):
         """

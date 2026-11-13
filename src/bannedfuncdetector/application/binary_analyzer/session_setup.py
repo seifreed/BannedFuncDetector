@@ -53,9 +53,6 @@ def setup_binary_analysis(
         if isinstance(functions_result, Err):
             cleanup_error = closer(r2)
             if isinstance(cleanup_error, Err):
-                cleanup_message = cleanup_error.error
-                if not isinstance(cleanup_message, str):
-                    cleanup_message = str(cleanup_message)
                 return err(
                     ExecutionFailure(
                         error=BinaryExecutionError(
@@ -65,7 +62,7 @@ def setup_binary_analysis(
                         ),
                         operational_notices=(
                             OperationalNotice(
-                                message=f"cleanup failed: {cleanup_message}",
+                                message="cleanup failed",
                                 file_path=binary_path,
                             ),
                         ),

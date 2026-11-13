@@ -10,6 +10,7 @@ Author: Marc Rivero | @seifreed
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Sequence
 from typing import Any
 
@@ -43,12 +44,13 @@ def display_final_results(
     logger.info(f"Total files analyzed: {total_files}")
     logger.info(f"Insecure functions found: {total_banned}")
     for notice in result.operational_notices:
+        extra: dict[str, str] = {
+            "event_name": "operational_notice",
+            "outcome": "degraded",
+        }
         if notice.file_path:
-            logger.warning(
-                f"Operational notice for {notice.file_path}: {notice.message}"
-            )
-        else:
-            logger.warning(f"Operational notice: {notice.message}")
+            extra["file_name"] = os.path.basename(notice.file_path)
+        logger.warning("Operational notice", extra=extra)
 
     if total_banned > 0:
         logger.warning("Detected insecure functions:")

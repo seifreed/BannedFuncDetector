@@ -174,14 +174,13 @@ def _run_detection_with_cleanup(
     if isinstance(cleanup_error, Ok):
         return result
 
-    cleanup_message = f"cleanup failed: {cleanup_error.error if isinstance(cleanup_error, Err) else str(cleanup_error)}"
     if isinstance(result, Err):
         current = result.error
         return err(
             ExecutionFailure(
                 error=current.error,
                 operational_notices=current.operational_notices
-                + (OperationalNotice(message=cleanup_message, file_path=binary_path),),
+                + (OperationalNotice(message="cleanup failed", file_path=binary_path),),
                 logged=current.logged,
             )
         )
@@ -192,7 +191,7 @@ def _run_detection_with_cleanup(
             BinaryAnalysisOutcome(
                 report=outcome.report,
                 operational_notices=outcome.operational_notices
-                + (OperationalNotice(message=cleanup_message, file_path=binary_path),),
+                + (OperationalNotice(message="cleanup failed", file_path=binary_path),),
             )
         )
     return result
