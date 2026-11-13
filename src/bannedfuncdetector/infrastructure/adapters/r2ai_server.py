@@ -212,28 +212,40 @@ def get_r2ai_models(
         >>> isinstance(models, list)
         True
     """
+    models, error_type, error_code = _fetch_r2ai_models(server_url, timeout)
+    if error_type is not None:
+        _log_model_fetch_failure(error_type, error_code)
+    return models
+
+
+def _fetch_r2ai_models(
+    server_url: str, timeout: int
+) -> tuple[list[Any], str | None, int | None]:
     try:
         response = requests.get(f"{server_url}/models", timeout=timeout)
-        if response.status_code == 200:
-            models_data = response.json()
-            # Accept both {"models": [...]} and a bare [...] top-level array.
-            if isinstance(models_data, dict):
-                models: list[Any] = models_data.get("models", [])
-            elif isinstance(models_data, list):
-                models = models_data
-            else:
-                models = []
-            return models
-    except (requests.RequestException, json.JSONDecodeError, ValueError, KeyError) as e:
-        logger.warning(
-            "Error getting models from r2ai-server",
-            extra={
-                "event_name": "optional_service_models_failed",
-                "error_type": type(e).__name__,
-            },
-        )
+        if response.status_code != 200:
+            return [], "HTTPStatusError", response.status_code
+        models_data = response.json()
+        # Accept both {"models": [...]} and a bare [...] top-level array.
+        if isinstance(models_data, dict):
+            models: list[Any] = models_data.get("models", [])
+        elif isinstance(models_data, list):
+            models = models_data
+        else:
+            models = []
+        return models, None, None
+    except (requests.RequestException, json.JSONDecodeError, ValueError, KeyError) as exc:
+        return [], type(exc).__name__, None
 
-    return []
+
+def _log_model_fetch_failure(error_type: str, error_code: int | None) -> None:
+    extra: dict[str, Any] = {
+        "event_name": "optional_service_models_failed",
+        "error_type": error_type,
+    }
+    if error_code is not None:
+        extra["error_code"] = error_code
+    logger.warning("Error getting models from r2ai-server", extra=extra)
 
 
 def _log_available_models(server_url: str, timeout: int) -> None:
@@ -244,30 +256,14 @@ def _log_available_models(server_url: str, timeout: int) -> None:
         server_url: URL of the r2ai-server.
         timeout: Request timeout in seconds.
     """
-    try:
-        models = get_r2ai_models(server_url, timeout)
-        if models:
-            logger.info("Models available in r2ai-server: %d", len(models))
-        else:
-            logger.warning("No available models found in r2ai-server")
-    except requests.RequestException as e:
-        # Network or HTTP errors
-        logger.warning(
-            "Error getting the list of models",
-            extra={
-                "event_name": "optional_service_models_failed",
-                "error_type": type(e).__name__,
-            },
-        )
-    except (json.JSONDecodeError, ValueError, KeyError) as e:
-        # JSON parsing or data structure errors
-        logger.warning(
-            "Error parsing the list of models",
-            extra={
-                "event_name": "optional_service_models_invalid",
-                "error_type": type(e).__name__,
-            },
-        )
+    models, error_type, error_code = _fetch_r2ai_models(server_url, timeout)
+    if error_type is not None:
+        _log_model_fetch_failure(error_type, error_code)
+        return
+    if models:
+        logger.info("Models available in r2ai-server: %d", len(models))
+    else:
+        logger.warning("No available models found in r2ai-server")
 
 
 def _handle_r2ai_server_not_running(

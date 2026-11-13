@@ -100,6 +100,51 @@ def test_r2ai_start_failure_logs_type_without_exception_text(monkeypatch, caplog
     assert event.error_type == "RuntimeError"
 
 
+def test_r2ai_model_fetch_failure_is_logged_once(monkeypatch, caplog):
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    class PingResponse:
+        status_code = 200
+
+    def fail_models(url, **_kwargs):
+        if url.endswith("/ping"):
+            return PingResponse()
+        raise r2ai_server.requests.ConnectionError("password=private-value")
+
+    monkeypatch.setattr(r2ai_server.requests, "get", fail_models)
+    caplog.set_level(logging.WARNING, logger=r2ai_server.__name__)
+
+    assert r2ai_server.check_r2ai_server_available("http://localhost:8080") is True
+
+    warnings = [
+        record
+        for record in caplog.records
+        if record.name == r2ai_server.__name__ and record.levelno == logging.WARNING
+    ]
+    assert len(warnings) == 1
+    assert warnings[0].event_name == "optional_service_models_failed"
+    assert warnings[0].error_type == "ConnectionError"
+    assert "private-value" not in caplog.text
+
+    class ModelsErrorResponse:
+        status_code = 503
+
+    def return_http_error(url, **_kwargs):
+        return PingResponse() if url.endswith("/ping") else ModelsErrorResponse()
+
+    caplog.clear()
+    monkeypatch.setattr(r2ai_server.requests, "get", return_http_error)
+    assert r2ai_server.check_r2ai_server_available("http://localhost:8080") is True
+    warnings = [
+        record
+        for record in caplog.records
+        if record.name == r2ai_server.__name__ and record.levelno == logging.WARNING
+    ]
+    assert len(warnings) == 1
+    assert warnings[0].error_type == "HTTPStatusError"
+    assert warnings[0].error_code == 503
+
+
 def test_check_r2ai_server_available_success_no_models():
     server_url, server = start_test_server(
         ping_status=200,

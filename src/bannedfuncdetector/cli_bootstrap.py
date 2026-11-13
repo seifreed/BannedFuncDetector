@@ -148,6 +148,7 @@ class _JsonLogFormatter(logging.Formatter):
             "duration_ms",
             "outcome",
             "error_type",
+            "error_code",
         ):
             value = getattr(record, field, None)
             if value is not None:
