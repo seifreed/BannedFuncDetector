@@ -170,24 +170,38 @@ def check_r2ai_server_available(
         >>> check_r2ai_server_available("http://localhost:9999", timeout=1)
         False
     """
+    started = time.perf_counter()
     try:
         if _ping_server(server_url, timeout):
             logger.info(
                 "r2ai-server detected",
-                extra={"event_name": "optional_service_available"},
+                extra={
+                    "operation": "optional_service_ping",
+                    "event_name": "optional_service_available",
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                    "outcome": "success",
+                },
             )
             _log_available_models(server_url, timeout)
             return True
         logger.warning(
             "r2ai-server is not responding correctly",
-            extra={"event_name": "optional_service_unavailable"},
+            extra={
+                "operation": "optional_service_ping",
+                "event_name": "optional_service_unavailable",
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "outcome": "unavailable",
+            },
         )
         return False
     except requests.RequestException as e:
         logger.warning(
             "Error connecting to r2ai-server",
             extra={
+                "operation": "optional_service_ping",
                 "event_name": "optional_service_connection_failed",
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "outcome": "error",
                 "error_type": type(e).__name__,
             },
         )
@@ -266,9 +280,26 @@ def _log_available_models(server_url: str, timeout: int) -> None:
         _log_model_fetch_failure(error_type, error_code, duration_ms)
         return
     if models:
-        logger.info("Models available in r2ai-server: %d", len(models))
+        logger.info(
+            "Models available in r2ai-server: %d",
+            len(models),
+            extra={
+                "operation": "model_list_fetch",
+                "event_name": "optional_service_models_available",
+                "duration_ms": duration_ms,
+                "outcome": "success",
+            },
+        )
     else:
-        logger.warning("No available models found in r2ai-server")
+        logger.warning(
+            "No available models found in r2ai-server",
+            extra={
+                "operation": "model_list_fetch",
+                "event_name": "optional_service_models_empty",
+                "duration_ms": duration_ms,
+                "outcome": "empty",
+            },
+        )
 
 
 def _handle_r2ai_server_not_running(

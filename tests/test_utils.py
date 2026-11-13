@@ -75,7 +75,18 @@ def test_r2ai_logs_omit_remote_url_and_model_data(monkeypatch, caplog):
     assert "Available model count: 1" in log_text
     assert secret_model not in log_text
     records = [record for record in caplog.records if record.name == r2ai_server.__name__]
-    assert any(record.event_name == "optional_service_available" for record in records)
+    ping = next(record for record in records if record.event_name == "optional_service_available")
+    assert ping.operation == "optional_service_ping"
+    assert ping.outcome == "success"
+    assert ping.duration_ms >= 0
+    model_fetch = next(
+        record
+        for record in records
+        if record.event_name == "optional_service_models_available"
+    )
+    assert model_fetch.operation == "model_list_fetch"
+    assert model_fetch.outcome == "success"
+    assert model_fetch.duration_ms >= 0
     assert any("Models available in r2ai-server: 1" == record.getMessage() for record in records)
 
 
@@ -147,16 +158,21 @@ def test_r2ai_model_fetch_failure_is_logged_once(monkeypatch, caplog):
     assert warnings[0].duration_ms >= 0
 
 
-def test_check_r2ai_server_available_success_no_models():
+def test_check_r2ai_server_available_success_no_models(caplog):
     server_url, server = start_test_server(
         ping_status=200,
         models_status=200,
         models_payload=b'{"models": []}',
     )
+    caplog.set_level(logging.WARNING, logger="bannedfuncdetector.infrastructure.adapters.r2ai_server")
     try:
         assert check_r2ai_server_available(server_url) is True
     finally:
         server.shutdown()
+    event = next(record for record in caplog.records if record.event_name == "optional_service_models_empty")
+    assert event.operation == "model_list_fetch"
+    assert event.outcome == "empty"
+    assert event.duration_ms >= 0
 
 
 def test_check_r2ai_server_available_models_error():
