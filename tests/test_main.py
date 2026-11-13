@@ -655,6 +655,34 @@ def test_check_single_requirement_wrong_expected():
     assert result is False
 
 
+def test_requirement_failure_does_not_log_process_output(monkeypatch, caplog):
+    from types import SimpleNamespace
+
+    from bannedfuncdetector.infrastructure import validators
+
+    monkeypatch.setattr(
+        validators,
+        "_run_command",
+        lambda _command: SimpleNamespace(
+            returncode=1,
+            stdout="password=hunter2",
+            stderr="token=private-value",
+        ),
+    )
+    caplog.set_level(logging.ERROR, logger=validators.__name__)
+
+    assert not validators._check_single_requirement(
+        {
+            "name": "sample",
+            "command": ["python", "--version"],
+            "expected": "expected output",
+        }
+    )
+    assert "hunter2" not in caplog.text
+    assert "private-value" not in caplog.text
+    assert "exit_code=1" in caplog.text
+
+
 def test_check_single_requirement_blocked_command():
     """_check_single_requirement blocks commands not in ALLOWED_REQUIREMENT_EXECUTABLES."""
     result = _check_single_requirement(

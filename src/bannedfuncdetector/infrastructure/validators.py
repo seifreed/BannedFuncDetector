@@ -119,11 +119,11 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
 
         if result.returncode != 0 or req["expected"] not in result.stdout:
             logger.error(
-                f"Error: {req['name']} is not installed or not working properly."
+                "Requirement check failed for %s (exit_code=%s, output_matched=%s)",
+                req["name"],
+                result.returncode,
+                req["expected"] in result.stdout,
             )
-            logger.error(f"Output: {result.stdout}")
-            if result.stderr:
-                logger.error(f"Error: {result.stderr}")
             return False
 
         logger.info(f"{req['name']} is installed correctly.")
