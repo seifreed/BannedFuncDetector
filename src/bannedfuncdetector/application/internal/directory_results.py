@@ -52,13 +52,19 @@ def error_result_from_exception(
     error = directory_error_from_exception(exc, context=context)
 
     if logger_message is not None:
+        extra: dict[str, str] = {
+            "operation": "directory_analysis",
+            "event_name": "analysis_error",
+            "error_type": type(exc).__name__,
+            "error_category": error.category,
+        }
         logger.error(
             "%s %s: %s",
             error.category,
             logger_message,
             exc,
             exc_info=(type(exc), exc, exc.__traceback__),
-            extra={"error_type": type(exc).__name__},
+            extra=extra,
         )
     return err(ExecutionFailure(error=error, logged=True))
 
@@ -131,8 +137,19 @@ def collect_directory_results(
             on_result(executable_file, report, verbose)
         elif isinstance(result, Err):
             if not result.error.logged:
+                failure = result.error.error
+                extra = {
+                    "operation": "directory_analysis",
+                    "event_name": "analysis_error",
+                    "error_category": failure.category,
+                }
+                if failure.phase is not None:
+                    extra["error_phase"] = failure.phase
                 logger.error(
-                    "Analysis failed for %s: %s", executable_file, result.error
+                    "Analysis failed for %s: %s",
+                    executable_file,
+                    result.error,
+                    extra=extra,
                 )
             if hasattr(result.error, "operational_notices"):
                 notices.extend(result.error.operational_notices)

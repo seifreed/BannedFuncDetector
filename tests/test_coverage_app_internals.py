@@ -966,6 +966,9 @@ class TestDirectoryResults:
 
         record = next(record for record in caplog.records if record.exc_info)
         assert record.error_type == "OSError"
+        assert record.operation == "directory_analysis"
+        assert record.event_name == "analysis_error"
+        assert record.error_category == "I/O error"
         assert "disk unreadable" in str(record.exc_info[1])
 
     def test_collect_directory_results_does_not_repeat_logged_error(self, caplog):
@@ -980,7 +983,10 @@ class TestDirectoryResults:
 
         failure = ExecutionFailure(
             error=DirectoryExecutionError(
-                category="I/O error", context="sample.bin", message="unreadable"
+                category="I/O error",
+                context="sample.bin",
+                message="unreadable",
+                phase="collect",
             ),
             logged=True,
         )
@@ -1002,7 +1008,10 @@ class TestDirectoryResults:
 
         failure = ExecutionFailure(
             error=DirectoryExecutionError(
-                category="I/O error", context="sample.bin", message="unreadable"
+                category="I/O error",
+                context="sample.bin",
+                message="unreadable",
+                phase="collect",
             ),
             logged=False,
         )
@@ -1011,6 +1020,10 @@ class TestDirectoryResults:
         )
 
         assert "Analysis failed for sample.bin" in caplog.text
+        record = next(record for record in caplog.records if record.event_name == "analysis_error")
+        assert record.operation == "directory_analysis"
+        assert record.error_category == "I/O error"
+        assert record.error_phase == "collect"
 
 
 # ===========================================================================
