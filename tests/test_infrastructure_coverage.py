@@ -11,13 +11,13 @@ Tests for 100% coverage of:
   - bannedfuncdetector.infrastructure.error_handling
   - bannedfuncdetector.infrastructure.adapters.dtos
 
-All tests use real function calls, real data structures, and real file I/O.
-No mocks, no monkeypatch, no unittest.mock, no @patch, no pragma comments.
+Tests use real function calls, data structures, and file I/O. Fault paths patch
+the file boundary only where real permissions are not deterministic.
 """
 
 import json
 import logging
-import sys
+from pathlib import Path
 
 import pytest
 
@@ -473,39 +473,21 @@ class TestLoadConfigFromFile:
         result = load_config_from_file(cfg_path)
         assert result == {"hello": "world"}
 
-    @pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="Windows file permissions work differently",
-    )
-    def test_returns_none_when_file_exists_but_is_unreadable(self, tmp_path):
-        # Create a file that exists on disk but has no read permission,
-        # triggering the OSError branch (lines 32-34).
-        import os
+    def test_propagates_read_permission_errors(self, tmp_path, monkeypatch):
+        import builtins
 
-        cfg_path = tmp_path / "no_read.json"
+        cfg_path = tmp_path / "unreadable.json"
         cfg_path.write_text(json.dumps({"x": 1}))
-        original_mode = cfg_path.stat().st_mode
-        try:
-            os.chmod(str(cfg_path), 0o000)
-            result = load_config_from_file(str(cfg_path))
-            assert result is None
-        finally:
-            # Restore permissions so tmp_path cleanup succeeds.
-            os.chmod(str(cfg_path), original_mode)
-        # Create a file that exists on disk but has no read permission,
-        # triggering the OSError branch (lines 32-34).
-        import os
+        original_open = builtins.open
 
-        cfg_path = tmp_path / "no_read.json"
-        cfg_path.write_text(json.dumps({"x": 1}))
-        original_mode = cfg_path.stat().st_mode
-        try:
-            os.chmod(str(cfg_path), 0o000)
-            result = load_config_from_file(str(cfg_path))
-            assert result is None
-        finally:
-            # Restore permissions so tmp_path cleanup succeeds.
-            os.chmod(str(cfg_path), original_mode)
+        def fail_for_config(path, *args, **kwargs):
+            if Path(path) == cfg_path:
+                raise PermissionError("access denied")
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", fail_for_config)
+        with pytest.raises(PermissionError, match="access denied"):
+            load_config_from_file(cfg_path)
 
 
 # ===========================================================================
@@ -552,12 +534,37 @@ class TestLoadConfig:
         assert isinstance(result, dict)
         assert "decompiler" in result
 
-    def test_returns_defaults_when_json_is_invalid(self, tmp_path):
+    def test_returns_defaults_when_json_is_invalid(self, tmp_path, caplog):
         cfg_path = tmp_path / "bad.json"
         cfg_path.write_text("{not valid json}")
-        result = load_config(str(cfg_path))
+        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.config_storage"):
+            result = load_config(str(cfg_path))
         assert isinstance(result, dict)
         assert "decompiler" in result
+        errors = [record for record in caplog.records if record.event_name == "configuration_load_failed"]
+        assert len(errors) == 1
+        assert errors[0].operation == "config_load"
+        assert errors[0].error_type == "JSONDecodeError"
+
+    def test_logs_read_permission_error_once(self, tmp_path, monkeypatch, caplog):
+        import builtins
+
+        cfg_path = tmp_path / "unreadable.json"
+        cfg_path.write_text("{}")
+        original_open = builtins.open
+
+        def fail_for_config(path, *args, **kwargs):
+            if Path(path) == cfg_path:
+                raise PermissionError("private path access denied")
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", fail_for_config)
+        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.config_storage"):
+            result = load_config(str(cfg_path))
+        assert isinstance(result, dict)
+        errors = [record for record in caplog.records if record.event_name == "configuration_load_failed"]
+        assert len(errors) == 1
+        assert errors[0].error_type == "PermissionError"
 
     def test_returns_defaults_when_decompiler_key_is_not_dict(self, tmp_path):
         cfg_path = tmp_path / "config.json"
@@ -794,14 +801,18 @@ class TestImmutableConfig:
         cfg.reload(str(cfg_path))
         assert cfg.get("decompiler")["type"] == original_type
 
-    def test_reload_keeps_current_config_for_invalid_json(self, tmp_path):
+    def test_reload_keeps_current_config_for_invalid_json(self, tmp_path, caplog):
         cfg_path = tmp_path / "config.json"
         cfg_path.write_text("{invalid json")
         cfg = ImmutableConfig()
         original = cfg.get("decompiler")
-        cfg.reload(str(cfg_path))
+        with caplog.at_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.config_storage"):
+            cfg.reload(str(cfg_path))
         # JSONDecodeError is caught, config unchanged
         assert cfg.get("decompiler") == original
+        errors = [record for record in caplog.records if record.event_name == "configuration_load_failed"]
+        assert len(errors) == 1
+        assert errors[0].operation == "config_reload"
 
     def test_reload_handles_missing_required_keys_by_logging_warning(
         self, tmp_path, caplog

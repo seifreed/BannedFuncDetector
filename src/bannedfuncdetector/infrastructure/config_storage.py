@@ -18,19 +18,11 @@ logger = logging.getLogger(__name__)
 def load_config_from_file(path: Path | str) -> dict[str, Any] | None:
     """Load configuration from a JSON file."""
     config_path = Path(path)
-    if not config_path.exists():
-        logger.debug(f"Configuration file {config_path} does not exist")
-        return None
-
     try:
         with open(config_path, "r", encoding="utf-8") as handle:
             result: dict[str, Any] = json.load(handle)
             return result
-    except json.JSONDecodeError as exc:
-        logger.error(f"Invalid JSON in {config_path}: {exc}")
-        raise
-    except OSError as exc:
-        logger.error(f"Error reading {config_path}: {exc}")
+    except FileNotFoundError:
         return None
 
 
@@ -135,7 +127,16 @@ class ImmutableConfig:
             self._config = merged
             logger.info(f"Configuration reloaded from {config_file}")
         except (json.JSONDecodeError, OSError, KeyError, TypeError, ValueError) as exc:
-            logger.error(f"Error reloading configuration: {exc}")
+            logger.exception(
+                "Error reloading configuration file %s",
+                config_file,
+                extra={
+                    "operation": "config_reload",
+                    "event_name": "configuration_load_failed",
+                    "error_type": type(exc).__name__,
+                    "error_code": getattr(exc, "errno", None),
+                },
+            )
 
     def _update_internal(self, new_config: dict[str, Any]) -> None:
         """Internal method to update configuration."""
@@ -185,7 +186,16 @@ def load_config(config_file: str = "config.json") -> dict[str, Any]:
         logger.info(f"Configuration loaded from {config_file}")
         return merged
     except (json.JSONDecodeError, OSError, KeyError, TypeError, ValueError) as exc:
-        logger.error(f"Error loading configuration: {exc}")
+        logger.exception(
+            "Error loading configuration file %s",
+            config_file,
+            extra={
+                "operation": "config_load",
+                "event_name": "configuration_load_failed",
+                "error_type": type(exc).__name__,
+                "error_code": getattr(exc, "errno", None),
+            },
+        )
         return copy.deepcopy(DEFAULT_CONFIG)
 
 
