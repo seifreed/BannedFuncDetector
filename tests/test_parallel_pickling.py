@@ -124,3 +124,51 @@ def test_process_workers_forward_logs_to_parent_with_request_context(
     stack_traces = [getattr(record, "stack_trace", None) for record in worker_logs]
     assert sum(trace is not None for trace in stack_traces) == 2
     assert all("worker diagnostic" in trace for trace in stack_traces if trace)
+
+
+def test_process_log_listener_with_inline_executor(monkeypatch, caplog) -> None:
+    from concurrent.futures import Future
+
+    from bannedfuncdetector.application.internal.directory_runners import (
+        iter_parallel_directory_results,
+    )
+    from bannedfuncdetector.application.internal.execution_plans import (
+        DirectoryScanPlan,
+    )
+    import bannedfuncdetector.application.internal.directory_runners as runners
+
+    class InlineProcessExecutor:
+        def __init__(self, *, max_workers, initializer, initargs):
+            self.previous_handlers = logging.getLogger().handlers[:]
+            self.previous_level = logging.getLogger().level
+            initializer(*initargs)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            logging.getLogger().handlers[:] = self.previous_handlers
+            logging.getLogger().setLevel(self.previous_level)
+
+        def submit(self, worker, job):
+            future = Future()
+            future.set_result(worker(job))
+            return future
+
+    monkeypatch.setattr(
+        runners.concurrent.futures, "ProcessPoolExecutor", InlineProcessExecutor
+    )
+    monkeypatch.setattr(runners, "ensure_request_id", lambda: "inline-run")
+    caplog.set_level(logging.WARNING, logger="test.process_worker")
+    plan = DirectoryScanPlan(
+        runtime=create_application_wiring(),
+        worker_entrypoint=_logging_worker,
+    )
+
+    results = list(iter_parallel_directory_results(["inline.bin"], plan, 1))
+
+    assert len(results) == 1
+    assert any(
+        record.name == "test.process_worker" and record.request_id == "inline-run"
+        for record in caplog.records
+    )

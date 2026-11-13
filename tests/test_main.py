@@ -526,6 +526,51 @@ def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
         root.setLevel(saved_level)
 
 
+def test_text_formatter_sanitizes_forwarded_stack_trace():
+    from bannedfuncdetector.cli_bootstrap import _TextLogFormatter
+
+    record = logging.LogRecord(
+        "test.logging", logging.ERROR, __file__, 1, "worker failed", (), None
+    )
+    record.stack_trace = "RuntimeError: api_key=hidden-value"
+
+    output = _TextLogFormatter().format(record)
+
+    assert "hidden-value" not in output
+    assert "REDACTED" in output
+
+
+def test_worker_queue_handler_preserves_context_and_exception():
+    from queue import Queue
+
+    from bannedfuncdetector.cli_bootstrap import (
+        configure_worker_logging,
+        log_context,
+    )
+
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    log_queue = Queue()
+    try:
+        configure_worker_logging(verbose=False, log_queue=log_queue)
+        with log_context("worker-run"):
+            logging.getLogger("test.queue").warning("worker message")
+            try:
+                raise RuntimeError("queue exception")
+            except RuntimeError:
+                logging.getLogger("test.queue").exception("worker error")
+        records = [log_queue.get_nowait(), log_queue.get_nowait()]
+        assert all(record.request_id == "worker-run" for record in records)
+        assert all(record.exc_info is None for record in records)
+        assert records[0].message == "worker message"
+        assert "queue exception" in records[1].stack_trace
+        assert records[1].message == "worker error"
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""
