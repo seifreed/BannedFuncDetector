@@ -4,6 +4,7 @@ import os
 import json
 import html
 import logging
+import time
 from datetime import datetime
 
 from bannedfuncdetector.domain import AnalysisResult, BannedFunction, FunctionDescriptor
@@ -124,11 +125,21 @@ def _save_analysis_results(
     os.makedirs(output_dir, exist_ok=True)
     output_file = results_file_path(output_dir, binary_path, output_format)
 
+    started = time.perf_counter()
     with open(output_file, "w", encoding="utf-8") as handle:
         handle.write(_RENDERERS[fmt](report))
 
-    if verbose:
-        logger.info(f"Results saved to {output_file}")
+    logger.log(
+        logging.INFO if verbose else logging.DEBUG,
+        "Analysis report saved to %s",
+        output_file,
+        extra={
+            "operation": "report_write",
+            "event_name": "report_saved",
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            "outcome": "success",
+        },
+    )
 
     return output_file
 

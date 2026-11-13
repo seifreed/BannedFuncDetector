@@ -11,6 +11,9 @@ the tightened validation."""
 from __future__ import annotations
 
 import json
+import logging
+
+import pytest
 
 from bannedfuncdetector.domain.entities import AnalysisResult, BannedFunction
 from bannedfuncdetector.application.binary_analyzer.reporting import (
@@ -46,6 +49,18 @@ def test_json_format(tmp_path):
     assert path.endswith("ls_banned_functions.json")
     data = json.load(open(path))
     assert data["unsafe_functions"] == 1
+
+
+@pytest.mark.parametrize("verbose, level", [(False, logging.DEBUG), (True, logging.INFO)])
+def test_saved_report_emits_completion_event(tmp_path, caplog, verbose, level):
+    with caplog.at_level(logging.DEBUG, logger="bannedfuncdetector.application.binary_analyzer.reporting"):
+        _save_analysis_results(_report(), str(tmp_path), "ls", verbose, "json")
+
+    record = next(record for record in caplog.records if record.event_name == "report_saved")
+    assert record.levelno == level
+    assert record.operation == "report_write"
+    assert record.outcome == "success"
+    assert record.duration_ms >= 0
 
 
 def test_text_format(tmp_path):
