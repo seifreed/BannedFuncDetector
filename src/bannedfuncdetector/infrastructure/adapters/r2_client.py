@@ -317,20 +317,44 @@ class R2Client(IR2Client):
 
         try:
             result = runner(command)
-            logger.debug(f"Executed {label}: {command}")
+            logger.debug("Executed R2 %s", label)
             return result
         except (RuntimeError, ValueError, OSError) as e:
-            logger.error(f"Error executing {label} '{command}': {e}")
+            logger.error(
+                "R2 %s failed",
+                label,
+                extra={
+                    "operation": "r2_command",
+                    "event_name": "r2_command_failed",
+                    "error_type": type(e).__name__,
+                },
+            )
             if _is_transient_r2_exception(e):
                 raise TransientR2Error(str(e)) from e
             raise
         except TypeError as e:
             # TypeError can occur with invalid command arguments
-            logger.error(f"Type error executing {label} '{command}': {e}")
+            logger.error(
+                "R2 %s failed",
+                label,
+                extra={
+                    "operation": "r2_command",
+                    "event_name": "r2_command_failed",
+                    "error_type": type(e).__name__,
+                },
+            )
             raise RuntimeError(f"Invalid command or arguments: {e}") from e
         except AttributeError as e:
             # AttributeError can occur if r2pipe is in an invalid state
-            logger.error(f"Attribute error executing {label} '{command}': {e}")
+            logger.error(
+                "R2 %s failed",
+                label,
+                extra={
+                    "operation": "r2_command",
+                    "event_name": "r2_command_failed",
+                    "error_type": type(e).__name__,
+                },
+            )
             raise RuntimeError(f"r2pipe in invalid state: {e}") from e
 
     def __repr__(self) -> str:

@@ -13,7 +13,9 @@ setup failure: close the instance, then re-raise.
 from __future__ import annotations
 
 import pytest
+import logging
 
+from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client
 from bannedfuncdetector.infrastructure.adapters.r2_session import open_binary_with_r2
 
 
@@ -89,3 +91,25 @@ def test_open_binary_honors_custom_analysis_timeout() -> None:
 
     assert "e anal.timeout=600" in r2.commands
     assert r2.commands.index("e anal.timeout=600") < r2.commands.index("aaa")
+
+
+def test_r2_command_failure_log_omits_command_and_exception_text(caplog) -> None:
+    client = object.__new__(R2Client)
+    client._is_closed = False
+    client._r2 = object()
+    client._file_path = "/tmp/private.bin"
+
+    def fail(_command: str) -> str:
+        raise RuntimeError("password=private-value")
+
+    caplog.set_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.adapters.r2_client")
+    with pytest.raises(RuntimeError, match="password=private-value"):
+        client._run_command("aaa secret=command-value", fail, "command")
+
+    record = next(record for record in caplog.records if record.name.endswith("r2_client"))
+    assert record.event_name == "r2_command_failed"
+    assert record.operation == "r2_command"
+    assert record.error_type == "RuntimeError"
+    assert "command-value" not in caplog.text
+    assert "private-value" not in caplog.text
+    assert "/tmp/private.bin" not in caplog.text
