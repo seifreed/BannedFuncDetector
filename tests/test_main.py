@@ -766,6 +766,34 @@ def test_json_formatter_preserves_safe_configuration_event_fields():
     assert event["config_section"] == "analysis"
 
 
+def test_json_formatter_preserves_analysis_summary_counts():
+    import json
+
+    from bannedfuncdetector.infrastructure.logging_config import _JsonLogFormatter
+
+    record = logging.LogRecord(
+        "test.reporting", logging.INFO, __file__, 1, "Analysis completed", (), None
+    )
+    record.operation = "final_report"
+    record.event_name = "analysis_summary"
+    record.outcome = "issues_found"
+    record.file_count = 4
+    record.insecure_count = 2
+    record.total_functions = 100
+    record.worker_count = 3
+    record.execution_mode = "parallel"
+    record.file_type = "elf"
+
+    event = json.loads(_JsonLogFormatter().format(record))
+
+    assert event["file_count"] == 4
+    assert event["insecure_count"] == 2
+    assert event["total_functions"] == 100
+    assert event["worker_count"] == 3
+    assert event["execution_mode"] == "parallel"
+    assert event["file_type"] == "elf"
+
+
 def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
     import json
 

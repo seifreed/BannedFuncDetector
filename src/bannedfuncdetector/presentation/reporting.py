@@ -33,16 +33,34 @@ def display_final_results(
         result: The analysis result entity.
     """
     if not result:
-        logger.warning("No results found or errors occurred during analysis.")
+        logger.warning(
+            "No analysis results available",
+            extra={
+                "operation": "final_report",
+                "event_name": "analysis_summary",
+                "outcome": "empty",
+                "file_count": 0,
+                "insecure_count": 0,
+            },
+        )
         return
 
-    logger.info("Analysis completed.")
     results_list = _normalize_results(result)
     total_files = _total_files_count(result)
     total_banned = sum(_count_detected_functions(r) for r in results_list)
 
-    logger.info(f"Total files analyzed: {total_files}")
-    logger.info(f"Insecure functions found: {total_banned}")
+    logger.info(
+        "Analysis completed: %d files analyzed, %d insecure functions found",
+        total_files,
+        total_banned,
+        extra={
+            "operation": "final_report",
+            "event_name": "analysis_summary",
+            "outcome": "issues_found" if total_banned else "clean",
+            "file_count": total_files,
+            "insecure_count": total_banned,
+        },
+    )
     for notice in result.operational_notices:
         extra: dict[str, str] = {
             "event_name": "operational_notice",
@@ -53,7 +71,6 @@ def display_final_results(
         logger.warning("Operational notice", extra=extra)
 
     if total_banned > 0:
-        logger.warning("Detected insecure functions:")
         for file_result in results_list:
             _log_detected_functions(
                 _get_detected_functions(file_result), file_result.file_name
@@ -83,9 +100,7 @@ def _total_files_count(
     return result.summary.total_files
 
 
-def _log_detected_functions(
-    detected: Sequence[BannedFunction], file_name: str
-) -> None:
+def _log_detected_functions(detected: Sequence[BannedFunction], file_name: str) -> None:
     """Log detected insecure functions in a consistent format."""
     for func in detected:
         address = _format_address(func.address)

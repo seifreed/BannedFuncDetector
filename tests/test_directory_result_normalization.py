@@ -61,8 +61,13 @@ def test_total_files_counts_every_file_found_not_just_analyzed(caplog) -> None:
     with caplog.at_level(logging.INFO):
         display_final_results(outcome)
 
-    assert "Total files analyzed: 10" in caplog.text
-    assert "Total files analyzed: 3" not in caplog.text
+    event = next(
+        record for record in caplog.records if record.event_name == "analysis_summary"
+    )
+    assert event.file_count == 10
+    assert event.insecure_count == 0
+    assert "10 files analyzed" in caplog.text
+    assert "3 files analyzed" not in caplog.text
 
 
 def test_normalize_preserves_category_phase_and_notices() -> None:

@@ -25,6 +25,12 @@ def test_display_final_results_supports_current_analysis_contract(caplog):
     with caplog.at_level(logging.INFO):
         display_final_results(BinaryAnalysisOutcome(report=report))
 
-    assert "Total files analyzed: 1" in caplog.text
-    assert "Insecure functions found: 1" in caplog.text
+    event = next(
+        record for record in caplog.records if record.event_name == "analysis_summary"
+    )
+    assert event.operation == "final_report"
+    assert event.outcome == "issues_found"
+    assert event.file_count == 1
+    assert event.insecure_count == 1
+    assert "1 files analyzed, 1 insecure functions found" in caplog.text
     assert "main at 0x1000" in caplog.text
