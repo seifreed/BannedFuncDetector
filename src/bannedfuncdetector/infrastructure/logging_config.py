@@ -48,6 +48,7 @@ _SENSITIVE_VALUE = re.compile(
     r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)|"
     r"(\b(?:bearer|basic)\s+)(?!\[REDACTED\])[^\s,;]+"
 )
+_SENSITIVE_FIELD_NAME = re.compile(rf"(?i)^(?:{_SENSITIVE_NAMES})$")
 _COOKIE_HEADER = re.compile(
     r"(?i)(\b(?:set-cookie|cookie)\s*:\s*)"
     r"(?:(?!\\x0a|\\x0d)[^\r\n])*"
@@ -55,6 +56,12 @@ _COOKIE_HEADER = re.compile(
 _URL_WITH_PRIVATE_PARTS = re.compile(
     r"(?i)\b(https?://)(?:[^/@\s]+@)?([^/?#\s]+)(?:[/?#][^\s]*)?"
 )
+_STANDARD_LOG_RECORD_FIELDS = frozenset(logging.makeLogRecord({}).__dict__) | {
+    "asctime",
+    "message",
+}
+_MAX_LOG_FIELD_ITEMS = 32
+_MAX_LOG_FIELD_DEPTH = 3
 
 
 def _safe_message(value: str) -> str:
@@ -77,6 +84,53 @@ def _safe_message(value: str) -> str:
         marker = "[truncated]"
         return escaped[: _MAX_LOG_MESSAGE_CHARS - len(marker)] + marker
     return escaped
+
+
+def _safe_field_value(value: Any, remaining_chars: list[int], depth: int = 0) -> Any:
+    if isinstance(value, str):
+        safe_value = _safe_message(value)
+        if len(safe_value) > remaining_chars[0]:
+            marker = "[truncated]"
+            available = remaining_chars[0]
+            safe_value = (
+                safe_value[: available - len(marker)] + marker
+                if available > len(marker)
+                else marker[:available]
+            )
+        remaining_chars[0] = max(0, remaining_chars[0] - len(safe_value))
+        return safe_value
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, BaseException):
+        return type(value).__name__
+    if depth >= _MAX_LOG_FIELD_DEPTH:
+        return "[nested value omitted]"
+    if isinstance(value, dict):
+        safe_mapping: dict[str, Any] = {}
+        for index, (key, item) in enumerate(value.items()):
+            if index >= _MAX_LOG_FIELD_ITEMS or remaining_chars[0] <= 0:
+                safe_mapping["[truncated]"] = True
+                break
+            safe_key = _safe_field_value(
+                key if isinstance(key, str) else "[non-string key]",
+                remaining_chars,
+                depth + 1,
+            )
+            safe_mapping[safe_key] = (
+                "[REDACTED]"
+                if isinstance(key, str) and _SENSITIVE_FIELD_NAME.fullmatch(key)
+                else _safe_field_value(item, remaining_chars, depth + 1)
+            )
+        return safe_mapping
+    if isinstance(value, (list, tuple)):
+        safe_items = [
+            _safe_field_value(item, remaining_chars, depth + 1)
+            for item in value[:_MAX_LOG_FIELD_ITEMS]
+        ]
+        if len(value) > _MAX_LOG_FIELD_ITEMS or remaining_chars[0] <= 0:
+            safe_items.append("[truncated]")
+        return tuple(safe_items) if isinstance(value, tuple) else safe_items
+    return f"[{type(value).__name__} omitted]"
 
 
 def _escape_character(character: str) -> str:
@@ -124,7 +178,10 @@ class _JsonLogFormatter(logging.Formatter):
             "level": record.levelname,
             "service": "bannedfuncdetector",
             "component": record.name,
-            "message": _safe_record_message(record),
+            "message": (
+                getattr(record, "_bfd_message", None)
+                or _safe_record_message(record)
+            ),
         }
         environment = os.getenv("BFD_ENVIRONMENT")
         if environment:
@@ -152,10 +209,12 @@ class _JsonLogFormatter(logging.Formatter):
         ):
             value = getattr(record, field, None)
             if value is not None:
-                event[field] = _safe_message(value) if isinstance(value, str) else value
+                event[field] = _safe_field_value(value, [_MAX_LOG_MESSAGE_CHARS])
         stack_trace = getattr(record, "stack_trace", None)
         if record.exc_info:
             stack_trace = _safe_exception_text(record.exc_info)
+            if record.exc_info[0] is not None:
+                event.setdefault("error_type", record.exc_info[0].__name__)
         if stack_trace:
             event["stack_trace"] = _safe_message(stack_trace)
         return json.dumps(event, ensure_ascii=True)
@@ -172,7 +231,10 @@ class _TextLogFormatter(logging.Formatter):
         operation = getattr(record, "operation", None) or current_operation()
         if operation is not None:
             fields.append(f"operation={_safe_message(str(operation))}")
-        message = " ".join(fields) + f" {_safe_record_message(record)}"
+        event_message = getattr(record, "_bfd_message", None)
+        if event_message is None:
+            event_message = _safe_record_message(record)
+        message = " ".join(fields) + f" {event_message}"
         if record.exc_info:
             message += "\n" + _safe_exception_text(record.exc_info)
         elif getattr(record, "stack_trace", None):
@@ -194,11 +256,17 @@ class _RequestContextFilter(logging.Filter):
 
 class _SanitizingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.msg = _safe_record_message(record)
+        safe_message = _safe_record_message(record)
+        record.msg = safe_message
         if record.exc_info:
             if record.exc_info[0] is not None and not hasattr(record, "error_type"):
                 record.error_type = record.exc_info[0].__name__
             record.exc_text = _safe_exception_text(record.exc_info)
+            record.stack_trace = record.exc_text
+            record._bfd_message = safe_message
+            if record.exc_text:
+                record.msg = f"{safe_message}\n{record.exc_text}"
+            record.exc_info = None
         elif record.levelno >= logging.ERROR and not hasattr(record, "error_type"):
             args = record.args
             candidates = (
@@ -215,9 +283,20 @@ class _SanitizingFilter(logging.Filter):
             if error is not None:
                 record.error_type = type(error).__name__
         record.args = ()
-        stack_trace = getattr(record, "stack_trace", None)
-        if stack_trace:
-            record.stack_trace = _safe_message(stack_trace)
+        remaining_chars = [_MAX_LOG_MESSAGE_CHARS]
+        for field, value in tuple(record.__dict__.items()):
+            if field in {"msg", "args", "exc_info"}:
+                continue
+            if (
+                field not in _STANDARD_LOG_RECORD_FIELDS
+                and _SENSITIVE_FIELD_NAME.fullmatch(field)
+            ):
+                setattr(record, field, "[REDACTED]")
+                continue
+            if isinstance(value, str):
+                setattr(record, field, _safe_message(value))
+            elif field not in _STANDARD_LOG_RECORD_FIELDS:
+                setattr(record, field, _safe_field_value(value, remaining_chars))
         return True
 
 
@@ -292,7 +371,9 @@ class _ContextQueueHandler(logging.handlers.QueueHandler):
         prepared = copy.copy(record)
         if record.exc_info:
             prepared.stack_trace = _safe_exception_text(record.exc_info)
-        prepared.message = _safe_record_message(record)
+        prepared.message = getattr(record, "_bfd_message", None) or _safe_record_message(
+            record
+        )
         prepared.msg = prepared.message
         prepared.args = None
         prepared.exc_info = None

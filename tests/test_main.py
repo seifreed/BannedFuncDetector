@@ -485,21 +485,54 @@ def test_preconfigured_handlers_keep_destination_and_receive_sanitizer(monkeypat
     saved_level = root.level
     stream = StringIO()
     handler = logging.StreamHandler(stream)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(api_key)s %(cookie)s %(nested)s %(payload)s %(many_keys)s "
+            "%(truncated_list)s %(too_deep)s %(message)s"
+        )
+    )
     root.handlers[:] = [handler]
     try:
         configure_logging()
+        extra = {
+            "api_key": "top-level-secret",
+            "cookie": "cookie-secret",
+            "nested": {
+                "Authorization": "Bearer nested-secret",
+                "note": "before\nforged-line",
+            },
+            "payload": {
+                "values": [RuntimeError("exception-private"), b"binary-private", object()]
+            },
+            "many_keys": {f"field_{index}": index for index in range(33)},
+            "too_deep": {"a": {"b": {"c": {"d": "deep-private"}}}},
+            "truncated_list": ["x" * 1000 for _ in range(32)],
+        }
         logging.getLogger("test.logging").warning(
-            "https://user:pass@service.test/path?token=hidden"
+            "https://user:pass@service.test/path?token=hidden",
+            extra=extra,
         )
         try:
             raise RuntimeError("client_secret=trace-hidden")
         except RuntimeError:
-            logging.getLogger("test.logging").exception("operation failed")
+            logging.getLogger("test.logging").exception(
+                "operation failed", extra=extra
+            )
         assert root.handlers == [handler]
         assert "user" not in stream.getvalue()
         assert "hidden" not in stream.getvalue()
         assert "trace-hidden" not in stream.getvalue()
         assert "https://service.test" in stream.getvalue()
+        assert "top-level-secret" not in stream.getvalue()
+        assert "cookie-secret" not in stream.getvalue()
+        assert "nested-secret" not in stream.getvalue()
+        assert "exception-private" not in stream.getvalue()
+        assert "binary-private" not in stream.getvalue()
+        assert "deep-private" not in stream.getvalue()
+        assert "[nested value omitted]" in stream.getvalue()
+        assert "[truncated]" in stream.getvalue()
+        assert "before\\\\x0aforged-line" in stream.getvalue()
+        assert "forged-line\n" not in stream.getvalue()
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
@@ -620,6 +653,35 @@ def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
+
+
+def test_formatters_sanitize_exception_records_before_filtering():
+    import json
+    import sys
+
+    from bannedfuncdetector.infrastructure.logging_config import (
+        _JsonLogFormatter,
+        _TextLogFormatter,
+    )
+
+    try:
+        raise RuntimeError("api_key=formatter-private")
+    except RuntimeError:
+        record = logging.LogRecord(
+            "test.formatter",
+            logging.ERROR,
+            __file__,
+            1,
+            "operation failed",
+            (),
+            sys.exc_info(),
+        )
+
+    event = json.loads(_JsonLogFormatter().format(record))
+    text = _TextLogFormatter().format(record)
+    assert event["error_type"] == "RuntimeError"
+    assert "formatter-private" not in str(event)
+    assert "formatter-private" not in text
 
 
 def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
@@ -885,9 +947,11 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
 
 
 def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):
+    import sys
     from queue import Queue
 
     from bannedfuncdetector.infrastructure.logging_config import (
+        _ContextQueueHandler,
         configure_worker_logging,
         log_context,
     )
@@ -912,6 +976,22 @@ def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):
         assert records[1].stack_trace
         assert "queue exception" not in records[1].stack_trace
         assert records[1].message == "worker error"
+        try:
+            raise RuntimeError("prepared-private")
+        except RuntimeError:
+            unsafe_record = logging.LogRecord(
+                "test.queue",
+                logging.ERROR,
+                __file__,
+                1,
+                "prepared error",
+                (),
+                sys.exc_info(),
+            )
+        prepared = _ContextQueueHandler(log_queue).prepare(unsafe_record)
+        assert prepared.exc_info is None
+        assert prepared.message == "prepared error"
+        assert "prepared-private" not in prepared.stack_trace
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
