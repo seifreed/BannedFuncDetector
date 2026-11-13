@@ -642,6 +642,37 @@ def test_worker_logging_uses_configured_level(monkeypatch):
         root.setLevel(saved_level)
 
 
+def test_saturated_worker_log_queue_does_not_raise(monkeypatch):
+    from queue import Queue
+
+    from bannedfuncdetector.cli_bootstrap import _ContextQueueHandler
+
+    monkeypatch.setattr(logging, "raiseExceptions", False)
+    log_queue = Queue(maxsize=1)
+    log_queue.put_nowait("already queued")
+    handler = _ContextQueueHandler(log_queue)
+    record = logging.LogRecord("test.queue", logging.INFO, __file__, 1, "event", (), None)
+
+    handler.handle(record)
+
+    assert log_queue.qsize() == 1
+
+
+def test_failed_stream_destination_does_not_raise(monkeypatch):
+    class BrokenStream:
+        def write(self, _value):
+            raise OSError("destination unavailable")
+
+        def flush(self):
+            pass
+
+    monkeypatch.setattr(logging, "raiseExceptions", False)
+    handler = logging.StreamHandler(BrokenStream())
+    record = logging.LogRecord("test.sink", logging.ERROR, __file__, 1, "event", (), None)
+
+    handler.handle(record)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""
