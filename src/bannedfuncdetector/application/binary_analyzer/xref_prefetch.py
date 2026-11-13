@@ -23,6 +23,7 @@ from collections.abc import Iterator, Sequence
 from typing import Any
 
 from bannedfuncdetector.domain.protocols import IR2Client
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,14 @@ def prefetch_axffj(r2: IR2Client, addrs: Sequence[Any]) -> dict[str, Any]:
                 text = segment.strip()
                 cache[_axffj_cmd(addr)] = json.loads(text) if text else []
     except (ValueError, TypeError, AttributeError, OSError, IOError) as exc:
-        logger.debug("axffj prefetch failed, falling back to per-function: %s", exc)
+        logger.debug(
+            "Bulk xref prefetch failed; falling back to per-function queries",
+            extra={
+                "event_name": "xref_prefetch_fallback",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
+        )
         return {}
     return cache
 

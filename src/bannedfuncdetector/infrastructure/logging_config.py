@@ -34,6 +34,15 @@ _LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
 _LOG_FILE_BACKUP_COUNT = 5
 
 
+def safe_exception_fields(exc: BaseException) -> dict[str, str | int]:
+    """Return diagnostic exception metadata without exposing its message."""
+    fields: dict[str, str | int] = {"error_type": type(exc).__name__}
+    error_code = getattr(exc, "errno", None)
+    if isinstance(error_code, int):
+        fields["error_code"] = error_code
+    return fields
+
+
 def ensure_request_id() -> str:
     request_id = _request_id.get()
     if request_id is None:
@@ -434,4 +443,5 @@ __all__ = [
     "new_log_context",
     "new_request_id",
     "operation_context",
+    "safe_exception_fields",
 ]

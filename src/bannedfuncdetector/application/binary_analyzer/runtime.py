@@ -11,6 +11,7 @@ from bannedfuncdetector.domain.protocols import IR2Client
 from bannedfuncdetector.domain.result import Result, err, ok
 from bannedfuncdetector.domain.types import classify_error
 from bannedfuncdetector.application.dto_mappers import function_descriptor_from_dto
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,14 @@ def _extract_functions_error(exc: Exception) -> Result[list[FunctionDescriptor],
     category = classify_error(exc)
     message = f"{category} extracting functions from binary: {exc}"
     if category != ErrorCategory.DATA:
-        logger.error(message)
+        logger.error(
+            "Function extraction failed",
+            extra={
+                "event_name": "function_extraction_failed",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
     return err(message)
 
 
@@ -32,7 +40,16 @@ def _setup_analysis_error(
 ) -> BinaryExecutionError:
     """Convert binary setup failures into a structured execution error."""
     category = classify_error(exc)
-    logger.error("%s opening binary %s: %s", category, binary_path, exc)
+    logger.error(
+        "Binary setup failed",
+        extra={
+            "event_name": "binary_setup_failed",
+            "error_category": str(category),
+            "error_phase": "opening_binary",
+            "outcome": "error",
+            **safe_exception_fields(exc),
+        },
+    )
     return BinaryExecutionError(
         category=category,
         phase="opening binary",

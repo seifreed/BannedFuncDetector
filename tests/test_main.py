@@ -703,6 +703,15 @@ def test_log_messages_are_bounded():
     assert message.endswith("[truncated]")
 
 
+def test_safe_exception_fields_keep_type_and_numeric_code_only():
+    from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
+
+    fields = safe_exception_fields(OSError(13, "password=private-value"))
+
+    assert fields == {"error_type": "PermissionError", "error_code": 13}
+    assert "private-value" not in str(fields)
+
+
 def test_configure_logging_supports_stdout_destination(monkeypatch, capsys):
     from bannedfuncdetector.cli_bootstrap import configure_logging
 

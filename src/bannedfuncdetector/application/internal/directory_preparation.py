@@ -13,6 +13,7 @@ from bannedfuncdetector.application.analysis_error import (
 )
 from .directory_results import directory_error_from_exception
 from bannedfuncdetector.domain.result import Err, Result, err, ok
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,14 @@ def validate_directory(directory: str) -> Result[Path, ExecutionFailure]:
         RuntimeError,
         ValueError,
     ) as exc:
-        logger.error("Error validating directory %s: %s", directory, exc)
+        logger.error(
+            "Directory validation failed",
+            extra={
+                "event_name": "directory_validation_failed",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
         return err(
             ExecutionFailure(
                 error=directory_error_from_exception(exc, context=directory)
@@ -101,7 +109,14 @@ def discover_executable_files(
         RuntimeError,
         ValueError,
     ) as exc:
-        logger.error("Error discovering executable files in %s: %s", directory, exc)
+        logger.error(
+            "Executable discovery failed",
+            extra={
+                "event_name": "executable_discovery_failed",
+                "outcome": "error",
+                **safe_exception_fields(exc),
+            },
+        )
         return err(
             ExecutionFailure(
                 error=directory_error_from_exception(exc, context=directory)
