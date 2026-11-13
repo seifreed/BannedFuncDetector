@@ -82,7 +82,7 @@ def apply_decai_backend_config(r2: IR2Client, decai_config: dict[str, Any]) -> N
             base_url = f"{host}:{port}" if port else host
             r2.cmd(f"decai -e baseurl={base_url}")
     except (RuntimeError, ValueError, OSError, AttributeError) as exc:
-        logger.warning("Could not apply decai backend config: %s", exc)
+        logger.debug("Could not apply decai backend config: %s", exc)
 
 
 def _configure_decai_model(r2: IR2Client) -> None:
@@ -108,8 +108,8 @@ def _configure_decai_model(r2: IR2Client) -> None:
 
         # If already configured with a valid API and model, use it
         if current_api and current_model:
-            logger.info(
-                f"Using configured decai: api={current_api}, model={current_model}"
+            logger.debug(
+                "Using configured decai: api=%s, model=%s", current_api, current_model
             )
             return
 
@@ -121,8 +121,8 @@ def _configure_decai_model(r2: IR2Client) -> None:
                 first_model = available.splitlines()[0].strip()
                 if first_model:
                     r2.cmd(f"decai -e model={first_model}")
-                    logger.info(
-                        f"Using decai with api={current_api}, model={first_model}"
+                    logger.debug(
+                        "Using decai with api=%s, model=%s", current_api, first_model
                     )
                     return
 
@@ -130,7 +130,7 @@ def _configure_decai_model(r2: IR2Client) -> None:
         # Use shell command (!) to run ollama list
         models_output = r2.cmd("!ollama list 2>/dev/null").strip()
         if not models_output or "error" in models_output.lower():
-            logger.info("Using default decai configuration (no Ollama detected).")
+            logger.debug("Using default decai configuration (no Ollama detected).")
             return
 
         models = models_output.splitlines()
@@ -152,18 +152,18 @@ def _configure_decai_model(r2: IR2Client) -> None:
                 selected_model = model_parts[0]
 
         if selected_model:
-            logger.info(f"Using Ollama model: {selected_model}")
+            logger.debug("Using Ollama model: %s", selected_model)
             r2.cmd("decai -e api=ollama")
             r2.cmd(f"decai -e model={selected_model}")
         else:
-            logger.info("Using default decai configuration.")
+            logger.debug("Using default decai configuration.")
 
     except (RuntimeError, ValueError) as e:
         logger.debug(f"Error configuring decai model: {e}")
-        logger.info("Using default decai configuration.")
+        logger.debug("Using default decai configuration.")
     except (AttributeError, IndexError) as e:
         logger.debug(f"Error parsing decai configuration: {e}")
-        logger.info("Using default decai configuration.")
+        logger.debug("Using default decai configuration.")
 
 
 def _try_decai_decompilation(r2: IR2Client, function_name: str) -> str | None:
@@ -188,7 +188,7 @@ def _try_decai_decompilation(r2: IR2Client, function_name: str) -> str | None:
         return decompiled_code
 
     # Second attempt: recursive decompilation
-    logger.info("First method unsuccessful, trying with recursive decompilation...")
+    logger.debug("First decai method failed; trying recursive decompilation.")
     decompiled_code = r2.cmd("decai -dr")
     if is_valid_result(decompiled_code):
         return decompiled_code
@@ -197,7 +197,7 @@ def _try_decai_decompilation(r2: IR2Client, function_name: str) -> str | None:
     # The disassembly comes from the untrusted binary, and r2pipe is
     # line-oriented, so the query text is flattened to a single line with all
     # r2/shell metacharacters stripped before being embedded in the command.
-    logger.info("Previous methods unsuccessful, trying direct query...")
+    logger.debug("Recursive decai method failed; trying direct query.")
     asm_code = r2.cmd("pdf")
     query = sanitize_r2_query_text(f"Decompile this assembly code to C: {asm_code}")
     decompiled_code = r2.cmd(f"decai -q '{query}'")
@@ -238,7 +238,7 @@ def _resolve_function_offset(r2: IR2Client, function_name: str) -> int:
 
 def _fallback_to_r2ghidra(r2: IR2Client) -> str:
     """Fallback decompilation using r2ghidra."""
-    logger.warning("Could not decompile with decai, trying with r2ghidra...")
+    logger.debug("Could not decompile with decai, trying with r2ghidra...")
     try:
         return r2.cmd("pdg")
     except (RuntimeError, ValueError, AttributeError) as e:
@@ -264,8 +264,7 @@ def decompile_with_decai(r2: IR2Client, function_name: str) -> str:
 
     decai_check = r2.cmd("decai -h")
     if "Unknown command" in decai_check or "RCmd.Use()" in decai_check:
-        logger.warning("The decai plugin is not available.")
-        logger.info("Trying with r2ghidra decompiler as an alternative.")
+        logger.debug("The decai plugin is not available; trying r2ghidra.")
         r2.cmd(f"s {function_offset}")
         return r2.cmd("pdg")
 
@@ -299,7 +298,7 @@ def decompile_with_decai(r2: IR2Client, function_name: str) -> str:
             f"Could not position at the function address: {function_name}"
         )
 
-    logger.info(f"Decompiling {function_name} with decai...")
+    logger.debug("Decompiling %s with decai", function_name)
     _configure_decai_model(r2)
 
     try:
@@ -307,9 +306,9 @@ def decompile_with_decai(r2: IR2Client, function_name: str) -> str:
         if result:
             return result
     except (RuntimeError, ValueError) as e:
-        logger.error(f"Error during decompilation with decai: {e}")
+        logger.debug("Error during decai decompilation: %s", e)
     except (DecompilationError, FunctionNotFoundError) as e:
-        logger.error(f"Decompilation error with decai: {e}")
+        logger.debug("Decompilation error with decai: %s", e)
 
     return _fallback_to_r2ghidra(r2)
 
@@ -362,19 +361,21 @@ class DecAIDecompiler(BaseR2Decompiler):
         try:
             return decompile_with_decai(r2, function_name)
         except (DecompilationError, FunctionNotFoundError) as e:
-            logger.error(f"DecAI decompilation failed for {function_name}: {e}")
+            logger.debug("DecAI decompilation failed for %s: %s", function_name, e)
             return ""
         except (RuntimeError, ValueError) as e:
             # RuntimeError: r2 command execution failure
             # ValueError: Invalid decompilation result
-            logger.error(
-                f"Runtime error in DecAI decompilation for {function_name}: {e}"
+            logger.debug(
+                "Runtime error in DecAI decompilation for %s: %s", function_name, e
             )
             return ""
         except (AttributeError, TypeError) as e:
             # AttributeError: r2 instance issues
             # TypeError: Unexpected data types
-            logger.error(f"Data error in DecAI decompilation for {function_name}: {e}")
+            logger.debug(
+                "Data error in DecAI decompilation for %s: %s", function_name, e
+            )
             return ""
 
     def is_available(self, r2: IR2Client | None = None) -> bool:

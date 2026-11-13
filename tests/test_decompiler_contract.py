@@ -9,7 +9,9 @@ across all four backends.
 """
 
 import pytest
+import logging
 
+import bannedfuncdetector.infrastructure.decompilers.decai_decompiler as decai_module
 from bannedfuncdetector.infrastructure.decompilers.decai_decompiler import (
     DecAIDecompiler,
 )
@@ -29,6 +31,26 @@ DECOMPILERS = [
     pytest.param(R2DecDecompiler, "r2dec", "pdd", id="r2dec"),
     pytest.param(DecAIDecompiler, "decai", "decai -d", id="decai"),
 ]
+
+
+def test_decai_optional_fallback_does_not_emit_info_or_warning(monkeypatch, caplog):
+    class R2Unavailable:
+        def cmd(self, command):
+            if command == "decai -h":
+                return "Unknown command"
+            if command == "pdg":
+                return "decompiled"
+            return ""
+
+    monkeypatch.setattr(decai_module, "_resolve_function_offset", lambda *_args: 0)
+    caplog.set_level(logging.DEBUG, logger=decai_module.__name__)
+
+    assert decai_module.decompile_with_decai(R2Unavailable(), "entry") == "decompiled"
+    fallback_logs = [
+        record for record in caplog.records if record.name == decai_module.__name__
+    ]
+    assert fallback_logs
+    assert all(record.levelno == logging.DEBUG for record in fallback_logs)
 
 
 @pytest.mark.parametrize("cls, name, command", DECOMPILERS)
