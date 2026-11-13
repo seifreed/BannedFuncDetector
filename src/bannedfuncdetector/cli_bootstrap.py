@@ -11,6 +11,7 @@ import sys
 import contextvars
 import copy
 import threading
+import time
 import uuid
 from queue import Full
 from types import TracebackType
@@ -435,11 +436,28 @@ def validate_requirements(
     if skip_requirements:
         return
 
-    logger.info("Checking system requirements...")
-    if not check_requirements(False):
-        logger.error("Not all system requirements are met.")
-        sys.exit(1)
-    logger.info("Requirements check completed.")
+    with operation_context("requirements_check"):
+        started = time.perf_counter()
+        logger.info("Checking system requirements...")
+        if not check_requirements(False):
+            logger.error(
+                "Not all system requirements are met.",
+                extra={
+                    "event_name": "requirements_check_failed",
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                    "outcome": "error",
+                    "error_code": 1,
+                },
+            )
+            sys.exit(1)
+        logger.info(
+            "Requirements check completed.",
+            extra={
+                "event_name": "requirements_check_completed",
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "outcome": "success",
+            },
+        )
 
 
 __all__ = [

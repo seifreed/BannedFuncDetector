@@ -1340,24 +1340,51 @@ def test_validate_requirements_skip():
     )
 
 
-def test_validate_requirements_success():
+def test_validate_requirements_success(caplog):
     """validate_requirements passes when check returns True."""
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    logger = logging.getLogger("test.requirements")
+    caplog.set_level(logging.INFO, logger=logger.name)
+    configure_logging()
     validate_requirements(
         False,
         check_requirements=lambda skip: True,
-        logger=logging.getLogger("test"),
+        logger=logger,
     )
+    event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None) == "requirements_check_completed"
+    )
+    assert event.operation == "requirements_check"
+    assert event.duration_ms >= 0
+    assert event.outcome == "success"
 
 
-def test_validate_requirements_failure():
+def test_validate_requirements_failure(caplog):
     """validate_requirements calls sys.exit(1) when check returns False."""
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    logger = logging.getLogger("test.requirements")
+    caplog.set_level(logging.ERROR, logger=logger.name)
+    configure_logging()
     with pytest.raises(SystemExit) as exc_info:
         validate_requirements(
             False,
             check_requirements=lambda skip: False,
-            logger=logging.getLogger("test"),
+            logger=logger,
         )
     assert exc_info.value.code == 1
+    event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None) == "requirements_check_failed"
+    )
+    assert event.operation == "requirements_check"
+    assert event.duration_ms >= 0
+    assert event.outcome == "error"
+    assert event.error_code == 1
 
 
 # ===========================================================================
