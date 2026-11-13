@@ -222,9 +222,9 @@ if result.is_ok():
 
 The CLI uses Python's standard `logging` module and writes to stderr. Text output is the default. Set `BFD_LOG_FORMAT=json` for one JSON object per line with a UTC timestamp, level, service, component, message, and available operation fields. Set `BFD_ENVIRONMENT` to attach a deployment environment label. `BFD_LOG_LEVEL` accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; `-v` selects `DEBUG` unless the environment variable overrides it.
 
-CLI runs receive a `request_id`; directory jobs pass the same ID to worker processes. Analysis completion events include `operation`, `event_name`, `duration_ms`, and `outcome`. Exception traces are included for logged analysis errors. No trace/span IDs are generated because the application does not use distributed tracing.
+CLI runs receive a `request_id`; directory jobs pass the same ID to worker processes. `BFD_LOG_LEVEL` also applies to those workers. Analysis completion events include `operation`, `event_name`, `duration_ms`, and `outcome`. Exception traces and inferred `error_type` are included when available. No trace/span IDs are generated because the application does not use distributed tracing.
 
-The formatter redacts common credential fields (such as `password`, `access_token`, `api_key`, `client_secret`, and cookie headers) and escapes control characters. This is a defense in depth measure, not a substitute for minimizing sensitive data at the source: do not log credentials, request/file contents, or confidential data. Logs are not written to local files or sent to a service by the application; configure stderr collection and retention in the deployment environment.
+The formatter redacts common credential fields (such as `password`, `access_token`, `api_key`, `client_secret`, and cookie headers) and escapes ASCII/Unicode control and line-separator characters. Formatting failures use safe placeholders so logging errors do not interrupt analysis. This is a defense in depth measure, not a substitute for minimizing sensitive data at the source: do not log credentials, request/file contents, or confidential data. Logs are not written to local files or sent to a service by the application; configure stderr collection and retention in the deployment environment.
 
 Example:
 
