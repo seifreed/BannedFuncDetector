@@ -68,7 +68,13 @@ def open_binary_with_r2(
 ) -> IR2Client:
     last_error: Exception | None = None
     if verbose:
-        logger.info(f"Opening {binary_path} with r2pipe...")
+        logger.info(
+            "Opening binary with r2pipe",
+            extra={
+                "event_name": "r2_analysis_started",
+                "operation": "binary_analysis",
+            },
+        )
 
     r2: IR2Client | None = None
     for attempt in range(1, _OPEN_RETRY_ATTEMPTS + 1):

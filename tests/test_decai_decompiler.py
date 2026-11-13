@@ -11,6 +11,7 @@ Author: Marc Rivero | @seifreed
 """
 
 import pytest
+import logging
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     DecompilerType,
     check_decompiler_plugin_available,
@@ -96,6 +97,27 @@ class TestDecAIModelConfiguration:
         # Verify api was set
         api_calls = [c for c in fake.calls if "decai -e api=ollama" in c[1]]
         assert len(api_calls) == 1
+
+    def test_configure_decai_model_does_not_log_model_name(
+        self, fake_r2_factory, caplog
+    ):
+        model = "private-enterprise-model"
+        fake = fake_r2_factory(
+            cmd_map={
+                "decai -e api": "",
+                "decai -e model": "",
+                "!ollama list 2>/dev/null": f"NAME\n{model}",
+                "decai -e api=ollama": "",
+                "decai -e model=*": "",
+            }
+        )
+        with caplog.at_level(
+            logging.DEBUG,
+            logger="bannedfuncdetector.infrastructure.decompilers.decai_decompiler",
+        ):
+            _configure_decai_model(fake)
+
+        assert model not in caplog.text
 
     def test_configure_decai_model_no_preferred_fallback(self, fake_r2_factory):
         """Test model configuration falls back when no preferred models found."""

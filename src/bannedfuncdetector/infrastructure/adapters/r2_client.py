@@ -117,7 +117,13 @@ class R2Client(IR2Client):
 
         try:
             self._r2 = r2pipe.open(file_path, flags=flags)
-            logger.debug(f"Opened r2pipe connection to {file_path} with flags {flags}")
+            logger.debug(
+                "Opened r2pipe connection",
+                extra={
+                    "event_name": "r2_connection_opened",
+                    "outcome": "success",
+                },
+            )
         except (OSError, IOError) as e:
             # File not found or cannot be opened
             logger.error(
@@ -237,13 +243,22 @@ class R2Client(IR2Client):
             ...     client.quit()  # Always clean up resources
         """
         if self._is_closed:
-            logger.debug(f"Connection to {self._file_path} already closed")
+            logger.debug(
+                "R2 connection already closed",
+                extra={"event_name": "r2_connection_already_closed"},
+            )
             return
 
         if self._r2 is not None:
             try:
                 self._r2.quit()
-                logger.debug(f"Closed r2pipe connection to {self._file_path}")
+                logger.debug(
+                    "Closed r2pipe connection",
+                    extra={
+                        "event_name": "r2_connection_closed",
+                        "outcome": "success",
+                    },
+                )
             except (RuntimeError, OSError, IOError, AttributeError) as e:
                 # RuntimeError: r2pipe internal errors during shutdown
                 # OSError/IOError: System-level errors during cleanup

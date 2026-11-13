@@ -160,7 +160,6 @@ def _configure_decai_model(r2: IR2Client) -> None:
                 selected_model = model_parts[0]
 
         if selected_model:
-            logger.debug("Using Ollama model: %s", selected_model)
             r2.cmd("decai -e api=ollama")
             r2.cmd(f"decai -e model={selected_model}")
         else:

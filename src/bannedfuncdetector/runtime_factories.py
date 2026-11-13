@@ -31,7 +31,6 @@ def create_r2_client(
 ) -> IR2Client:
     """Create an R2 client bound to a binary path."""
     effective_flags = flags if flags is not None else DEFAULT_R2_FLAGS
-    logger.debug(f"Creating R2Client for {file_path} with flags {effective_flags}")
     return R2Client.open(file_path, flags=effective_flags)
 
 

@@ -16,6 +16,7 @@ or pragma-exclusions are used.
 """
 
 import errno
+import logging
 import os
 import sys
 import tempfile
@@ -41,6 +42,7 @@ def _make_r2_client_with_inner(compiled_binary: str, inner: object) -> R2Client:
     client._r2 = inner
     client._is_closed = False
     return client
+
 
 skip_in_ci = pytest.mark.skipif(
     os.environ.get("BFD_SKIP_R2_TESTS") == "1",
@@ -175,7 +177,6 @@ class TestCheckMagicBytes:
         with tempfile.TemporaryDirectory() as tmpdir:
             assert _check_magic_bytes(make_file(tmpdir), file_type) is expected
 
-
     def test_nonexistent_file_returns_false(self) -> None:
         from bannedfuncdetector.infrastructure.file_detection import _check_magic_bytes
 
@@ -284,8 +285,6 @@ class TestIsExecutableFile:
             path = _pe_file(tmpdir)
             with pytest.raises(ValueError):
                 is_executable_file(path, "zip")
-
-
 
 
 class TestIsExecutableFileFallbackPaths:
@@ -452,8 +451,7 @@ class TestIsExecutableFileFallbackPaths:
             fallback = next(
                 record
                 for record in caplog.records
-                if getattr(record, "event_name", None)
-                == "file_type_detection_fallback"
+                if getattr(record, "event_name", None) == "file_type_detection_fallback"
             )
             assert fallback.error_type == "RuntimeError"
             assert "private-value" not in fallback.message
@@ -461,17 +459,23 @@ class TestIsExecutableFileFallbackPaths:
             fd_mod.magic = original_magic
 
 
-def test_log_walk_error_warns_with_path(caplog):
+def test_log_walk_error_warns_without_path(caplog):
     """A directory-traversal error (e.g. an unreadable subdir) is surfaced as a
-    warning naming the path, so a partial scan is not silently complete."""
+    warning without exposing the scanned path."""
     from bannedfuncdetector.infrastructure.file_detection import _log_walk_error
 
     err = PermissionError(13, "Permission denied", "/some/locked/dir")
     with caplog.at_level("WARNING"):
         _log_walk_error(err)
-    messages = [r.message for r in caplog.records]
-    assert any("may be skipped" in m for m in messages)
-    assert any("/some/locked/dir" in m for m in messages)
+    record = next(
+        record
+        for record in caplog.records
+        if record.event_name == "directory_entry_unreadable"
+    )
+    assert "may be skipped" in record.message
+    assert record.error_type == "PermissionError"
+    assert record.error_code == 13
+    assert "/some/locked/dir" not in record.message
 
 
 class TestFindExecutablesOsStatErrorPath:
@@ -570,6 +574,44 @@ class TestFindExecutableFiles:
             assert isinstance(found, list)
             names = {os.path.basename(p) for p in found}
             assert "readme" not in names
+
+    def test_discovery_event_omits_input_directory(self, caplog) -> None:
+        from bannedfuncdetector.infrastructure.file_detection import (
+            find_executable_files,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="private-customer-") as tmpdir:
+            _elf_file(tmpdir, "sample")
+            with caplog.at_level(logging.DEBUG):
+                found = find_executable_files(tmpdir, "elf")
+
+        record = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "executable_discovery_completed"
+        )
+        assert len(found) == 1
+        assert record.file_count == 1
+        assert record.file_type == "elf"
+        assert tmpdir not in record.getMessage()
+        assert all(tmpdir not in record.getMessage() for record in caplog.records)
+
+    def test_walk_error_event_omits_path(self, caplog, tmp_path) -> None:
+        from bannedfuncdetector.infrastructure.file_detection import _log_walk_error
+
+        private_path = str(tmp_path / "private-directory")
+        error = OSError(errno.EACCES, "permission denied", private_path)
+        with caplog.at_level(logging.WARNING):
+            _log_walk_error(error)
+
+        record = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "directory_entry_unreadable"
+        )
+        assert record.error_type == "PermissionError"
+        assert record.error_code == errno.EACCES
+        assert private_path not in record.getMessage()
 
     def test_finds_macho_files(self) -> None:
         from bannedfuncdetector.infrastructure.file_detection import (
@@ -714,7 +756,6 @@ class TestAdaptersInitLazyImport:
 
         with pytest.raises(AttributeError, match="has no attribute"):
             _ = adapters.attribute_that_is_not_registered_in_exports
-
 
 
 # ===========================================================================
@@ -940,6 +981,30 @@ class TestR2ClientWithRealBinary:
             assert compiled_binary in r
         finally:
             client.quit()
+
+    def test_lifecycle_events_omit_binary_path(
+        self, compiled_binary: str, caplog
+    ) -> None:
+        with caplog.at_level(
+            logging.DEBUG,
+            logger="bannedfuncdetector.infrastructure.adapters.r2_client",
+        ):
+            client = R2Client(compiled_binary)
+            client.quit()
+
+        lifecycle_events = [
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None)
+            in {"r2_connection_opened", "r2_connection_closed"}
+        ]
+        assert {record.event_name for record in lifecycle_events} == {
+            "r2_connection_opened",
+            "r2_connection_closed",
+        }
+        assert all(
+            compiled_binary not in record.getMessage() for record in lifecycle_events
+        )
 
     def test_repr_shows_closed_status_after_quit(self, compiled_binary: str) -> None:
         from bannedfuncdetector.infrastructure.adapters.r2_client import R2Client

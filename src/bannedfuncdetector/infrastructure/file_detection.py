@@ -81,12 +81,6 @@ TYPE_MARKERS = {
     "elf": ("ELF",),
     "macho": ("Mach-O",),
 }
-TYPE_LABELS = {
-    "pe": "PE",
-    "elf": "ELF",
-    "macho": "Mach-O",
-}
-
 # Magic bytes for different executable formats
 EXECUTABLE_MAGIC = {
     "pe": [PE_SIGNATURE],  # PE/DOS executable
@@ -139,13 +133,23 @@ def _detect_executable_with_magic(file_path: str, file_type: str) -> bool | None
         for exec_type, markers in TYPE_MARKERS.items():
             if any(marker in detected_type for marker in markers):
                 logger.debug(
-                    "Detected %s executable: %s", TYPE_LABELS[exec_type], file_path
+                    "Detected executable file type",
+                    extra={
+                        "event_name": "file_type_detected",
+                        "file_type": exec_type,
+                        "outcome": "success",
+                    },
                 )
                 return True
     else:
         if any(marker in detected_type for marker in TYPE_MARKERS[file_type]):
             logger.debug(
-                "Detected %s executable: %s", TYPE_LABELS[file_type], file_path
+                "Detected executable file type",
+                extra={
+                    "event_name": "file_type_detected",
+                    "file_type": file_type,
+                    "outcome": "success",
+                },
             )
             return True
 
@@ -176,7 +180,6 @@ def is_executable_file(file_path: str, file_type: str = "pe") -> bool:
     _validate_executable_type(file_type)
 
     if not os.path.isfile(file_path):
-        logger.debug("File does not exist: %s", file_path)
         return False
 
     try:
@@ -234,7 +237,12 @@ def _check_magic_bytes(file_path: str, file_type: str) -> bool:
             for magic_bytes in magic_bytes_list:
                 if header.startswith(magic_bytes):
                     logger.debug(
-                        "Magic bytes match for %s type: %s", check_type, file_path
+                        "Executable signature matched",
+                        extra={
+                            "event_name": "file_signature_matched",
+                            "file_type": check_type,
+                            "outcome": "success",
+                        },
                     )
                     return True
 
@@ -290,8 +298,6 @@ def find_pe_files(directory: str) -> list[str]:
     return _find_executables(
         directory=directory,
         file_type="pe",
-        debug_label="PE file",
-        summary_label="PE files",
     )
 
 
@@ -320,8 +326,6 @@ def find_executable_files(directory: str, file_type: str = "any") -> list[str]:
     return _find_executables(
         directory=directory,
         file_type=file_type,
-        debug_label=f"{file_type} executable",
-        summary_label=f"{file_type} executables",
     )
 
 
@@ -333,15 +337,17 @@ def _log_walk_error(error: OSError) -> None:
     any indication — dangerous when the tree holds samples to analyse.
     """
     logger.warning(
-        "Cannot read %s during directory scan (%s); some files may be skipped.",
-        getattr(error, "filename", None) or "a directory",
-        error,
+        "Cannot read an entry during directory scan; some files may be skipped",
+        extra={
+            "event_name": "directory_entry_unreadable",
+            "outcome": "degraded",
+            "error_type": type(error).__name__,
+            **({"error_code": error.errno} if error.errno is not None else {}),
+        },
     )
 
 
-def _find_executables(
-    directory: str, file_type: str, debug_label: str, summary_label: str
-) -> list[str]:
+def _find_executables(directory: str, file_type: str) -> list[str]:
     """
     Find executable files of a specified type in a directory recursively.
     """
@@ -364,7 +370,10 @@ def _find_executables(
         except OSError:
             continue
         if dir_id in visited_dirs:
-            logger.warning("Skipping circular symlink at: %s", root)
+            logger.warning(
+                "Skipping circular symlink during directory scan",
+                extra={"event_name": "directory_symlink_cycle_skipped"},
+            )
             dirs.clear()  # prevent os.walk from descending further
             continue
         visited_dirs.add(dir_id)
@@ -374,13 +383,22 @@ def _find_executables(
 
             if os.path.islink(file_path):
                 if not os.path.exists(file_path):
-                    logger.warning("Skipping broken symlink: %s", file_path)
+                    logger.warning(
+                        "Skipping broken symlink during directory scan",
+                        extra={"event_name": "directory_broken_symlink_skipped"},
+                    )
                     continue
-                logger.debug("Following symlink: %s", file_path)
 
             if is_executable_file(file_path, file_type):
                 executable_files.append(file_path)
-                logger.debug("Found %s: %s", debug_label, file_path)
 
-    logger.info("Found %d %s in %s", len(executable_files), summary_label, directory)
+    logger.info(
+        "Executable file discovery completed",
+        extra={
+            "event_name": "executable_discovery_completed",
+            "outcome": "success",
+            "file_type": file_type,
+            "file_count": len(executable_files),
+        },
+    )
     return executable_files

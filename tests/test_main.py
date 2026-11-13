@@ -702,7 +702,7 @@ def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
         assert "stack_trace" in event
         assert event["error_type"] == "RuntimeError"
         assert "hidden-value" not in event["stack_trace"]
-        assert "tests/test_main.py" in event["stack_trace"]
+        assert "test_main.py" in event["stack_trace"]
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
@@ -791,9 +791,9 @@ def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
         configure_logging()
         logger = logging.getLogger("test.logging")
         logger.warning("bad value: %s", BadValue())
-        import traceback
+        import bannedfuncdetector.infrastructure.logging_config as logging_config
 
-        monkeypatch.setattr(traceback, "format_list", fail_traceback_formatter)
+        monkeypatch.setattr(logging_config, "safe_stack_trace", fail_traceback_formatter)
         try:
             raise BadException()
         except BadException:
@@ -870,6 +870,7 @@ def test_safe_stack_trace_omits_exception_text_and_handles_missing_traceback():
     exc = RuntimeError("token=private-value")
     assert safe_stack_trace(exc) == ""
     assert _safe_exception_text((type(exc), exc, None)) == ""
+    assert _safe_exception_text((None, None, None)) == ""
 
     try:
         raise exc
@@ -986,9 +987,9 @@ def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
         except RuntimeError:
             logging.getLogger("test.logging").exception("operation failed")
         output = capsys.readouterr().err
-        assert 'File "' in output
+        assert "test_main.py" in output
         assert "hidden-value" not in output
-        assert "tests/test_main.py" in output
+        assert "test_main.py" in output
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)

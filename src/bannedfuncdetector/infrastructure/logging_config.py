@@ -11,7 +11,6 @@ import re
 import sys
 import copy
 import threading
-import traceback
 from queue import Full
 from types import TracebackType
 from datetime import datetime, timezone
@@ -26,6 +25,7 @@ from bannedfuncdetector.observability import (
     new_request_id,
     operation_context,
     safe_exception_fields,
+    safe_stack_trace,
 )
 from concurrent_log_handler import ConcurrentRotatingFileHandler
 
@@ -155,21 +155,10 @@ def _safe_exception_text(
     | tuple[None, None, None],
 ) -> str:
     try:
-        traceback_object = exc_info[2]
-        if traceback_object is None:
+        exception = exc_info[1]
+        if exception is None:
             return ""
-        frames = traceback.extract_tb(traceback_object)
-        summaries = [
-            traceback.FrameSummary(
-                frame.filename,
-                frame.lineno,
-                frame.name,
-                lookup_line=False,
-                line="",
-            )
-            for frame in frames
-        ]
-        return _safe_message("".join(traceback.format_list(summaries)))
+        return _safe_message(safe_stack_trace(exception))
     except Exception as exc:
         return f"[stack trace formatting failed: {type(exc).__name__}]"
 

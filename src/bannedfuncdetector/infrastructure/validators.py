@@ -239,7 +239,7 @@ def _check_available_decompilers() -> None:
         },
     )
 
-    temp_binary = "/bin/ls"
+    temp_binary = sys.executable
     if not os.path.exists(temp_binary):
         logger.warning(
             "No local binary available for decompiler checks",
