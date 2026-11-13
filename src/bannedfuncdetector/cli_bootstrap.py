@@ -12,6 +12,7 @@ import contextvars
 import copy
 import threading
 import uuid
+from queue import Full
 from types import TracebackType
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -168,6 +169,7 @@ class _JsonLogFormatter(logging.Formatter):
             "error_code",
             "error_category",
             "error_phase",
+            "dropped_count",
         ):
             value = getattr(record, field, None)
             if value is not None:
@@ -241,6 +243,72 @@ class _SanitizingFilter(logging.Filter):
 
 
 class _ContextQueueHandler(logging.handlers.QueueHandler):
+    def __init__(self, log_queue: Any) -> None:
+        super().__init__(log_queue)
+        formatter = (
+            _JsonLogFormatter()
+            if os.getenv("BFD_LOG_FORMAT", "text").lower() == "json"
+            else _TextLogFormatter()
+        )
+        self._overflow_handler = logging.StreamHandler(sys.stderr)
+        self._overflow_handler.setFormatter(formatter)
+        self._queue_saturated = False
+        self._dropped_records = 0
+
+    def enqueue(self, record: logging.LogRecord) -> None:
+        try:
+            self.queue.put_nowait(record)
+        except Full:
+            if not self._queue_saturated:
+                self._queue_saturated = True
+                self._emit_overflow_event(
+                    "Worker log queue saturated; low-severity records may be dropped",
+                    "worker_log_queue_saturated",
+                )
+            if record.levelno >= logging.ERROR:
+                self._overflow_handler.handle(record)
+            else:
+                self._dropped_records += 1
+            return
+
+        if self._queue_saturated:
+            dropped_records = self._dropped_records
+            self._queue_saturated = False
+            self._dropped_records = 0
+            self._emit_overflow_event(
+                f"Worker log queue recovered after dropping {dropped_records} records",
+                "worker_log_queue_recovered",
+                dropped_count=dropped_records,
+            )
+
+    def _emit_overflow_event(
+        self,
+        message: str,
+        event_name: str,
+        *,
+        dropped_count: int | None = None,
+    ) -> None:
+        record = logging.LogRecord(
+            "bannedfuncdetector.cli_bootstrap",
+            logging.WARNING,
+            "",
+            0,
+            message,
+            (),
+            None,
+        )
+        record.event_name = event_name
+        record.outcome = "degraded"
+        if dropped_count is not None:
+            record.dropped_count = dropped_count
+        request_id = _request_id.get()
+        if request_id is not None:
+            record.request_id = request_id
+        operation = _operation.get()
+        if operation is not None:
+            record.operation = operation
+        self._overflow_handler.handle(record)
+
     def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
         prepared = copy.copy(record)
         if record.exc_info:

@@ -895,20 +895,66 @@ def test_worker_logging_uses_configured_level(monkeypatch):
         root.setLevel(saved_level)
 
 
-def test_saturated_worker_log_queue_does_not_raise(monkeypatch):
+def test_saturated_worker_log_queue_reports_drops_and_preserves_errors(
+    monkeypatch, capsys
+):
+    from concurrent.futures import ThreadPoolExecutor
+    import json
     from queue import Queue
 
-    from bannedfuncdetector.cli_bootstrap import _ContextQueueHandler
+    from bannedfuncdetector.cli_bootstrap import (
+        _ContextQueueHandler,
+        _RequestContextFilter,
+        operation_context,
+    )
 
     monkeypatch.setattr(logging, "raiseExceptions", False)
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
     log_queue = Queue(maxsize=1)
     log_queue.put_nowait("already queued")
     handler = _ContextQueueHandler(log_queue)
-    record = logging.LogRecord("test.queue", logging.INFO, __file__, 1, "event", (), None)
+    handler.addFilter(_RequestContextFilter())
+    info_records = [
+        logging.LogRecord(
+            "test.queue", logging.INFO, __file__, 1, "api_key=hidden-value", (), None
+        )
+        for _ in range(32)
+    ]
+    error_record = logging.LogRecord(
+        "test.queue", logging.ERROR, __file__, 1, "critical event", (), None
+    )
+    error_record.error_type = "RuntimeError"
 
-    handler.handle(record)
+    with operation_context("directory_analysis"):
+        handler.handle(info_records[0])
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(executor.map(handler.handle, info_records[1:]))
+    with operation_context("directory_analysis"):
+        handler.handle(error_record)
 
     assert log_queue.qsize() == 1
+    events = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert [event.get("event_name") for event in events] == [
+        "worker_log_queue_saturated",
+        None,
+    ]
+    assert events[0]["outcome"] == "degraded"
+    assert events[0]["operation"] == "directory_analysis"
+    assert events[1]["level"] == "ERROR"
+    assert events[1]["error_type"] == "RuntimeError"
+    assert events[1]["operation"] == "directory_analysis"
+    assert "hidden-value" not in "\n".join(event["message"] for event in events)
+
+    log_queue.get_nowait()
+    recovered_record = logging.LogRecord(
+        "test.queue", logging.INFO, __file__, 1, "recovered", (), None
+    )
+    with operation_context("directory_analysis"):
+        handler.handle(recovered_record)
+    recovered = json.loads(capsys.readouterr().err)
+    assert recovered["event_name"] == "worker_log_queue_recovered"
+    assert recovered["dropped_count"] == len(info_records)
+    assert log_queue.get_nowait().message == "recovered"
 
 
 def test_failed_stream_destination_does_not_raise(monkeypatch):

@@ -27,7 +27,7 @@ BannedFuncDetector is a Python CLI and importable library. The main flow parses 
 
 Redaction is defense in depth and uses patterns, not a complete data-loss-prevention engine. URL logs are reduced to scheme and authority, dropping userinfo, path, and query. New log calls must avoid credentials, cookies, binary contents, full HTTP bodies, and confidential data at their source. Do not log arbitrary request/response bodies or subprocess output. Control characters are escaped to reduce log forging. JSON encoding keeps event values on one physical line.
 
-The default stream handler is synchronous in the parent process. The default directory `ProcessPoolExecutor` path forwards worker records through a bounded 10,000-record queue to one parent `QueueListener`, preventing worker writes from interleaving. The standard `QueueHandler` is non-blocking; a saturated queue may drop records. Injected custom executors retain their own logging transport; with file output, the concurrent rotating handler protects shared-file writes. There is no sampling or rate limiting. Deployments that need durable, centralized, or high-volume collection should provide a process-level logging collector and validate worker output under their operating system.
+The default stream handler is synchronous in the parent process. The default directory `ProcessPoolExecutor` path forwards worker records through a bounded 10,000-record queue to one parent `QueueListener`, preventing worker writes from interleaving. Queue enqueue is non-blocking; when saturated, records below `ERROR` are dropped, a saturation warning and recovery count go to stderr, and `ERROR`/`CRITICAL` records are mirrored there as an emergency path. This preserves analysis progress while making loss visible. Injected custom executors retain their own logging transport; with file output, the concurrent rotating handler protects shared-file writes. There is no sampling or rate limiting. Deployments that need durable, centralized, or high-volume collection should provide a process-level logging collector and validate worker output under their operating system.
 
 ## Configuration and operation
 
@@ -74,7 +74,7 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Structure and consistency | 1 | 9.5 | JSON UTC schema and normalized error fields include analysis category/phase for binary and directory paths; other legacy event-specific data still remains in `message`. |
 | Context and correlation | 0 | 9.5 | Request and operation contexts use separate `ContextVar`s, restore across nesting, and cross the default and injected worker wrappers; no distributed trace is needed for this local CLI flow. |
 | Security and privacy | 2 | 9.5 | Credential/cookie/URL pattern redaction covers assignment syntax, quoted JSON keys (including authorization and cookie properties), and common `--secret value` flags; sanitization remains idempotent across handlers and Unicode line-separator escaping applies to configured handlers. Artifact persistence events omit paths and R2 command logs omit untrusted command text, while arbitrary sensitive values remain undetectable. |
-| Performance and resilience | 4 | 9 | Bounded worker queue, draining shutdown, size caps, and process-safe rotating file handler; queue overflow may drop records and stream output is synchronous. |
+| Performance and resilience | 4 | 9.5 | Bounded non-blocking worker queue, draining shutdown, size caps, process-safe rotation, explicit low-severity drop counts, and stderr fallback for error events; stream output remains synchronous. |
 | Configuration and portability | 2 | 9 | Environment selects level, format, environment, and stream/file destination; existing host handlers remain respected. |
 | Error handling | 4 | 9.5 | Duplicate directory errors are suppressed; binary and directory failures carry structured category, phase, and OS error code when available, while captured exceptions retain type and stack trace. Legacy paths still vary. |
 | Testing and verification | 3 | 9.5 | 100% line coverage on the canonical Linux/Python 3.13–3.15 runs, complete CI matrix success across all eight supported OS/Python combinations, and real process and sink-failure tests. |
@@ -83,7 +83,7 @@ The current **provisional score is 9.5/10**, the arithmetic mean of the ten curr
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. Remaining work includes completing a semantic review of legacy log events and exception paths and checking deployment-specific retention needs. Regex redaction remains heuristic; the bounded default queue intentionally drops records under pressure to keep analysis non-blocking. Redaction must not replace safe logging at the source.
+This is an interim implementation, not a 10/10 claim. Remaining work includes completing a semantic review of legacy log events and exception paths and checking deployment-specific retention needs. Regex redaction remains heuristic; a saturated bounded queue can drop low-severity events, with the loss reported and high-severity events diverted to stderr. Redaction must not replace safe logging at the source.
 
 ## Verification evidence
 
