@@ -374,6 +374,47 @@ def test_configure_logging_verbose_toggles_debug_level():
         root.setLevel(saved_level)
 
 
+def test_configure_logging_json_redacts_secrets_and_control_characters(
+    monkeypatch, capsys
+):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    monkeypatch.delenv("BFD_LOG_LEVEL", raising=False)
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        configure_logging()
+        logging.getLogger("test.logging").warning("request token=abc123\nINJECTED")
+        event = json.loads(capsys.readouterr().err)
+        assert event["level"] == "WARNING"
+        assert event["service"] == "bannedfuncdetector"
+        assert event["component"] == "test.logging"
+        assert "abc123" not in event["message"]
+        assert "\\x0a" in event["message"]
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
+def test_configure_logging_level_environment_overrides_verbose(monkeypatch):
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_LEVEL", "WARNING")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        configure_logging(verbose=True)
+        assert root.level == logging.WARNING
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""

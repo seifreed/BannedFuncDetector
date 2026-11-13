@@ -3,8 +3,50 @@
 from __future__ import annotations
 
 import logging
+import json
+import os
+import re
 import sys
 from collections.abc import Callable
+from datetime import datetime, timezone
+
+
+_SENSITIVE_VALUE = re.compile(
+    r"(?i)(\b(?:password|passwd|token|api[_-]?key|secret)\b\s*[=:]\s*|"
+    r"\bauthorization\s*:\s*(?:bearer\s+|basic\s+)?|"
+    r"\b(?:bearer|basic)\s+)[^\s,;]+"
+)
+
+
+def _safe_message(value: str) -> str:
+    redacted = _SENSITIVE_VALUE.sub(r"\1[REDACTED]", value)
+    return "".join(
+        character
+        if character >= " " and character != "\x7f"
+        else f"\\x{ord(character):02x}"
+        for character in redacted
+    )
+
+
+class _JsonLogFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        event = {
+            "timestamp": datetime.fromtimestamp(record.created, timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "level": record.levelname,
+            "service": "bannedfuncdetector",
+            "component": record.name,
+            "message": _safe_message(record.getMessage()),
+        }
+        if record.exc_info:
+            event["stack_trace"] = _safe_message(self.formatException(record.exc_info))
+        return json.dumps(event, ensure_ascii=True)
+
+
+class _TextLogFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        return f"[{record.levelname}] {_safe_message(record.getMessage())}"
 
 
 def configure_logging(verbose: bool = False) -> None:
@@ -14,14 +56,15 @@ def configure_logging(verbose: bool = False) -> None:
     (symlink following, r2 client flags, file discovery, …) become visible;
     otherwise they are unreachable since the level defaults to INFO.
     """
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
-        format="[%(levelname)s] %(message)s",
-    )
-    if verbose:
-        # basicConfig is a no-op if handlers already exist (e.g. a worker that
-        # configured at INFO first), so force the level explicitly.
-        logging.getLogger().setLevel(logging.DEBUG)
+    configured_level = os.getenv(
+        "BFD_LOG_LEVEL", "DEBUG" if verbose else "INFO"
+    ).upper()
+    level = getattr(logging, configured_level, logging.INFO)
+    log_format = os.getenv("BFD_LOG_FORMAT", "text").lower()
+    formatter = _JsonLogFormatter() if log_format == "json" else _TextLogFormatter()
+    logging.basicConfig(level=level, handlers=[logging.StreamHandler()], force=True)
+    for handler in logging.getLogger().handlers:
+        handler.setFormatter(formatter)
 
 
 def validate_requirements(
