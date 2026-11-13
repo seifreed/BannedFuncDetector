@@ -12,6 +12,7 @@ import contextvars
 import copy
 import threading
 import uuid
+from types import TracebackType
 from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -85,6 +86,23 @@ def _escape_character(character: str) -> str:
     return f"\\x{codepoint:02x}" if codepoint <= 0xFF else ascii(character)[1:-1]
 
 
+def _safe_record_message(record: logging.LogRecord) -> str:
+    try:
+        return _safe_message(record.getMessage())
+    except Exception as exc:
+        return f"[log message formatting failed: {type(exc).__name__}]"
+
+
+def _safe_exception_text(
+    exc_info: tuple[type[BaseException], BaseException, TracebackType | None]
+    | tuple[None, None, None],
+) -> str:
+    try:
+        return _safe_message(logging.Formatter().formatException(exc_info))
+    except Exception as exc:
+        return f"[exception formatting failed: {type(exc).__name__}]"
+
+
 class _JsonLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         event = {
@@ -94,7 +112,7 @@ class _JsonLogFormatter(logging.Formatter):
             "level": record.levelname,
             "service": "bannedfuncdetector",
             "component": record.name,
-            "message": _safe_message(record.getMessage()),
+            "message": _safe_record_message(record),
         }
         environment = os.getenv("BFD_ENVIRONMENT")
         if environment:
@@ -114,7 +132,7 @@ class _JsonLogFormatter(logging.Formatter):
                 event[field] = value
         stack_trace = getattr(record, "stack_trace", None)
         if record.exc_info:
-            stack_trace = self.formatException(record.exc_info)
+            stack_trace = _safe_exception_text(record.exc_info)
         if stack_trace:
             event["stack_trace"] = _safe_message(stack_trace)
         return json.dumps(event, ensure_ascii=True)
@@ -122,9 +140,9 @@ class _JsonLogFormatter(logging.Formatter):
 
 class _TextLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        message = f"[{record.levelname}] {_safe_message(record.getMessage())}"
+        message = f"[{record.levelname}] {_safe_record_message(record)}"
         if record.exc_info:
-            message += "\n" + _safe_message(self.formatException(record.exc_info))
+            message += "\n" + _safe_exception_text(record.exc_info)
         elif getattr(record, "stack_trace", None):
             message += "\n" + _safe_message(getattr(record, "stack_trace"))
         return message
@@ -140,14 +158,12 @@ class _RequestContextFilter(logging.Filter):
 
 class _SanitizingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.msg = _safe_message(record.getMessage())
+        record.msg = _safe_record_message(record)
         record.args = ()
         if record.exc_info:
             if record.exc_info[0] is not None and not hasattr(record, "error_type"):
                 record.error_type = record.exc_info[0].__name__
-            record.exc_text = _safe_message(
-                logging.Formatter().formatException(record.exc_info)
-            )
+            record.exc_text = _safe_exception_text(record.exc_info)
         stack_trace = getattr(record, "stack_trace", None)
         if stack_trace:
             record.stack_trace = _safe_message(stack_trace)
@@ -158,8 +174,8 @@ class _ContextQueueHandler(logging.handlers.QueueHandler):
     def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
         prepared = copy.copy(record)
         if record.exc_info:
-            prepared.stack_trace = logging.Formatter().formatException(record.exc_info)
-        prepared.message = record.getMessage()
+            prepared.stack_trace = _safe_exception_text(record.exc_info)
+        prepared.message = _safe_record_message(record)
         prepared.msg = prepared.message
         prepared.args = None
         prepared.exc_info = None

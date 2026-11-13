@@ -561,6 +561,51 @@ def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
         root.setLevel(saved_level)
 
 
+def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    class BadValue:
+        def __str__(self):
+            raise ValueError("secret formatting detail")
+
+    class BadException(Exception):
+        def __str__(self):
+            raise RuntimeError("secret exception detail")
+
+    def fail_exception_formatter(_formatter, _exc_info):
+        raise RuntimeError("secret formatter detail")
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        logger = logging.getLogger("test.logging")
+        logger.warning("bad value: %s", BadValue())
+        monkeypatch.setattr(logging.Formatter, "formatException", fail_exception_formatter)
+        try:
+            raise BadException()
+        except BadException:
+            logger.exception("bad exception")
+
+        events = [
+            json.loads(line) for line in capsys.readouterr().err.splitlines()
+        ]
+        assert events[0]["message"] == "[log message formatting failed: ValueError]"
+        assert events[1]["error_type"] == "BadException"
+        assert events[1]["stack_trace"] == (
+            "[exception formatting failed: RuntimeError]"
+        )
+        assert "secret" not in events[1]["stack_trace"]
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
     from bannedfuncdetector.cli_bootstrap import configure_logging
 
