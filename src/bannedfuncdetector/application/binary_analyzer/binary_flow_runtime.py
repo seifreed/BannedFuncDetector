@@ -42,7 +42,7 @@ def _analysis_error(
         exc_info=(type(exc), exc, exc.__traceback__),
         extra={"event_name": "analysis_error", "error_type": type(exc).__name__},
     )
-    return err(ExecutionFailure(error=error))
+    return err(ExecutionFailure(error=error, logged=True))
 
 
 def _resolve_output_format(config: IConfigRepository) -> str:
@@ -180,6 +180,7 @@ def _run_detection_with_cleanup(
                 error=current.error,
                 operational_notices=current.operational_notices
                 + (OperationalNotice(message=cleanup_message, file_path=binary_path),),
+                logged=current.logged,
             )
         )
 

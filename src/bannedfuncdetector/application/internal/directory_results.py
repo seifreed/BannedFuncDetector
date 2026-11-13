@@ -52,7 +52,7 @@ def error_result_from_exception(
 
     if logger_message is not None:
         logger.error("%s %s: %s", error.category, logger_message, exc)
-    return err(ExecutionFailure(error=error))
+    return err(ExecutionFailure(error=error, logged=True))
 
 
 def normalize_directory_result(
@@ -77,6 +77,7 @@ def normalize_directory_result(
             # Carry forward any notices (e.g. a cleanup failure) so the
             # directory caller can still surface them.
             operational_notices=failure.operational_notices,
+            logged=failure.logged,
         )
     )
 

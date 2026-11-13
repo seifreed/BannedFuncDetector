@@ -10,6 +10,7 @@ from .application.contracts import (
     BinaryAnalysisRequest,
     DirectoryAnalysisRequest,
 )
+from .application.analysis_error import ExecutionFailure
 from .application.types import BinaryAnalysisResultType, DirectoryAnalysisResultType
 from .domain.result import Ok, Result
 from .presentation.error_formatting import format_execution_error
@@ -45,6 +46,8 @@ def unwrap_or_log(
     """Return the inner value from a Result or log the error."""
     if isinstance(result, Ok):
         return result.value
+    if isinstance(result.error, ExecutionFailure) and result.error.logged:
+        return None
     logger.error(f"{context}: {format_execution_error(result.error)}")
     return None
 

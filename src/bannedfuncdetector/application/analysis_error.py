@@ -24,6 +24,7 @@ class ApplicationExecutionError:
 class ExecutionFailure:
     error: ApplicationExecutionError
     operational_notices: tuple[OperationalNotice, ...] = ()
+    logged: bool = False
 
     def __str__(self) -> str:
         rendered = str(self.error)

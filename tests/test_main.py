@@ -987,6 +987,29 @@ def test_unwrap_or_log_err():
     assert value is None
 
 
+def test_unwrap_or_log_does_not_repeat_logged_execution_failure(caplog):
+    from bannedfuncdetector.application.analysis_error import (
+        BinaryExecutionError,
+        ExecutionFailure,
+    )
+
+    result = Err(
+        ExecutionFailure(
+            error=BinaryExecutionError(
+                category="Runtime error", context="sample.bin", message="failed"
+            ),
+            logged=True,
+        )
+    )
+
+    with caplog.at_level(logging.ERROR):
+        assert (
+            unwrap_or_log(result, "Analysis failed", logger=logging.getLogger()) is None
+        )
+
+    assert caplog.text == ""
+
+
 # ===========================================================================
 # FakeR2-based tests via dependency injection
 # ===========================================================================

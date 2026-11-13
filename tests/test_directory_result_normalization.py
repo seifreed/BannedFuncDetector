@@ -69,6 +69,7 @@ def test_normalize_preserves_category_phase_and_notices() -> None:
             phase="open",
         ),
         operational_notices=(notice,),
+        logged=True,
     )
 
     normalized = normalize_directory_result("/bin/x", err(failure))
@@ -79,6 +80,7 @@ def test_normalize_preserves_category_phase_and_notices() -> None:
     assert new_failure.error.phase == "open"
     assert new_failure.error.message == "cannot read binary"
     assert new_failure.operational_notices == (notice,)  # not dropped
+    assert new_failure.logged
 
 
 def test_normalize_passes_through_ok() -> None:
