@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from ..domain.result import Err, Ok, Result
-
-logger = logging.getLogger(__name__)
 
 # Accepted values for the decompiler "type" field. "r2ai" is kept because it is
 # a common user mistake that the selector intercepts with a helpful message
@@ -28,11 +25,7 @@ VALID_OUTPUT_FORMATS = ["json", "text", "html"]
 def validate_config(config: dict[str, Any]) -> bool:
     """Validate that configuration has required top-level keys."""
     required_keys = ["decompiler", "output", "analysis"]
-    is_valid = all(key in config for key in required_keys)
-    if not is_valid:
-        missing = [k for k in required_keys if k not in config]
-        logger.warning(f"Configuration missing required keys: {missing}")
-    return is_valid
+    return all(key in config for key in required_keys)
 
 
 def validate_banned_functions(functions: list[Any]) -> Result[list[str], str]:

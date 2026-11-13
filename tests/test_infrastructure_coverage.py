@@ -362,7 +362,7 @@ class TestValidateConfig:
         config = {"decompiler": {}, "output": {}, "analysis": {}}
         assert validate_config(config) is True
 
-    def test_missing_one_key_returns_false(self, caplog):
+    def test_missing_one_key_returns_false_without_logging(self, caplog):
         config = {"decompiler": {}, "output": {}}
         with caplog.at_level(
             logging.WARNING,
@@ -370,7 +370,7 @@ class TestValidateConfig:
         ):
             result = validate_config(config)
         assert result is False
-        assert any("analysis" in record.message for record in caplog.records)
+        assert not caplog.records
 
     def test_empty_dict_returns_false(self):
         assert validate_config({}) is False
@@ -498,15 +498,23 @@ class TestLoadConfigFromFile:
 class TestLoadConfig:
     """Tests for the full load_config path including merging and validation."""
 
-    def test_returns_default_config_when_file_missing(self, tmp_path):
+    def test_returns_default_config_when_file_missing(self, tmp_path, caplog):
         missing = tmp_path / "missing.json"
-        result = load_config(str(missing))
+        with caplog.at_level(logging.WARNING):
+            result = load_config(str(missing))
         assert isinstance(result, dict)
         assert "decompiler" in result
         assert "output" in result
         assert "analysis" in result
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "configuration_not_found"
+        )
+        assert event.operation == "config_load"
+        assert str(missing) not in caplog.text
 
-    def test_valid_user_config_is_merged_with_defaults(self, tmp_path):
+    def test_valid_user_config_is_merged_with_defaults(self, tmp_path, caplog):
         cfg_path = tmp_path / "config.json"
         user_config = {
             "decompiler": {"type": "r2ghidra", "options": {}},
@@ -514,13 +522,22 @@ class TestLoadConfig:
             "analysis": {"max_workers": 2},
         }
         cfg_path.write_text(json.dumps(user_config))
-        result = load_config(str(cfg_path))
+        with caplog.at_level(logging.INFO):
+            result = load_config(str(cfg_path))
         assert result["decompiler"]["type"] == "r2ghidra"
         assert result["output"]["directory"] == "/custom/output"
         assert result["analysis"]["max_workers"] == 2
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "configuration_loaded"
+        )
+        assert event.operation == "config_load"
+        assert event.outcome == "success"
+        assert str(cfg_path) not in caplog.text
 
     def test_partial_config_missing_required_keys_still_merges_with_defaults(
-        self, tmp_path
+        self, tmp_path, caplog
     ):
         # Only has 'decompiler', missing 'output' and 'analysis'
         cfg_path = tmp_path / "config.json"
@@ -529,10 +546,20 @@ class TestLoadConfig:
             "extra_key": "extra_val",
         }
         cfg_path.write_text(json.dumps(user_config))
-        result = load_config(str(cfg_path))
+        with caplog.at_level(logging.WARNING):
+            result = load_config(str(cfg_path))
         # Should still return a valid merged result (defaults fill the gaps)
         assert isinstance(result, dict)
         assert "decompiler" in result
+        events = [
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None)
+            == "configuration_missing_required_keys"
+        ]
+        assert len(events) == 1
+        assert events[0].operation == "config_load"
+        assert events[0].missing_keys == ["output", "analysis"]
 
     def test_returns_defaults_when_json_is_invalid(self, tmp_path, caplog):
         cfg_path = tmp_path / "bad.json"
@@ -590,7 +617,7 @@ class TestLoadConfig:
         assert len(errors) == 1
         assert errors[0].error_type == "PermissionError"
 
-    def test_returns_defaults_when_decompiler_key_is_not_dict(self, tmp_path):
+    def test_returns_defaults_when_decompiler_key_is_not_dict(self, tmp_path, caplog):
         cfg_path = tmp_path / "config.json"
         bad_config = {
             "decompiler": "not_a_dict",
@@ -598,10 +625,19 @@ class TestLoadConfig:
             "analysis": {},
         }
         cfg_path.write_text(json.dumps(bad_config))
-        result = load_config(str(cfg_path))
+        with caplog.at_level(logging.ERROR):
+            result = load_config(str(cfg_path))
         # Rejected because 'decompiler' must be a dict; returns defaults
         assert isinstance(result, dict)
         assert isinstance(result["decompiler"], dict)
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None)
+            == "configuration_invalid_section"
+        )
+        assert event.config_section == "decompiler"
+        assert event.error_type == "str"
 
     def test_returns_defaults_when_output_key_is_not_dict(self, tmp_path):
         cfg_path = tmp_path / "config.json"
@@ -625,20 +661,32 @@ class TestLoadConfig:
         result = load_config(str(cfg_path))
         assert isinstance(result["analysis"], dict)
 
-    def test_returns_defaults_when_merged_config_fails_full_validation(self, tmp_path):
+    def test_returns_defaults_when_merged_config_fails_full_validation(
+        self, tmp_path, caplog
+    ):
         # Provide a config that passes the type-check guard but fails validate_full_config
         # — give an invalid decompiler type so the merged config is rejected
         cfg_path = tmp_path / "config.json"
+        secret_value = "customer-private-config-value"
         bad_config = {
-            "decompiler": {"type": "invalid_decompiler", "options": {}},
+            "decompiler": {"type": secret_value, "options": {}},
             "output": {"directory": "/tmp"},
             "analysis": {},
         }
         cfg_path.write_text(json.dumps(bad_config))
-        result = load_config(str(cfg_path))
+        with caplog.at_level(logging.WARNING):
+            result = load_config(str(cfg_path))
         # validate_full_config rejects it → falls back to DEFAULT_CONFIG
         assert isinstance(result, dict)
         assert "decompiler" in result
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None)
+            == "configuration_validation_failed"
+        )
+        assert event.operation == "config_load"
+        assert secret_value not in caplog.text
 
     def test_deep_nested_user_values_override_defaults(self, tmp_path):
         cfg_path = tmp_path / "config.json"
@@ -752,7 +800,7 @@ class TestImmutableConfig:
         cfg = ImmutableConfig({"output": "string_value"})
         assert cfg.get_output_dir() == "output"
 
-    def test_reload_updates_config_from_valid_file(self, tmp_path):
+    def test_reload_updates_config_from_valid_file(self, tmp_path, caplog):
         cfg_path = tmp_path / "config.json"
         new_config = {
             "decompiler": {"type": "r2ghidra", "options": {}},
@@ -761,8 +809,17 @@ class TestImmutableConfig:
         }
         cfg_path.write_text(json.dumps(new_config))
         cfg = ImmutableConfig()
-        cfg.reload(str(cfg_path))
+        with caplog.at_level(logging.INFO):
+            cfg.reload(str(cfg_path))
         assert cfg.get("decompiler")["type"] == "r2ghidra"
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "configuration_reloaded"
+        )
+        assert event.operation == "config_reload"
+        assert event.outcome == "success"
+        assert str(cfg_path) not in caplog.text
 
     def test_reload_keeps_current_config_when_file_missing(self, tmp_path):
         missing = tmp_path / "nonexistent.json"
@@ -852,6 +909,15 @@ class TestImmutableConfig:
         # After merging, defaults fill in the gaps → validation should succeed
         # (no hard failure, the merged config is valid)
         assert isinstance(cfg.get("decompiler"), dict)
+        events = [
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None)
+            == "configuration_missing_required_keys"
+        ]
+        assert len(events) == 1
+        assert events[0].operation == "config_reload"
+        assert events[0].missing_keys == ["output", "analysis"]
 
     def test_update_internal_replaces_config_with_new_dict(self):
         # Directly exercise ImmutableConfig._update_internal (line 127).

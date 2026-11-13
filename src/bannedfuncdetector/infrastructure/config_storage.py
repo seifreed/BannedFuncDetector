@@ -15,25 +15,40 @@ from .config_validation import validate_config, validate_full_config
 logger = logging.getLogger(__name__)
 
 
-def _log_config_exception(
+def _log_config_event(
+    level: int,
     operation: str,
-    config_file: str,
-    exc: Exception,
+    event_name: str,
+    outcome: str,
+    message: str,
+    **fields: Any,
 ) -> None:
-    action = "reloading" if operation == "config_reload" else "loading"
-    logger.error(
-        "Error %s configuration file %s (%s)",
-        action,
-        Path(config_file).name,
-        type(exc).__name__,
+    logger.log(
+        level,
+        message,
         extra={
             "operation": operation,
-            "event_name": "configuration_load_failed",
-            "error_type": type(exc).__name__,
-            "error_code": getattr(exc, "errno", None),
-            "error_line": getattr(exc, "lineno", None),
-            "error_column": getattr(exc, "colno", None),
+            "event_name": event_name,
+            "outcome": outcome,
+            **fields,
         },
+    )
+
+
+def _log_config_exception(
+    operation: str,
+    exc: Exception,
+) -> None:
+    _log_config_event(
+        logging.ERROR,
+        operation,
+        "configuration_load_failed",
+        "error",
+        "Configuration operation failed",
+        error_type=type(exc).__name__,
+        error_code=getattr(exc, "errno", None),
+        error_line=getattr(exc, "lineno", None),
+        error_column=getattr(exc, "colno", None),
     )
 
 
@@ -113,24 +128,49 @@ class ImmutableConfig:
         try:
             user_config = load_config_from_file(config_file)
             if user_config is None:
-                logger.warning(f"Configuration file {config_file} not found.")
+                _log_config_event(
+                    logging.WARNING,
+                    "config_reload",
+                    "configuration_not_found",
+                    "unchanged",
+                    "Configuration file not found; keeping current configuration",
+                )
                 return
             if not isinstance(user_config, dict):
-                logger.error(
-                    f"Configuration file {config_file} must contain a JSON object, "
-                    f"got {type(user_config).__name__}. Keeping current config."
+                _log_config_event(
+                    logging.ERROR,
+                    "config_reload",
+                    "configuration_invalid_root",
+                    "unchanged",
+                    "Configuration root must be a JSON object; keeping current configuration",
+                    error_type=type(user_config).__name__,
                 )
                 return
             if not validate_config(user_config):
-                logger.warning(
-                    f"Configuration file {config_file} missing required keys, merging with defaults."
+                _log_config_event(
+                    logging.WARNING,
+                    "config_reload",
+                    "configuration_missing_required_keys",
+                    "degraded",
+                    "Configuration is missing required sections; merging defaults",
+                    missing_keys=[
+                        key
+                        for key in ("decompiler", "output", "analysis")
+                        if key not in user_config
+                    ],
                 )
 
             # Reject configs where dict keys are overridden with non-dict values
             for key in ("decompiler", "output", "analysis"):
                 if key in user_config and not isinstance(user_config[key], dict):
-                    logger.error(
-                        f"Configuration key '{key}' must be a dict, got {type(user_config[key]).__name__}. Keeping current config."
+                    _log_config_event(
+                        logging.ERROR,
+                        "config_reload",
+                        "configuration_invalid_section",
+                        "unchanged",
+                        "Configuration section must be an object; keeping current configuration",
+                        error_type=type(user_config[key]).__name__,
+                        config_section=key,
                     )
                     return
 
@@ -141,15 +181,26 @@ class ImmutableConfig:
 
             validation_result = validate_full_config(merged)
             if isinstance(validation_result, _Err):
-                logger.warning(
-                    f"Configuration validation: {validation_result.error}. Keeping current config."
+                _log_config_event(
+                    logging.WARNING,
+                    "config_reload",
+                    "configuration_validation_failed",
+                    "unchanged",
+                    "Configuration validation failed; keeping current configuration",
+                    error_category="configuration",
                 )
                 return
 
             self._config = merged
-            logger.info(f"Configuration reloaded from {config_file}")
+            _log_config_event(
+                logging.INFO,
+                "config_reload",
+                "configuration_reloaded",
+                "success",
+                "Configuration reloaded",
+            )
         except (json.JSONDecodeError, OSError, KeyError, TypeError, ValueError) as exc:
-            _log_config_exception("config_reload", config_file, exc)
+            _log_config_exception("config_reload", exc)
 
     def _update_internal(self, new_config: dict[str, Any]) -> None:
         """Internal method to update configuration."""
@@ -161,26 +212,51 @@ def load_config(config_file: str = "config.json") -> dict[str, Any]:
     try:
         user_config = load_config_from_file(config_file)
         if user_config is None:
-            logger.warning(f"Configuration file {config_file} not found.")
+            _log_config_event(
+                logging.WARNING,
+                "config_load",
+                "configuration_not_found",
+                "defaulted",
+                "Configuration file not found; using defaults",
+            )
             return copy.deepcopy(DEFAULT_CONFIG)
 
         if not isinstance(user_config, dict):
-            logger.error(
-                f"Configuration file {config_file} must contain a JSON object, "
-                f"got {type(user_config).__name__}. Using defaults."
+            _log_config_event(
+                logging.ERROR,
+                "config_load",
+                "configuration_invalid_root",
+                "defaulted",
+                "Configuration root must be a JSON object; using defaults",
+                error_type=type(user_config).__name__,
             )
             return copy.deepcopy(DEFAULT_CONFIG)
 
         if not validate_config(user_config):
-            logger.warning(
-                f"Configuration file {config_file} missing required keys, merging with defaults."
+            _log_config_event(
+                logging.WARNING,
+                "config_load",
+                "configuration_missing_required_keys",
+                "degraded",
+                "Configuration is missing required sections; merging defaults",
+                missing_keys=[
+                    key
+                    for key in ("decompiler", "output", "analysis")
+                    if key not in user_config
+                ],
             )
 
         # Reject configs where dict keys are overridden with non-dict values
         for key in ("decompiler", "output", "analysis"):
             if key in user_config and not isinstance(user_config[key], dict):
-                logger.error(
-                    f"Configuration key '{key}' must be a dict, got {type(user_config[key]).__name__}. Using defaults."
+                _log_config_event(
+                    logging.ERROR,
+                    "config_load",
+                    "configuration_invalid_section",
+                    "defaulted",
+                    "Configuration section must be an object; using defaults",
+                    error_type=type(user_config[key]).__name__,
+                    config_section=key,
                 )
                 return copy.deepcopy(DEFAULT_CONFIG)
 
@@ -191,15 +267,26 @@ def load_config(config_file: str = "config.json") -> dict[str, Any]:
 
         validation_result = validate_full_config(merged)
         if isinstance(validation_result, _Err):
-            logger.warning(
-                f"Configuration validation: {validation_result.error}. Using defaults."
+            _log_config_event(
+                logging.WARNING,
+                "config_load",
+                "configuration_validation_failed",
+                "defaulted",
+                "Configuration validation failed; using defaults",
+                error_category="configuration",
             )
             return copy.deepcopy(DEFAULT_CONFIG)
 
-        logger.info(f"Configuration loaded from {config_file}")
+        _log_config_event(
+            logging.INFO,
+            "config_load",
+            "configuration_loaded",
+            "success",
+            "Configuration loaded",
+        )
         return merged
     except (json.JSONDecodeError, OSError, KeyError, TypeError, ValueError) as exc:
-        _log_config_exception("config_load", config_file, exc)
+        _log_config_exception("config_load", exc)
         return copy.deepcopy(DEFAULT_CONFIG)
 
 

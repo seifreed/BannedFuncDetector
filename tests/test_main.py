@@ -737,6 +737,35 @@ def test_formatters_sanitize_exception_records_before_filtering():
     assert "formatter-private" not in text
 
 
+def test_json_formatter_preserves_safe_configuration_event_fields():
+    import json
+
+    from bannedfuncdetector.infrastructure.logging_config import _JsonLogFormatter
+
+    record = logging.LogRecord(
+        "test.config",
+        logging.WARNING,
+        __file__,
+        1,
+        "Configuration is missing required sections",
+        (),
+        None,
+    )
+    record.event_name = "configuration_missing_required_keys"
+    record.operation = "config_load"
+    record.outcome = "degraded"
+    record.missing_keys = ["output", "analysis"]
+    record.config_section = "analysis"
+
+    event = json.loads(_JsonLogFormatter().format(record))
+
+    assert event["event_name"] == "configuration_missing_required_keys"
+    assert event["operation"] == "config_load"
+    assert event["outcome"] == "degraded"
+    assert event["missing_keys"] == ["output", "analysis"]
+    assert event["config_section"] == "analysis"
+
+
 def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):
     import json
 

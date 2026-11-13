@@ -205,6 +205,8 @@ class _JsonLogFormatter(logging.Formatter):
             "error_column",
             "error_category",
             "error_phase",
+            "config_section",
+            "missing_keys",
             "dropped_count",
             "detection_method",
             "file_name",
