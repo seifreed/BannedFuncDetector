@@ -390,7 +390,8 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         root.handlers.clear()
         configure_logging()
         logging.getLogger("test.logging").warning(
-            "request access_token=abc123 client_secret=private\nINJECTED"
+            "request access_token=abc123 client_secret=private "
+            "Cookie: session=secret-value\nINJECTED"
         )
         event = json.loads(capsys.readouterr().err)
         assert event["level"] == "WARNING"
@@ -398,6 +399,7 @@ def test_configure_logging_json_redacts_secrets_and_control_characters(
         assert event["component"] == "test.logging"
         assert "abc123" not in event["message"]
         assert "private" not in event["message"]
+        assert "secret-value" not in event["message"]
         assert "\\x0a" in event["message"]
     finally:
         root.handlers[:] = saved_handlers
