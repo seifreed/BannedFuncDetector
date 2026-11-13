@@ -37,10 +37,10 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 | Architecture and decoupling | 5 | 9 | Standard `logging`, serialized configuration, and parent queue listener; no pluggable backend protocol. |
 | Functional coverage | 6 | 8 | Binary/directory outcomes include duration; some lower-level events still lack operation fields. |
 | Event quality | 3 | 8 | Exceptions and outcomes carry useful context and error type; legacy messages remain unstructured. |
-| Structure and consistency | 1 | 8 | JSON UTC schema and allowlisted event fields; most legacy message data remains in `message`. |
+| Structure and consistency | 1 | 9 | JSON UTC schema and normalized text fields; most legacy event-specific data still remains in `message`. |
 | Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
 | Security and privacy | 2 | 9 | Credential/cookie/URL pattern redaction and Unicode line-separator escaping apply to configured handlers; arbitrary sensitive values remain undetectable. |
-| Performance and resilience | 4 | 9 | Bounded worker queue and draining shutdown; saturation drops records safely and parent output is synchronous. |
+| Performance and resilience | 4 | 8 | Bounded worker queue, draining shutdown, size caps, and rotation; custom multi-process file output is not serialized. |
 | Configuration and portability | 2 | 9 | Environment selects level, format, environment, and stream/file destination; existing host handlers remain respected. |
 | Error handling | 4 | 9 | Duplicate directory errors are suppressed; handled directory exceptions retain type and stack trace, while legacy paths still vary. |
 | Testing and verification | 3 | 9 | 100% line coverage plus real process and sink-failure tests; cross-platform CI results remain unverified. |
@@ -53,4 +53,4 @@ This is an interim implementation, not a 10/10 claim. Remaining work includes re
 
 ## Verification evidence
 
-The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `7bb704c`, the full suite passed with 100% line coverage; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON and text fields, secret redaction, ASCII and Unicode injection, bounded events, unsafe message/exception formatters, request IDs for built-in and injected process/thread executors, duplicate-error suppression, operation completion, concurrent configuration, saturated queues, failed destinations, and file rotation. GitHub Actions has not completed for the latest pushes; its 3.13–3.15 Ubuntu/macOS/Windows matrix is still queued, so cross-platform validation remains outstanding.
+The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `7bb704c`, the full suite passed with 100% line coverage on macOS under Python 3.13, 3.14, and 3.15; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON and text fields, secret redaction, ASCII and Unicode injection, bounded events, unsafe message/exception formatters, request IDs for built-in and injected process/thread executors, duplicate-error suppression, operation completion, concurrent configuration, saturated queues, failed destinations, and file rotation. GitHub Actions has not completed for the latest pushes; its Ubuntu/macOS/Windows matrix is still queued, so Linux and Windows validation remains outstanding.
