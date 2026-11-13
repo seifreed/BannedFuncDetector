@@ -322,11 +322,25 @@ def validate_binary_file(file_path: str) -> bool:
         bool: True if valid, False otherwise.
     """
     if not os.path.exists(file_path):
-        logger.error(f"File {file_path} does not exist.")
+        logger.error(
+            "Binary input does not exist",
+            extra={
+                "operation": "binary_validation",
+                "event_name": "binary_validation_failed",
+                "outcome": "error",
+            },
+        )
         return False
 
     if not is_executable_file(file_path, "any"):
-        logger.error(f"File {file_path} is not a valid binary.")
+        logger.error(
+            "Input is not a valid binary",
+            extra={
+                "operation": "binary_validation",
+                "event_name": "binary_validation_failed",
+                "outcome": "error",
+            },
+        )
         return False
 
     return True

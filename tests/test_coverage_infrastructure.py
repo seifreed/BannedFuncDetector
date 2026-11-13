@@ -1767,15 +1767,20 @@ def test_check_file_type_detection_warns_when_absent(caplog):
         fd_mod.magic = original
 
 
-def test_validate_binary_file_nonexistent_returns_false():
+def test_validate_binary_file_nonexistent_returns_false(caplog):
     """
     Purpose: Cover lines 154-156 — file does not exist returns False.
     """
-    result = validate_binary_file("/does/not/exist/binary.exe")
+    input_path = "/does/not/exist/binary.exe"
+    result = validate_binary_file(input_path)
     assert result is False
+    record = caplog.records[-1]
+    assert record.event_name == "binary_validation_failed"
+    assert record.operation == "binary_validation"
+    assert input_path not in record.getMessage()
 
 
-def test_validate_binary_file_text_file_returns_false(tmp_path):
+def test_validate_binary_file_text_file_returns_false(tmp_path, caplog):
     """
     Purpose: Cover lines 158-160 — file exists but is not a valid binary.
     """
@@ -1783,6 +1788,7 @@ def test_validate_binary_file_text_file_returns_false(tmp_path):
     txt.write_text("hello world")
     result = validate_binary_file(str(txt))
     assert result is False
+    assert all(str(txt) not in record.getMessage() for record in caplog.records)
 
 
 @pytest.mark.skipif(
