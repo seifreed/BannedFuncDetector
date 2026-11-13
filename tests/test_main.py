@@ -673,6 +673,40 @@ def test_failed_stream_destination_does_not_raise(monkeypatch):
     handler.handle(record)
 
 
+def test_concurrent_logging_configuration_is_idempotent(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from bannedfuncdetector.cli_bootstrap import (
+        _RequestContextFilter,
+        _SanitizingFilter,
+        configure_logging,
+    )
+
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            list(executor.map(configure_logging, [False] * 64))
+
+        assert len(root.handlers) == 1
+        assert sum(
+            isinstance(item, _RequestContextFilter)
+            for item in root.handlers[0].filters
+        ) == 1
+        assert sum(
+            isinstance(item, _SanitizingFilter)
+            for item in root.handlers[0].filters
+        ) == 1
+    finally:
+        for handler in root.handlers:
+            if handler not in saved_handlers:
+                handler.close()
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""

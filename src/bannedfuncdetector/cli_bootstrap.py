@@ -10,6 +10,7 @@ import re
 import sys
 import contextvars
 import copy
+import threading
 import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -21,6 +22,7 @@ from typing import Any
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "bannedfuncdetector_request_id", default=None
 )
+_logging_configuration_lock = threading.Lock()
 
 
 def ensure_request_id() -> str:
@@ -171,22 +173,23 @@ def configure_logging(verbose: bool = False) -> None:
     log_format = os.getenv("BFD_LOG_FORMAT", "text").lower()
     formatter = _JsonLogFormatter() if log_format == "json" else _TextLogFormatter()
     root_logger = logging.getLogger()
-    root_logger.setLevel(level)
-    if not root_logger.handlers:
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
-        root_logger.addHandler(handler)
-    for configured_handler in root_logger.handlers:
-        if not any(
-            isinstance(item, _RequestContextFilter)
-            for item in configured_handler.filters
-        ):
-            configured_handler.addFilter(_RequestContextFilter())
-        if not any(
-            isinstance(item, _SanitizingFilter)
-            for item in configured_handler.filters
-        ):
-            configured_handler.addFilter(_SanitizingFilter())
+    with _logging_configuration_lock:
+        root_logger.setLevel(level)
+        if not root_logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            root_logger.addHandler(handler)
+        for configured_handler in root_logger.handlers:
+            if not any(
+                isinstance(item, _RequestContextFilter)
+                for item in configured_handler.filters
+            ):
+                configured_handler.addFilter(_RequestContextFilter())
+            if not any(
+                isinstance(item, _SanitizingFilter)
+                for item in configured_handler.filters
+            ):
+                configured_handler.addFilter(_SanitizingFilter())
 
 
 def configure_worker_logging(verbose: bool, log_queue: Any) -> None:
