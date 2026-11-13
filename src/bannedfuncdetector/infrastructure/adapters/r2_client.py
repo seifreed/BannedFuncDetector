@@ -17,6 +17,7 @@ import r2pipe
 
 from bannedfuncdetector.analyzer_exceptions import TransientR2Error
 from bannedfuncdetector.domain.protocols import IR2Client
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 _TRANSIENT_ERRNOS = {errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT, errno.EINTR}
@@ -119,11 +120,25 @@ class R2Client(IR2Client):
             logger.debug(f"Opened r2pipe connection to {file_path} with flags {flags}")
         except (OSError, IOError) as e:
             # File not found or cannot be opened
-            logger.error(f"Failed to open file for r2pipe {file_path}: {e}")
+            logger.error(
+                "Could not open R2 connection",
+                extra={
+                    "event_name": "r2_connection_open_failed",
+                    "outcome": "error",
+                    **safe_exception_fields(e),
+                },
+            )
             raise
         except (RuntimeError, ValueError) as e:
             # r2pipe connection or initialization failure
-            logger.error(f"Failed to initialize r2pipe for {file_path}: {e}")
+            logger.error(
+                "Could not initialize R2 connection",
+                extra={
+                    "event_name": "r2_connection_initialize_failed",
+                    "outcome": "error",
+                    **safe_exception_fields(e),
+                },
+            )
             if _is_transient_r2_exception(e):
                 raise TransientR2Error(str(e)) from e
             raise
@@ -233,7 +248,14 @@ class R2Client(IR2Client):
                 # RuntimeError: r2pipe internal errors during shutdown
                 # OSError/IOError: System-level errors during cleanup
                 # AttributeError: r2pipe in invalid state
-                logger.warning(f"Error closing r2pipe connection: {e}")
+                logger.warning(
+                    "R2 connection cleanup failed",
+                    extra={
+                        "event_name": "r2_connection_cleanup_failed",
+                        "outcome": "degraded",
+                        **safe_exception_fields(e),
+                    },
+                )
             finally:
                 self._r2 = None
                 self._is_closed = True

@@ -11,6 +11,7 @@ from bannedfuncdetector.constants import (
     MIN_VALID_CODE_LENGTH,
 )
 from bannedfuncdetector.domain.protocols import IR2Client
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,12 @@ def try_decompile_with_command(
         return None
     except (RuntimeError, ValueError, OSError, IOError, AttributeError) as exc:
         logger.debug(
-            "Decompilation command %r failed for %s: %s", command, function_name, exc
+            "Decompilation command failed",
+            extra={
+                "event_name": "decompilation_command_failed",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
         )
         return None
 
@@ -150,11 +156,23 @@ def get_function_info(r2: IR2Client, function_name: str) -> dict[str, Any] | Non
         return _normalize_function_info(function_info)
     except (RuntimeError, ValueError) as exc:
         logger.debug(
-            "Could not get function information for %s: %s", function_name, exc
+            "Could not get function information",
+            extra={
+                "event_name": "function_information_unavailable",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
         )
         return None
     except (AttributeError, TypeError) as exc:
-        logger.debug("Invalid function information for %s: %s", function_name, exc)
+        logger.debug(
+            "Function information was invalid",
+            extra={
+                "event_name": "function_information_invalid",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
+        )
         return None
 
 

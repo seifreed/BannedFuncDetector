@@ -1162,10 +1162,13 @@ def test_try_decompile_with_command_logs_on_exception(caplog):
             r2, "pdc", "main", clean_error_messages=False
         )
     assert result is None
-    assert any(
-        "Decompilation command" in r.message and "failed" in r.message
+    event = next(
+        r
         for r in caplog.records
+        if getattr(r, "event_name", None) == "decompilation_command_failed"
     )
+    assert event.error_type == "RuntimeError"
+    assert "r2 exploded" not in event.message
 
 
 # ===========================================================================

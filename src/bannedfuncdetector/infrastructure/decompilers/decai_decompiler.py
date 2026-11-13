@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from bannedfuncdetector.domain.protocols import IR2Client
+from bannedfuncdetector.infrastructure.logging_config import safe_exception_fields
 from bannedfuncdetector.infrastructure.decompilers.base_decompiler import (
     BaseR2Decompiler,
     DECAI_PREFERRED_MODELS,
@@ -82,7 +83,14 @@ def apply_decai_backend_config(r2: IR2Client, decai_config: dict[str, Any]) -> N
             base_url = f"{host}:{port}" if port else host
             r2.cmd(f"decai -e baseurl={base_url}")
     except (RuntimeError, ValueError, OSError, AttributeError) as exc:
-        logger.debug("Could not apply decai backend config: %s", exc)
+        logger.debug(
+            "Could not apply DecAI backend configuration",
+            extra={
+                "event_name": "decai_configuration_failed",
+                "outcome": "degraded",
+                **safe_exception_fields(exc),
+            },
+        )
 
 
 def _configure_decai_model(r2: IR2Client) -> None:
@@ -159,10 +167,16 @@ def _configure_decai_model(r2: IR2Client) -> None:
             logger.debug("Using default decai configuration.")
 
     except (RuntimeError, ValueError) as e:
-        logger.debug(f"Error configuring decai model: {e}")
+        logger.debug(
+            "Could not configure DecAI model",
+            extra={"event_name": "decai_model_configuration_failed", **safe_exception_fields(e)},
+        )
         logger.debug("Using default decai configuration.")
     except (AttributeError, IndexError) as e:
-        logger.debug(f"Error parsing decai configuration: {e}")
+        logger.debug(
+            "DecAI model configuration was invalid",
+            extra={"event_name": "decai_model_configuration_invalid", **safe_exception_fields(e)},
+        )
         logger.debug("Using default decai configuration.")
 
 
@@ -306,9 +320,15 @@ def decompile_with_decai(r2: IR2Client, function_name: str) -> str:
         if result:
             return result
     except (RuntimeError, ValueError) as e:
-        logger.debug("Error during decai decompilation: %s", e)
+        logger.debug(
+            "DecAI decompilation command failed",
+            extra={"event_name": "decai_decompilation_failed", **safe_exception_fields(e)},
+        )
     except (DecompilationError, FunctionNotFoundError) as e:
-        logger.debug("Decompilation error with decai: %s", e)
+        logger.debug(
+            "DecAI could not decompile the function",
+            extra={"event_name": "decai_function_unavailable", **safe_exception_fields(e)},
+        )
 
     return _fallback_to_r2ghidra(r2)
 
@@ -361,20 +381,25 @@ class DecAIDecompiler(BaseR2Decompiler):
         try:
             return decompile_with_decai(r2, function_name)
         except (DecompilationError, FunctionNotFoundError) as e:
-            logger.debug("DecAI decompilation failed for %s: %s", function_name, e)
+            logger.debug(
+                "DecAI decompilation failed",
+                extra={"event_name": "decai_decompilation_failed", **safe_exception_fields(e)},
+            )
             return ""
         except (RuntimeError, ValueError) as e:
             # RuntimeError: r2 command execution failure
             # ValueError: Invalid decompilation result
             logger.debug(
-                "Runtime error in DecAI decompilation for %s: %s", function_name, e
+                "DecAI decompilation failed at runtime",
+                extra={"event_name": "decai_decompilation_runtime_error", **safe_exception_fields(e)},
             )
             return ""
         except (AttributeError, TypeError) as e:
             # AttributeError: r2 instance issues
             # TypeError: Unexpected data types
             logger.debug(
-                "Data error in DecAI decompilation for %s: %s", function_name, e
+                "DecAI decompilation received invalid data",
+                extra={"event_name": "decai_decompilation_invalid_data", **safe_exception_fields(e)},
             )
             return ""
 
