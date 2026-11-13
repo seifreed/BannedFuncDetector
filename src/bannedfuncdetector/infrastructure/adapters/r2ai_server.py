@@ -54,7 +54,14 @@ def _wait_for_server(server_url: str, attempts: int = 10, timeout: int = 1) -> b
     for attempt in range(attempts):
         try:
             if _ping_server(server_url, timeout):
-                logger.info("r2ai-server is available")
+                logger.info(
+                    "r2ai-server is available",
+                    extra={
+                        "operation": "optional_service_readiness",
+                        "event_name": "optional_service_ready",
+                        "outcome": "success",
+                    },
+                )
                 return True
         except (requests.RequestException, OSError):
             # Network/connection error or non-ready server — retry after backoff.
@@ -117,8 +124,23 @@ def _get_models_from_cli() -> list[str]:
 
 def _log_model_list(models: list[str], header: str) -> None:
     """Log the model count without logging untrusted model names."""
-    logger.info(header)
-    logger.info("Available model count: %d", len(models))
+    logger.info(
+        header,
+        extra={
+            "operation": "model_list",
+            "event_name": "model_list_header",
+            "outcome": "success",
+        },
+    )
+    logger.info(
+        "Available model count: %d",
+        len(models),
+        extra={
+            "operation": "model_list",
+            "event_name": "model_list_count",
+            "outcome": "success",
+        },
+    )
 
 
 def _resolve_command(args: list[str]) -> list[str]:
@@ -258,7 +280,9 @@ def _log_model_fetch_failure(
     error_type: str, error_code: int | None, duration_ms: float
 ) -> None:
     extra: dict[str, Any] = {
+        "operation": "model_list_fetch",
         "event_name": "optional_service_models_failed",
+        "outcome": "error",
         "error_type": error_type,
         "duration_ms": duration_ms,
     }
@@ -322,12 +346,26 @@ def _handle_r2ai_server_not_running(
     try:
         result = _run_r2ai_server_command(["r2ai-server", "-h"])
         if result.returncode != 0:
-            logger.warning("r2ai-server is not installed")
+            logger.warning(
+                "r2ai-server is not installed",
+                extra={
+                    "operation": "optional_service_discovery",
+                    "event_name": "optional_service_not_installed",
+                    "outcome": "unavailable",
+                },
+            )
             if not auto_start:
                 return _prompt_install_r2ai_server(server_url, prompt_callback)
             return False
 
-        logger.info("r2ai-server is installed but not running")
+        logger.info(
+            "r2ai-server is installed but not running",
+            extra={
+                "operation": "optional_service_discovery",
+                "event_name": "optional_service_installed_idle",
+                "outcome": "not_running",
+            },
+        )
         if auto_start:
             return _start_r2ai_server(server_url, prompt_callback)
         return _prompt_start_r2ai_server(server_url, prompt_callback)
@@ -338,7 +376,9 @@ def _handle_r2ai_server_not_running(
         logger.error(
             "Error verifying r2ai-server installation",
             extra={
+                "operation": "optional_service_verification",
                 "event_name": "external_service_verification_failed",
+                "outcome": "error",
                 "error_type": type(e).__name__,
             },
         )
@@ -348,7 +388,9 @@ def _handle_r2ai_server_not_running(
         logger.error(
             "Data error verifying r2ai-server installation",
             extra={
+                "operation": "optional_service_verification",
                 "event_name": "external_service_verification_invalid",
+                "outcome": "error",
                 "error_type": type(e).__name__,
             },
         )
@@ -373,7 +415,14 @@ def _prompt_start_r2ai_server(
     if _is_affirmative(start_server):
         return _start_r2ai_server(server_url, prompt_callback)
 
-    logger.info("r2ai-server startup canceled")
+    logger.info(
+        "r2ai-server startup canceled",
+        extra={
+            "operation": "optional_service_startup",
+            "event_name": "optional_service_startup_canceled",
+            "outcome": "canceled",
+        },
+    )
     return False
 
 
@@ -394,16 +443,38 @@ def _launch_server_process(
     resolved_cmd = _resolve_command(cmd)
     _validate_executable(resolved_cmd)
     popen(resolved_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    logger.info("r2ai-server started in the background")
+    logger.info(
+        "r2ai-server started in the background",
+        extra={
+            "operation": "optional_service_startup",
+            "event_name": "optional_service_started",
+            "outcome": "success",
+        },
+    )
     return True
 
 
 def _await_server_ready(server_url: str) -> bool:
     """Wait for the server to become available."""
-    logger.info("Waiting for the server to be available...")
+    logger.info(
+        "Waiting for the server to be available",
+        extra={
+            "operation": "optional_service_startup",
+            "event_name": "optional_service_readiness_wait",
+            "outcome": "waiting",
+        },
+    )
     if _wait_for_server(server_url, attempts=10, timeout=1):
         return True
-    logger.error("Timeout. r2ai-server is not responding")
+    logger.error(
+        "r2ai-server readiness timed out",
+        extra={
+            "operation": "optional_service_startup",
+            "event_name": "optional_service_readiness_failed",
+            "outcome": "timeout",
+            "error_type": "TimeoutError",
+        },
+    )
     return False
 
 
@@ -419,11 +490,25 @@ def _start_r2ai_server(
     Returns:
         True if server was successfully started, False otherwise.
     """
-    logger.info("Starting r2ai-server...")
+    logger.info(
+        "Starting r2ai-server",
+        extra={
+            "operation": "optional_service_startup",
+            "event_name": "optional_service_starting",
+            "outcome": "in_progress",
+        },
+    )
 
     models_lines = _get_models_from_cli()
     if not models_lines:
-        logger.error("Could not get available models")
+        logger.error(
+            "Could not get available models",
+            extra={
+                "operation": "model_list",
+                "event_name": "model_list_unavailable",
+                "outcome": "error",
+            },
+        )
         return False
 
     _log_model_list(models_lines, "Models available for r2ai-server:")
@@ -448,7 +533,9 @@ def _start_r2ai_server(
         logger.error(
             "Error starting r2ai-server",
             extra={
+                        "operation": "optional_service_startup",
                 "event_name": "external_service_start_failed",
+                        "outcome": "error",
                 "error_type": type(e).__name__,
             },
         )
@@ -475,13 +562,27 @@ def _prompt_install_r2ai_server(
     prompt_fn = prompt_callback or input
     install_server = prompt_fn("Do you want to install r2ai-server? (y/n): ")
     if _is_affirmative(install_server):
-        logger.info("Installing r2ai-server...")
+        logger.info(
+            "Installing r2ai-server",
+            extra={
+                "operation": "optional_service_installation",
+                "event_name": "optional_service_installing",
+                "outcome": "started",
+            },
+        )
         try:
             install_cmd = _resolve_command(["r2pm", "install", "r2ai-server"])
             _validate_executable(install_cmd)
             runner = run or subprocess.run
             runner(install_cmd, check=True)
-            logger.info("r2ai-server installed successfully")
+            logger.info(
+                "r2ai-server installed successfully",
+                extra={
+                    "operation": "optional_service_installation",
+                    "event_name": "optional_service_installed",
+                    "outcome": "success",
+                },
+            )
             return check_r2ai_server_available(
                 server_url, prompt_callback=prompt_callback
             )
@@ -496,11 +597,20 @@ def _prompt_install_r2ai_server(
             logger.error(
                 "Error installing r2ai-server",
                 extra={
+                    "operation": "optional_service_installation",
                     "event_name": "external_service_install_failed",
+                    "outcome": "error",
                     "error_type": type(e).__name__,
                 },
             )
             return False
 
-    logger.info("r2ai-server installation canceled")
+    logger.info(
+        "r2ai-server installation canceled",
+        extra={
+            "operation": "optional_service_installation",
+            "event_name": "optional_service_installation_canceled",
+            "outcome": "canceled",
+        },
+    )
     return False

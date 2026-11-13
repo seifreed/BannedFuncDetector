@@ -88,6 +88,33 @@ def test_r2ai_logs_omit_remote_url_and_model_data(monkeypatch, caplog):
     assert model_fetch.outcome == "success"
     assert model_fetch.duration_ms >= 0
     assert any("Models available in r2ai-server: 1" == record.getMessage() for record in records)
+    model_count = next(
+        record for record in records if record.event_name == "model_list_count"
+    )
+    assert model_count.operation == "model_list"
+    assert model_count.outcome == "success"
+
+
+def test_r2ai_startup_cancel_logs_structured_outcome(caplog):
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    caplog.set_level(logging.INFO, logger=r2ai_server.__name__)
+
+    assert (
+        r2ai_server._prompt_start_r2ai_server(
+            "http://localhost:8080", prompt_callback=lambda _prompt: "n"
+        )
+        is False
+    )
+
+    event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None)
+        == "optional_service_startup_canceled"
+    )
+    assert event.operation == "optional_service_startup"
+    assert event.outcome == "canceled"
 
 
 def test_r2ai_start_failure_logs_type_without_exception_text(monkeypatch, caplog):
@@ -108,6 +135,8 @@ def test_r2ai_start_failure_logs_type_without_exception_text(monkeypatch, caplog
     assert "private-value" not in caplog.text
     event = next(record for record in caplog.records if record.name == r2ai_server.__name__)
     assert event.event_name == "external_service_start_failed"
+    assert event.operation == "optional_service_startup"
+    assert event.outcome == "error"
     assert event.error_type == "RuntimeError"
 
 

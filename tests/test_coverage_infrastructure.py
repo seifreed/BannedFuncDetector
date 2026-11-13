@@ -353,7 +353,7 @@ def test_handle_r2ai_server_not_running_not_installed_prompt_no(tmp_path):
         os.environ["PATH"] = original_path
 
 
-def test_prompt_install_r2ai_server_user_says_no():
+def test_prompt_install_r2ai_server_user_says_no(caplog):
     """
     Purpose: Cover lines 333-338 — user declines install; function returns False.
     """
@@ -361,11 +361,20 @@ def test_prompt_install_r2ai_server_user_says_no():
     def _no(_prompt: str) -> str:
         return "n"
 
+    caplog.set_level("INFO", logger=r2ai_mod.__name__)
     result = r2ai_mod._prompt_install_r2ai_server(
         "http://127.0.0.1:19995",
         prompt_callback=_no,
     )
     assert result is False
+    event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None)
+        == "optional_service_installation_canceled"
+    )
+    assert event.operation == "optional_service_installation"
+    assert event.outcome == "canceled"
 
 
 def test_prompt_install_r2ai_server_install_succeeds(tmp_path):

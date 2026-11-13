@@ -27,6 +27,7 @@ Covers the remaining uncovered lines across:
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import threading
@@ -1771,7 +1772,9 @@ class TestR2AiServer:
         sys.platform == "win32",
         reason="Shells scripts not portable to Windows",
     )
-    def test_start_r2ai_server_no_models_returns_false(self, shim_path, path_with_shim):
+    def test_start_r2ai_server_no_models_returns_false(
+        self, shim_path, path_with_shim, caplog
+    ):
         """
         Purpose: r2ai_server._start_r2ai_server lines 333-338 — when
         _get_models_from_cli returns empty list the function returns False.
@@ -1797,11 +1800,22 @@ class TestR2AiServer:
         os.chmod(shim, 0o755)
 
         with path_with_shim(shim):
+            caplog.set_level(
+                logging.ERROR,
+                logger="bannedfuncdetector.infrastructure.adapters.r2ai_server",
+            )
             result = _start_r2ai_server(
                 "http://localhost:8080",
                 prompt_callback=lambda _: "model-1",
             )
             assert result is False
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "model_list_unavailable"
+        )
+        assert event.operation == "model_list"
+        assert event.outcome == "error"
 
     def test_prompt_install_r2ai_server_decline_returns_false(self):
         """
