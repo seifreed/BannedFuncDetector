@@ -465,12 +465,21 @@ def test_run_detection_with_cleanup_surfaces_cleanup_failure(compiled_binary, ca
     assert completion.outcome == "success"
 
 
-def test_analyze_directory_missing(tmp_path):
+def test_analyze_directory_missing(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger=directory_scanner.__name__)
     result = analyzers.analyze_directory(
         str(tmp_path / "missing"), request=make_directory_request()
     )
     assert result.is_err()
     assert "does not exist" in str(result.error).lower()
+    completion = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None) == "analysis_finished"
+    )
+    assert completion.operation == "directory_analysis"
+    assert completion.duration_ms >= 0
+    assert completion.outcome == "error"
 
 
 def test_analyze_directory_no_pe(tmp_path):
