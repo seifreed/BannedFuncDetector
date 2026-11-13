@@ -46,6 +46,7 @@ from bannedfuncdetector.application.binary_analyzer.function_discovery_service i
 )
 from bannedfuncdetector.application.contracts.analysis import FunctionAnalysisRequest
 from bannedfuncdetector.application.function_detection_support import (
+    log_function_result,
     log_parallel_future_error,
 )
 from bannedfuncdetector.application.result_serializers import (
@@ -879,6 +880,30 @@ class TestLogParallelFutureErrorCancelledError:
         )
         log_parallel_future_error(exc, verbose=False)
         assert caplog.records[-1].error_category == "I/O error"
+
+
+def test_consolidated_function_detection_log_is_structured_once(caplog):
+    from bannedfuncdetector.application.binary_analyzer.detection import (
+        _check_function_name_banned,
+    )
+
+    caplog.set_level(
+        "INFO", logger="bannedfuncdetector.application.function_detection_support"
+    )
+    detection_result = _check_function_name_banned(
+        "strcpy", 0x401000, {"strcpy"}, verbose=True
+    )
+    detection = detection_result.value
+
+    assert not caplog.records
+    log_function_result(detection, verbose=True)
+
+    assert len(caplog.records) == 1
+    event = caplog.records[0]
+    assert event.event_name == "banned_function_detected"
+    assert event.outcome == "success"
+    assert event.function_name == "strcpy"
+    assert event.address == 0x401000
 
 
 # ---------------------------------------------------------------------------

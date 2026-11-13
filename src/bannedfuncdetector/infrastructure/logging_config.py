@@ -144,6 +144,9 @@ class _JsonLogFormatter(logging.Formatter):
             "error_category",
             "error_phase",
             "dropped_count",
+            "detection_method",
+            "function_name",
+            "address",
         ):
             value = getattr(record, field, None)
             if value is not None:

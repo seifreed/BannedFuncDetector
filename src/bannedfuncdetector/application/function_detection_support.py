@@ -18,7 +18,16 @@ logger = logging.getLogger(__name__)
 def log_function_result(detection: BannedFunction, verbose: bool) -> None:
     if verbose:
         logger.info(
-            f"Insecure function found: {detection.name} at {hex(detection.address)}"
+            "Insecure function detected: %s at %s",
+            detection.name,
+            hex(detection.address),
+            extra={
+                "event_name": "banned_function_detected",
+                "outcome": "success",
+                "detection_method": detection.detection_method,
+                "function_name": detection.name,
+                "address": detection.address,
+            },
         )
 
 

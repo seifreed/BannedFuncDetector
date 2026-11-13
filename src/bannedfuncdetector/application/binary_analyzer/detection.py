@@ -1,6 +1,5 @@
 """Detection helpers for banned-function analysis."""
 
-import logging
 from typing import Any
 
 from bannedfuncdetector.domain import BannedFunction, FunctionDescriptor
@@ -12,9 +11,6 @@ from bannedfuncdetector.domain.types import (
     find_banned_calls_in_text,
     find_banned_names_in_text,
 )
-
-logger = logging.getLogger(__name__)
-
 
 def _find_banned_in_name(text: str, banned_functions: set[str]) -> list[str]:
     """Return banned functions matching ``text`` by bare name (word-boundary)."""
@@ -45,8 +41,6 @@ def _check_function_name_banned(
     detected_banned = _find_banned_in_name(func_name, banned_functions)
 
     if detected_banned:
-        if verbose:
-            logger.info(f"Insecure function detected by name: {func_name}")
         return ok(
             _create_detection_result(func_name, func_addr, detected_banned, "name")
         )
@@ -124,8 +118,6 @@ def _find_banned_calls_via_xref(
     detected_banned = _find_banned_in_code(synthetic_calls, banned_functions)
 
     if detected_banned:
-        if verbose:
-            logger.info(f"Insecure function detected via xrefs: {func_name}")
         return ok(
             _create_detection_result(func_name, func_addr, detected_banned, "xref")
         )
