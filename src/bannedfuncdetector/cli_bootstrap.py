@@ -109,7 +109,8 @@ def configure_logging(verbose: bool = False) -> None:
     configured_level = os.getenv(
         "BFD_LOG_LEVEL", "DEBUG" if verbose else "INFO"
     ).upper()
-    level = getattr(logging, configured_level, logging.INFO)
+    configured_value = logging.getLevelName(configured_level)
+    level = configured_value if isinstance(configured_value, int) else logging.INFO
     log_format = os.getenv("BFD_LOG_FORMAT", "text").lower()
     formatter = _JsonLogFormatter() if log_format == "json" else _TextLogFormatter()
     root_logger = logging.getLogger()

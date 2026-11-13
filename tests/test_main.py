@@ -419,6 +419,22 @@ def test_configure_logging_level_environment_overrides_verbose(monkeypatch):
         root.setLevel(saved_level)
 
 
+def test_invalid_logging_level_falls_back_to_info(monkeypatch):
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_LEVEL", "ROOT")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        assert root.level == logging.INFO
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_json_logging_includes_context_request_id(monkeypatch, capsys):
     import json
 
