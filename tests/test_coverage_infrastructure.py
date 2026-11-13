@@ -1756,7 +1756,13 @@ def test_check_file_type_detection_logs_available(caplog):
         fd_mod.magic = _OkMagic()
         with caplog.at_level("INFO"):
             _check_file_type_detection()
-        assert any("libmagic) is available" in r.message for r in caplog.records)
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "file_type_backend_available"
+        )
+        assert event.operation == "file_type_detection"
+        assert event.outcome == "success"
     finally:
         fd_mod.magic = original
 
@@ -1771,7 +1777,13 @@ def test_check_file_type_detection_warns_when_absent(caplog):
         fd_mod.magic = None  # simulate missing python-magic
         with caplog.at_level("WARNING"):
             _check_file_type_detection()
-        assert any("magic-byte sniffing" in r.message for r in caplog.records)
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "file_type_backend_fallback"
+        )
+        assert event.operation == "file_type_detection"
+        assert event.outcome == "degraded"
     finally:
         fd_mod.magic = original
 

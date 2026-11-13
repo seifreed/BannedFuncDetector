@@ -132,7 +132,15 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
     """
     name = str(req.get("name", "unknown"))
     try:
-        logger.info("Checking %s...", name)
+        logger.info(
+            "Checking %s...",
+            name,
+            extra={
+                "operation": "requirement_check",
+                "event_name": "requirement_check_started",
+                "outcome": "in_progress",
+            },
+        )
         command = req["command"]
         if not command or command[0] not in ALLOWED_REQUIREMENT_EXECUTABLES:
             logger.error(
@@ -164,7 +172,15 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
             )
             return False
 
-        logger.info("%s is installed correctly.", name)
+        logger.info(
+            "%s is installed correctly.",
+            name,
+            extra={
+                "operation": "requirement_check",
+                "event_name": "requirement_check_succeeded",
+                "outcome": "success",
+            },
+        )
         return True
     except (OSError, IOError, RuntimeError) as e:
         # OSError/IOError: File not found or system error
@@ -214,11 +230,25 @@ def _run_command(
 
 def _check_available_decompilers() -> None:
     """Check which decompilers are available on the system."""
-    logger.info("Checking available decompilers...")
+    logger.info(
+        "Checking available decompilers",
+        extra={
+            "operation": "decompiler_availability_check",
+            "event_name": "decompiler_availability_check_started",
+            "outcome": "in_progress",
+        },
+    )
 
     temp_binary = "/bin/ls"
     if not os.path.exists(temp_binary):
-        logger.warning(f"Could not find a binary to check decompilers: {temp_binary}")
+        logger.warning(
+            "No local binary available for decompiler checks",
+            extra={
+                "operation": "decompiler_availability_check",
+                "event_name": "decompiler_availability_check_skipped",
+                "outcome": "skipped",
+            },
+        )
         return
 
     try:
@@ -230,17 +260,37 @@ def _check_available_decompilers() -> None:
             ]
 
             for decompiler in available_decompilers:
-                logger.info(f"Decompiler {decompiler} is available.")
+                logger.info(
+                    "Decompiler %s is available",
+                    decompiler,
+                    extra={
+                        "operation": "decompiler_availability_check",
+                        "event_name": "decompiler_available",
+                        "outcome": "success",
+                    },
+                )
 
             for decompiler in [
                 d for d in DECOMPILER_TYPES if d not in available_decompilers
             ]:
-                logger.warning(f"Decompiler {decompiler} is not available.")
+                logger.warning(
+                    "Decompiler %s is not available",
+                    decompiler,
+                    extra={
+                        "operation": "decompiler_availability_check",
+                        "event_name": "decompiler_unavailable",
+                        "outcome": "unavailable",
+                    },
+                )
 
             if not available_decompilers:
-                logger.warning("Warning: No decompilers found.")
                 logger.warning(
-                    "Analysis will be limited to searching for banned functions by name."
+                    "No decompilers found; analysis will only search banned function names",
+                    extra={
+                        "operation": "decompiler_availability_check",
+                        "event_name": "no_decompilers_available",
+                        "outcome": "degraded",
+                    },
                 )
 
     except (RuntimeError, ValueError, OSError, IOError) as e:
@@ -250,6 +300,7 @@ def _check_available_decompilers() -> None:
         logger.error(
             "Decompiler availability check failed",
             extra={
+                "operation": "decompiler_availability_check",
                 "event_name": "decompiler_availability_failed",
                 "outcome": "error",
                 **safe_exception_fields(e),
@@ -261,6 +312,7 @@ def _check_available_decompilers() -> None:
         logger.error(
             "Decompiler availability data was invalid",
             extra={
+                "operation": "decompiler_availability_check",
                 "event_name": "decompiler_availability_invalid_data",
                 "outcome": "error",
                 **safe_exception_fields(e),
@@ -277,12 +329,22 @@ def _check_file_type_detection() -> None:
     from .file_detection import is_magic_available
 
     if is_magic_available():
-        logger.info("python-magic (libmagic) is available for file-type detection.")
+        logger.info(
+            "python-magic is available for file-type detection",
+            extra={
+                "operation": "file_type_detection",
+                "event_name": "file_type_backend_available",
+                "outcome": "success",
+            },
+        )
     else:
         logger.warning(
-            "python-magic/libmagic is not available; file-type detection falls "
-            "back to magic-byte sniffing, which is less reliable for packed or "
-            "obfuscated binaries."
+            "python-magic is unavailable; using magic-byte detection",
+            extra={
+                "operation": "file_type_detection",
+                "event_name": "file_type_backend_fallback",
+                "outcome": "degraded",
+            },
         )
 
 
@@ -304,7 +366,14 @@ def check_requirements(skip_requirements: bool = True) -> bool:
     try:
         _check_available_decompilers()
     except ImportError:
-        logger.warning("Could not import decompilers module to check decompilers.")
+        logger.warning(
+            "Decompiler availability checks could not be imported",
+            extra={
+                "operation": "decompiler_availability_check",
+                "event_name": "decompiler_availability_check_skipped",
+                "outcome": "degraded",
+            },
+        )
 
     _check_file_type_detection()
 

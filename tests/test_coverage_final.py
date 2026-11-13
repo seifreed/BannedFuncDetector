@@ -849,7 +849,7 @@ class TestValidators:
         # tests themselves cannot run. Just confirm no exception is raised.
         check_python_version()
 
-    def test_check_single_requirement_nonzero_returncode(self):
+    def test_check_single_requirement_nonzero_returncode(self, caplog):
         """
         Purpose: validators._check_single_requirement line 66 — when the
         subprocess returns non-zero the function returns False and logs.
@@ -867,8 +867,16 @@ class TestValidators:
             "command": ["python", "-c", "import sys; sys.exit(1)"],
             "expected": "never_matches",
         }
-        result = _check_single_requirement(req)
+        with caplog.at_level(logging.ERROR):
+            result = _check_single_requirement(req)
         assert result is False
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "requirement_check_failed"
+        )
+        assert event.operation == "requirement_check"
+        assert event.outcome == "error"
 
     def test_check_single_requirement_subprocess_error(self):
         """
@@ -2535,7 +2543,7 @@ class TestValidatorsAdditional:
         result = check_requirements(skip_requirements=False)
         assert isinstance(result, bool)
 
-    def test_check_requirements_import_error_path(self):
+    def test_check_requirements_import_error_path(self, caplog):
         """
         Purpose: validators.check_requirements lines 138-139 — when
         _check_available_decompilers raises ImportError, the warning is logged
@@ -2555,10 +2563,19 @@ class TestValidatorsAdditional:
 
         try:
             val_mod._check_available_decompilers = raising_check
-            result = val_mod.check_requirements(skip_requirements=False)
+            with caplog.at_level(logging.WARNING, logger=val_mod.__name__):
+                result = val_mod.check_requirements(skip_requirements=False)
             assert isinstance(result, bool)
         finally:
             val_mod._check_available_decompilers = original
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None)
+            == "decompiler_availability_check_skipped"
+        )
+        assert event.operation == "decompiler_availability_check"
+        assert event.outcome == "degraded"
 
     def test_check_available_decompilers_with_available_binary(self):
         """
@@ -3371,7 +3388,7 @@ class TestValidatorsNoDecompilersFound:
     _check_available_decompilers when no decompilers are found available.
     """
 
-    def test_check_available_decompilers_none_available_logs_warning(self):
+    def test_check_available_decompilers_none_available_logs_warning(self, caplog):
         """
         Purpose: validators._check_available_decompilers lines 107-108 —
         when R2Client opens successfully but check_decompiler_available
@@ -3413,10 +3430,18 @@ class TestValidatorsNoDecompilersFound:
             val_mod.R2Client = NoOpR2Client
             val_mod.check_decompiler_available = always_unavailable
             # Should log "No decompilers found" and return normally
-            val_mod._check_available_decompilers()
+            with caplog.at_level(logging.WARNING):
+                val_mod._check_available_decompilers()
         finally:
             val_mod.R2Client = original_r2client
             val_mod.check_decompiler_available = original_check
+        event = next(
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "no_decompilers_available"
+        )
+        assert event.operation == "decompiler_availability_check"
+        assert event.outcome == "degraded"
 
 
 class TestDecompilerAvailabilityRemainingBranches:
