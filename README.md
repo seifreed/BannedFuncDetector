@@ -218,6 +218,22 @@ if result.is_ok():
 
 ---
 
+## Logging and diagnostics
+
+The CLI uses Python's standard `logging` module and writes to stderr. Text output is the default. Set `BFD_LOG_FORMAT=json` for one JSON object per line with a UTC timestamp, level, service, component, message, and available operation fields. `BFD_LOG_LEVEL` accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`; `-v` selects `DEBUG` unless the environment variable overrides it.
+
+CLI runs receive a `request_id`; directory jobs pass the same ID to worker processes. Analysis completion events include `operation`, `event_name`, `duration_ms`, and `outcome`. Exception traces are included for logged analysis errors. No trace/span IDs are generated because the application does not use distributed tracing.
+
+The formatter redacts common credential fields (such as `password`, `access_token`, `api_key`, and `client_secret`) and escapes control characters. This is a defense in depth measure, not a substitute for minimizing sensitive data at the source: do not log credentials, request/file contents, or confidential data. Logs are not written to local files or sent to a service by the application; configure stderr collection and retention in the deployment environment.
+
+Example:
+
+```sh
+BFD_LOG_FORMAT=json BFD_LOG_LEVEL=INFO bannedfunc --file ./sample.bin
+```
+
+---
+
 ## Requirements
 
 - Python 3.13+ (tested on 3.13, 3.14 y 3.15)
