@@ -273,13 +273,23 @@ def _configured_handler(
         handler = logging.StreamHandler(sys.stderr)
     elif destination.startswith("file:") and destination[5:]:
         try:
-            with open(destination[5:], "a", encoding="utf-8"):
-                pass
+            file_path = destination[5:]
+            file_descriptor = os.open(
+                file_path,
+                os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+                0o600 if os.name == "posix" else 0o666,
+            )
+            try:
+                if os.name == "posix":
+                    os.fchmod(file_descriptor, 0o600)
+            finally:
+                os.close(file_descriptor)
             handler = ConcurrentRotatingFileHandler(
-                destination[5:],
+                file_path,
                 maxBytes=_LOG_FILE_MAX_BYTES,
                 backupCount=_LOG_FILE_BACKUP_COUNT,
                 encoding="utf-8",
+                chmod=0o600 if os.name == "posix" else None,
             )
         except OSError as exc:
             handler = logging.StreamHandler(sys.stderr)

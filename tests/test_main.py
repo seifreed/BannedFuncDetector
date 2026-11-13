@@ -684,6 +684,11 @@ def test_configure_logging_rotates_file_destination(monkeypatch, tmp_path):
         assert (tmp_path / "detector.log.1").exists()
         assert (tmp_path / "detector.log.5").exists()
         assert not (tmp_path / "detector.log.6").exists()
+        if os.name == "posix":
+            import stat
+
+            assert stat.S_IMODE(log_file.stat().st_mode) == 0o600
+            assert stat.S_IMODE((tmp_path / "detector.log.1").stat().st_mode) == 0o600
     finally:
         for handler in root.handlers:
             if handler not in saved_handlers:
