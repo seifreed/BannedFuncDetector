@@ -1513,6 +1513,33 @@ def test_unwrap_or_log_err():
     assert value is None
 
 
+def test_unwrap_or_log_adds_structured_execution_error_fields(caplog):
+    from bannedfuncdetector.application.analysis_error import (
+        BinaryExecutionError,
+        ExecutionFailure,
+    )
+
+    result = Err(
+        ExecutionFailure(
+            error=BinaryExecutionError(
+                category="I/O error",
+                context="sample.bin",
+                message="access denied",
+                phase="opening_binary",
+            )
+        )
+    )
+
+    with caplog.at_level(logging.ERROR):
+        assert unwrap_or_log(result, "Analysis failed", logger=logging.getLogger()) is None
+
+    record = next(record for record in caplog.records if record.event_name == "analysis_error")
+    assert record.outcome == "error"
+    assert record.error_category == "I/O error"
+    assert record.error_phase == "opening_binary"
+    assert "access denied" in record.getMessage()
+
+
 def test_unwrap_or_log_does_not_repeat_logged_execution_failure(caplog):
     from bannedfuncdetector.application.analysis_error import (
         BinaryExecutionError,

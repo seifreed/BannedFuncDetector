@@ -48,7 +48,22 @@ def unwrap_or_log(
         return result.value
     if isinstance(result.error, ExecutionFailure) and result.error.logged:
         return None
-    logger.error(f"{context}: {format_execution_error(result.error)}")
+    details = result.error.error if isinstance(result.error, ExecutionFailure) else result.error
+    extra: dict[str, str] = {
+        "event_name": "analysis_error",
+        "outcome": "error",
+        "error_type": type(details).__name__,
+    }
+    if isinstance(result.error, ExecutionFailure):
+        extra["error_category"] = result.error.error.category
+        if result.error.error.phase is not None:
+            extra["error_phase"] = result.error.error.phase
+    logger.error(
+        "%s: %s",
+        context,
+        format_execution_error(result.error),
+        extra=extra,
+    )
     return None
 
 
