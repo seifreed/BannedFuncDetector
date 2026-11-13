@@ -2407,7 +2407,7 @@ class TestValidatorsAdditional:
     Purpose: Cover remaining validators.py lines more precisely.
     """
 
-    def test_check_python_version_old_version_calls_sys_exit(self):
+    def test_check_python_version_old_version_calls_sys_exit(self, caplog):
         """
         Purpose: validators.check_python_version lines 38-41 — when
         sys.version_info < MIN_PYTHON_VERSION, logs error and calls sys.exit(1).
@@ -2419,6 +2419,7 @@ class TestValidatorsAdditional:
         """
         import bannedfuncdetector.infrastructure.validators as val_mod
 
+        caplog.set_level("ERROR", logger=val_mod.__name__)
         original_version_info = val_mod.sys.version_info
 
         # Use a tuple subclass so [:3] slicing works; override comparison so it
@@ -2435,6 +2436,11 @@ class TestValidatorsAdditional:
             with pytest.raises(SystemExit) as exc_info:
                 val_mod.check_python_version()
             assert exc_info.value.code == 1
+            event = caplog.records[-1]
+            assert event.operation == "runtime_validation"
+            assert event.event_name == "python_version_unsupported"
+            assert event.outcome == "error"
+            assert event.error_code == 1
         finally:
             val_mod.sys.version_info = original_version_info
 

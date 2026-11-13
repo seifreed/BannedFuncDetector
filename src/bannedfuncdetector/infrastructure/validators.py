@@ -105,7 +105,17 @@ def check_python_version() -> None:
     if sys.version_info < MIN_PYTHON_VERSION:
         current = ".".join(str(part) for part in sys.version_info[:3])
         required = ".".join(str(part) for part in MIN_PYTHON_VERSION)
-        logger.error(f"Python {required}+ is required. Detected Python {current}.")
+        logger.error(
+            "Python %s+ is required. Detected Python %s.",
+            required,
+            current,
+            extra={
+                "operation": "runtime_validation",
+                "event_name": "python_version_unsupported",
+                "outcome": "error",
+                "error_code": 1,
+            },
+        )
         sys.exit(1)
 
 
