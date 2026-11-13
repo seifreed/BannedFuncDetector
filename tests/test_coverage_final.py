@@ -1918,6 +1918,41 @@ class TestPresentationReporting:
 
         display_final_results(outcome)
 
+    def test_detected_function_is_logged_once_as_structured_event(self, caplog):
+        from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
+        from bannedfuncdetector.domain.entities import AnalysisResult, BannedFunction
+        from bannedfuncdetector.presentation.reporting import display_final_results
+
+        detection = BannedFunction(
+            name="sym.strcpy",
+            address=0x401000,
+            size=12,
+            banned_calls=("strcpy",),
+            detection_method="name",
+        )
+        report = AnalysisResult(
+            file_name="sample.bin",
+            file_path="/tmp/sample.bin",
+            total_functions=1,
+            detected_functions=(detection,),
+            analysis_date="2026-01-01T00:00:00Z",
+        )
+
+        caplog.set_level("WARNING", logger="bannedfuncdetector.presentation.reporting")
+        display_final_results(BinaryAnalysisOutcome(report=report))
+
+        events = [
+            record
+            for record in caplog.records
+            if getattr(record, "event_name", None) == "banned_function_detected"
+        ]
+        assert len(events) == 1
+        assert events[0].file_name == "sample.bin"
+        assert events[0].function_name == "sym.strcpy"
+        assert events[0].address == 0x401000
+        assert events[0].detection_method == "name"
+        assert events[0].banned_calls == "strcpy"
+
 
 # =============================================================================
 # GROUP 6 — AVAILABILITY (availability.py)

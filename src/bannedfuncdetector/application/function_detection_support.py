@@ -15,22 +15,6 @@ from .internal import FunctionScanPlan
 logger = logging.getLogger(__name__)
 
 
-def log_function_result(detection: BannedFunction, verbose: bool) -> None:
-    if verbose:
-        logger.info(
-            "Insecure function detected: %s at %s",
-            detection.name,
-            hex(detection.address),
-            extra={
-                "event_name": "banned_function_detected",
-                "outcome": "success",
-                "detection_method": detection.detection_method,
-                "function_name": detection.name,
-                "address": detection.address,
-            },
-        )
-
-
 def log_parallel_future_error(exc: BaseException, verbose: bool) -> None:
     if isinstance(exc, concurrent.futures.CancelledError):
         logger.warning(
@@ -107,7 +91,6 @@ def process_parallel_results(
             if result.is_ok():
                 detection = result.unwrap()
                 results.append(detection)
-                log_function_result(detection, verbose)
         except (
             RuntimeError,
             ValueError,
@@ -124,7 +107,6 @@ def process_parallel_results(
 
 __all__ = [
     "build_function_analysis_request",
-    "log_function_result",
     "log_selected_decompiler",
     "log_parallel_future_error",
     "process_parallel_results",

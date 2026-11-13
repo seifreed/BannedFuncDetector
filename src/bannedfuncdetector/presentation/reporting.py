@@ -53,7 +53,9 @@ def display_final_results(
     if total_banned > 0:
         logger.warning("Detected insecure functions:")
         for file_result in results_list:
-            _log_detected_functions(_get_detected_functions(file_result))
+            _log_detected_functions(
+                _get_detected_functions(file_result), file_result.file_name
+            )
 
 
 def _normalize_results(
@@ -79,12 +81,26 @@ def _total_files_count(
     return result.summary.total_files
 
 
-def _log_detected_functions(detected: Sequence[BannedFunction]) -> None:
+def _log_detected_functions(
+    detected: Sequence[BannedFunction], file_name: str
+) -> None:
     """Log detected insecure functions in a consistent format."""
     for func in detected:
         address = _format_address(func.address)
-        logger.warning(f"  - {func.name} at {address}")
-        logger.warning(f"    Banned functions: {', '.join(func.banned_calls)}")
+        logger.warning(
+            "Insecure function detected: %s at %s",
+            func.name,
+            address,
+            extra={
+                "event_name": "banned_function_detected",
+                "outcome": "success",
+                "file_name": file_name,
+                "function_name": func.name,
+                "address": func.address,
+                "detection_method": func.detection_method,
+                "banned_calls": ",".join(func.banned_calls),
+            },
+        )
 
 
 def _get_detected_functions(file_result: AnalysisResult) -> list[BannedFunction]:

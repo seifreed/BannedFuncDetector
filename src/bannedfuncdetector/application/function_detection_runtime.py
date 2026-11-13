@@ -14,7 +14,6 @@ from bannedfuncdetector.domain.result import Result
 
 from .function_detection_support import (
     build_function_analysis_request,
-    log_function_result,
 )
 from .function_detection_support import log_selected_decompiler
 
@@ -89,7 +88,6 @@ def analyze_functions_in_binary(
         if result.is_ok():
             detection = result.unwrap()
             results.append(detection)
-            log_function_result(detection, options.verbose)
 
     if functions and not _r2_session_alive(r2):
         logger.warning(
