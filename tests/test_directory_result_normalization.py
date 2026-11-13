@@ -32,6 +32,9 @@ from bannedfuncdetector.application.internal.directory_results import (
     normalize_directory_result,
     persist_directory_summary,
 )
+from bannedfuncdetector.application.internal.directory_boundary import (
+    log_analysis_result,
+)
 from bannedfuncdetector.domain.result import Err, err, ok
 from bannedfuncdetector.presentation.reporting import display_final_results
 
@@ -79,7 +82,7 @@ def test_normalize_preserves_category_phase_and_notices() -> None:
 
     assert isinstance(normalized, Err)
     new_failure = normalized.error
-    assert new_failure.error.category == "I/O error"   # not flattened
+    assert new_failure.error.category == "I/O error"  # not flattened
     assert new_failure.error.phase == "open"
     assert new_failure.error.message == "cannot read binary"
     assert new_failure.operational_notices == (notice,)  # not dropped
@@ -96,10 +99,16 @@ def test_normalize_passes_through_ok() -> None:
     assert normalize_directory_result("/bin/x", ok(outcome)) == ok(outcome)
 
 
-@pytest.mark.parametrize("verbose, level", [(False, logging.DEBUG), (True, logging.INFO)])
-def test_persist_summary_emits_completion_event(tmp_path, caplog, verbose, level) -> None:
+@pytest.mark.parametrize(
+    "verbose, level", [(False, logging.DEBUG), (True, logging.INFO)]
+)
+def test_persist_summary_emits_completion_event(
+    tmp_path, caplog, verbose, level
+) -> None:
     summary = DirectoryAnalysisOutcome(
-        summary=DirectoryAnalysisSummary(directory="/bin", analyzed_results=(), total_files=0)
+        summary=DirectoryAnalysisSummary(
+            directory="/bin", analyzed_results=(), total_files=0
+        )
     )
     with caplog.at_level(
         logging.DEBUG,
@@ -108,10 +117,29 @@ def test_persist_summary_emits_completion_event(tmp_path, caplog, verbose, level
         persist_directory_summary(str(tmp_path), summary, verbose)
 
     record = next(
-        record for record in caplog.records if record.event_name == "directory_summary_saved"
+        record
+        for record in caplog.records
+        if record.event_name == "directory_summary_saved"
     )
     assert record.levelno == level
     assert record.operation == "directory_summary_write"
     assert record.outcome == "success"
     assert record.duration_ms >= 0
     assert str(tmp_path) not in record.getMessage()
+
+
+def test_directory_file_completion_is_structured_and_omits_path(caplog) -> None:
+    secret_path = "/private/customer/sample.exe"
+    with caplog.at_level(logging.INFO):
+        log_analysis_result(secret_path, _result("sample.exe"), verbose=True)
+
+    record = next(
+        record
+        for record in caplog.records
+        if record.event_name == "directory_file_analysis_completed"
+    )
+    assert record.operation == "directory_analysis"
+    assert record.outcome == "clean"
+    assert record.insecure_count == 0
+    assert record.total_functions == 1
+    assert secret_path not in record.getMessage()

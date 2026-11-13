@@ -32,10 +32,17 @@ def directory_scan_plan_from_request(
 
 
 def log_analysis_result(file_path: str, result: AnalysisResult, verbose: bool) -> None:
-    if not verbose:
-        return
-    logger.info(f"Analysis completed for {file_path}.")
-    logger.info(f"    Insecure functions found: {result.insecure_count}")
+    logger.log(
+        logging.INFO if verbose else logging.DEBUG,
+        "Directory file analysis completed",
+        extra={
+            "operation": "directory_analysis",
+            "event_name": "directory_file_analysis_completed",
+            "outcome": "issues_found" if result.has_issues else "clean",
+            "insecure_count": result.insecure_count,
+            "total_functions": result.total_functions,
+        },
+    )
 
 
 __all__ = ["directory_scan_plan_from_request", "log_analysis_result"]

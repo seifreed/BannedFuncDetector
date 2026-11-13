@@ -72,8 +72,17 @@ def iter_parallel_directory_results(
     max_workers: int,
 ) -> Iterator[tuple[str, Result[BinaryAnalysisOutcome, ExecutionFailure]]]:
     """Yield per-file results from process-based directory execution."""
-    if plan.verbose:
-        logger.info(f"Starting parallel analysis with {max_workers} workers...")
+    logger.log(
+        logging.INFO if plan.verbose else logging.DEBUG,
+        "Starting directory analysis",
+        extra={
+            "operation": "directory_analysis",
+            "event_name": "directory_analysis_started",
+            "execution_mode": "parallel",
+            "worker_count": max_workers,
+            "file_count": len(executable_files),
+        },
+    )
 
     config = plan.runtime.config
     config_factory = plan.runtime.config_factory
@@ -167,8 +176,17 @@ def iter_sequential_directory_results(
     plan: DirectoryScanPlan,
 ) -> Iterator[tuple[str, Result[BinaryAnalysisOutcome, ExecutionFailure]]]:
     """Yield per-file results from sequential directory execution."""
-    if plan.verbose:
-        logger.info("Starting sequential analysis...")
+    logger.log(
+        logging.INFO if plan.verbose else logging.DEBUG,
+        "Starting directory analysis",
+        extra={
+            "operation": "directory_analysis",
+            "event_name": "directory_analysis_started",
+            "execution_mode": "sequential",
+            "worker_count": 1,
+            "file_count": len(executable_files),
+        },
+    )
 
     config = plan.runtime.config
     r2_factory = plan.runtime.r2_factory
@@ -176,8 +194,6 @@ def iter_sequential_directory_results(
 
     for executable_file in executable_files:
         try:
-            if plan.verbose:
-                logger.info(f"Analyzing {executable_file}...")
             result = analyze_binary_job(
                 executable_file,
                 plan.output_dir,

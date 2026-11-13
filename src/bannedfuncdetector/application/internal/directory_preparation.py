@@ -122,7 +122,12 @@ def discover_executable_files(
 
         if verbose:
             logger.info(
-                f"Found {len(executable_files)} executable files in {directory}."
+                "Executable files discovered",
+                extra={
+                    "event_name": "executable_discovery_completed",
+                    "outcome": "success",
+                    "file_count": len(executable_files),
+                },
             )
 
         return ok(executable_files)
