@@ -446,6 +446,54 @@ def test_new_request_id_changes_between_cli_runs():
     assert new_request_id() != new_request_id()
 
 
+def test_exception_stack_trace_is_sanitized_in_json_logs(monkeypatch, capsys):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        try:
+            raise RuntimeError("access_token=hidden-value")
+        except RuntimeError:
+            logging.getLogger("test.logging").exception("operation failed")
+        event = json.loads(capsys.readouterr().err)
+        assert "stack_trace" in event
+        assert "hidden-value" not in event["stack_trace"]
+        assert "REDACTED" in event["stack_trace"]
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
+def test_exception_stack_trace_is_sanitized_in_text_logs(monkeypatch, capsys):
+    from bannedfuncdetector.cli_bootstrap import configure_logging
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "text")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        root.handlers.clear()
+        configure_logging()
+        try:
+            raise RuntimeError("client_secret=hidden-value")
+        except RuntimeError:
+            logging.getLogger("test.logging").exception("operation failed")
+        output = capsys.readouterr().err
+        assert "Traceback" in output
+        assert "hidden-value" not in output
+        assert "REDACTED" in output
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""
