@@ -167,11 +167,7 @@ def configure_logging(verbose: bool = False) -> None:
     (symlink following, r2 client flags, file discovery, …) become visible;
     otherwise they are unreachable since the level defaults to INFO.
     """
-    configured_level = os.getenv(
-        "BFD_LOG_LEVEL", "DEBUG" if verbose else "INFO"
-    ).upper()
-    configured_value = logging.getLevelName(configured_level)
-    level = configured_value if isinstance(configured_value, int) else logging.INFO
+    level = _configured_level(verbose)
     log_format = os.getenv("BFD_LOG_FORMAT", "text").lower()
     formatter = _JsonLogFormatter() if log_format == "json" else _TextLogFormatter()
     root_logger = logging.getLogger()
@@ -196,11 +192,19 @@ def configure_logging(verbose: bool = False) -> None:
 def configure_worker_logging(verbose: bool, log_queue: Any) -> None:
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
-    root_logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+    root_logger.setLevel(_configured_level(verbose))
     handler = _ContextQueueHandler(log_queue)
     handler.addFilter(_RequestContextFilter())
     handler.addFilter(_SanitizingFilter())
     root_logger.addHandler(handler)
+
+
+def _configured_level(verbose: bool) -> int:
+    configured_name = os.getenv(
+        "BFD_LOG_LEVEL", "DEBUG" if verbose else "INFO"
+    ).upper()
+    configured_value = logging.getLevelName(configured_name)
+    return configured_value if isinstance(configured_value, int) else logging.INFO
 
 
 def validate_requirements(

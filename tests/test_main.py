@@ -593,7 +593,7 @@ def test_text_formatter_sanitizes_forwarded_stack_trace():
     assert "REDACTED" in output
 
 
-def test_worker_queue_handler_preserves_context_and_exception():
+def test_worker_queue_handler_preserves_context_and_exception(monkeypatch):
     from queue import Queue
 
     from bannedfuncdetector.cli_bootstrap import (
@@ -606,6 +606,7 @@ def test_worker_queue_handler_preserves_context_and_exception():
     saved_level = root.level
     log_queue = Queue()
     try:
+        monkeypatch.setenv("BFD_LOG_LEVEL", "DEBUG")
         configure_worker_logging(verbose=False, log_queue=log_queue)
         with log_context("worker-run"):
             logging.getLogger("test.queue").warning("worker message")
@@ -619,6 +620,23 @@ def test_worker_queue_handler_preserves_context_and_exception():
         assert records[0].message == "worker message"
         assert "queue exception" in records[1].stack_trace
         assert records[1].message == "worker error"
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
+def test_worker_logging_uses_configured_level(monkeypatch):
+    from queue import Queue
+
+    from bannedfuncdetector.cli_bootstrap import configure_worker_logging
+
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        monkeypatch.setenv("BFD_LOG_LEVEL", "ERROR")
+        configure_worker_logging(verbose=True, log_queue=Queue())
+        assert root.level == logging.ERROR
     finally:
         root.handlers[:] = saved_handlers
         root.setLevel(saved_level)
