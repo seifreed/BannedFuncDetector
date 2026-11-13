@@ -16,6 +16,7 @@ from bannedfuncdetector.domain.result import Result
 
 from ..analysis_runtime import BinaryRuntimeServices
 from ..contracts.analysis import AnalysisRuntime, BinaryAnalysisRequest
+from bannedfuncdetector.cli_bootstrap import log_context
 from .execution_plans import DirectoryWorkerJob
 
 
@@ -91,19 +92,20 @@ def analyze_binary_job_from_worker_payload(
         binary_opener=job.binary_opener,
         r2_closer=job.r2_closer,
     )
-    return analyze_binary_job(
-        job.executable_file,
-        job.output_dir,
-        job.decompiler_type,
-        job.verbose,
-        config,
-        job.r2_factory,
-        binary_services,
-        decompiler_orchestrator=orchestrator,
-        force_decompiler=job.force_decompiler,
-        skip_banned=job.skip_banned,
-        skip_analysis=job.skip_analysis,
-    )
+    with log_context(job.request_id):
+        return analyze_binary_job(
+            job.executable_file,
+            job.output_dir,
+            job.decompiler_type,
+            job.verbose,
+            config,
+            job.r2_factory,
+            binary_services,
+            decompiler_orchestrator=orchestrator,
+            force_decompiler=job.force_decompiler,
+            skip_banned=job.skip_banned,
+            skip_analysis=job.skip_analysis,
+        )
 
 
 __all__ = [

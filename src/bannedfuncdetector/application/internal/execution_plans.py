@@ -93,6 +93,7 @@ class DirectoryWorkerJob:
     force_decompiler: bool = False
     skip_banned: bool = False
     skip_analysis: bool = False
+    request_id: str | None = None
 
 
 __all__ = [

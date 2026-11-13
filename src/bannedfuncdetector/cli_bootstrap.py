@@ -7,8 +7,34 @@ import json
 import os
 import re
 import sys
+import contextvars
+import uuid
 from collections.abc import Callable
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from collections.abc import Iterator
+
+
+_request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "bannedfuncdetector_request_id", default=None
+)
+
+
+def ensure_request_id() -> str:
+    request_id = _request_id.get()
+    if request_id is None:
+        request_id = uuid.uuid4().hex
+        _request_id.set(request_id)
+    return request_id
+
+
+@contextmanager
+def log_context(request_id: str | None) -> Iterator[None]:
+    token = _request_id.set(request_id)
+    try:
+        yield
+    finally:
+        _request_id.reset(token)
 
 
 _SENSITIVE_VALUE = re.compile(
@@ -39,6 +65,9 @@ class _JsonLogFormatter(logging.Formatter):
             "component": record.name,
             "message": _safe_message(record.getMessage()),
         }
+        request_id = _request_id.get()
+        if request_id is not None:
+            event["request_id"] = request_id
         if record.exc_info:
             event["stack_trace"] = _safe_message(self.formatException(record.exc_info))
         return json.dumps(event, ensure_ascii=True)
@@ -86,5 +115,7 @@ def validate_requirements(
 
 __all__ = [
     "configure_logging",
+    "ensure_request_id",
+    "log_context",
     "validate_requirements",
 ]

@@ -13,7 +13,7 @@ from bannedfuncdetector.application.analysis_error import ExecutionFailure
 from bannedfuncdetector.application.analysis_outcome import BinaryAnalysisOutcome
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
 from bannedfuncdetector.application.analysis_runtime import BinaryRuntimeServices
-from bannedfuncdetector.cli_bootstrap import configure_logging
+from bannedfuncdetector.cli_bootstrap import configure_logging, ensure_request_id
 from bannedfuncdetector.domain.result import Result
 
 from .directory_results import (
@@ -83,6 +83,7 @@ def iter_parallel_directory_results(
             force_decompiler=plan.force_decompiler,
             skip_banned=plan.skip_banned,
             skip_analysis=plan.skip_analysis,
+            request_id=ensure_request_id(),
         )
         for executable_file in executable_files
     ]

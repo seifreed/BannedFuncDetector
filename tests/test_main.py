@@ -415,6 +415,26 @@ def test_configure_logging_level_environment_overrides_verbose(monkeypatch):
         root.setLevel(saved_level)
 
 
+def test_json_logging_includes_context_request_id(monkeypatch, capsys):
+    import json
+
+    from bannedfuncdetector.cli_bootstrap import configure_logging, log_context
+
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    root = logging.getLogger()
+    saved_handlers = root.handlers[:]
+    saved_level = root.level
+    try:
+        configure_logging()
+        with log_context("run-123"):
+            logging.getLogger("test.logging").info("analysis started")
+        event = json.loads(capsys.readouterr().err)
+        assert event["request_id"] == "run-123"
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
+
+
 def test_main_warns_when_all_detection_skipped(compiled_binary, tmp_path, caplog):
     """Disabling both detection methods must warn that zero findings is
     meaningless — otherwise it reads as a clean target."""
