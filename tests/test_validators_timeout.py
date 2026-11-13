@@ -16,12 +16,19 @@ import asyncio
 from bannedfuncdetector.infrastructure.validators import _run_command_async
 
 
-def test_hung_command_times_out_with_failed_result() -> None:
+def test_hung_command_times_out_with_failed_result(caplog) -> None:
     # `sleep 5` resolves via PATH and blocks well past the tiny timeout.
+    caplog.set_level("ERROR", logger="bannedfuncdetector.infrastructure.validators")
     result = asyncio.run(_run_command_async(["sleep", "5"], timeout=0.3))
 
     assert result.returncode == 1
     assert result.stderr == "timeout"
+    event = next(record for record in caplog.records if record.event_name == "requirement_command_timeout")
+    assert event.operation == "requirement_check"
+    assert event.outcome == "timeout"
+    assert event.error_type == "TimeoutError"
+    assert event.duration_ms == 300
+    assert "['sleep', '5']" not in caplog.text
 
 
 def test_fast_command_completes_normally() -> None:

@@ -72,7 +72,17 @@ async def _run_command_async(
     except (asyncio.TimeoutError, TimeoutError):
         # A hung requirement check must not freeze the tool: terminate it and
         # report a failed command instead of blocking forever.
-        logger.error("Command timed out after %ss: %s", timeout, resolved)
+        logger.error(
+            "Requirement command timed out after %ss",
+            timeout,
+            extra={
+                "operation": "requirement_check",
+                "event_name": "requirement_command_timeout",
+                "duration_ms": round(timeout * 1000, 2),
+                "outcome": "timeout",
+                "error_type": "TimeoutError",
+            },
+        )
         process.kill()
         await process.wait()
         return _CommandResult(returncode=1, stdout="", stderr="timeout")
@@ -113,7 +123,15 @@ def _check_single_requirement(req: dict[str, Any]) -> bool:
         logger.info(f"Checking {req['name']}...")
         command = req["command"]
         if not command or command[0] not in ALLOWED_REQUIREMENT_EXECUTABLES:
-            logger.error(f"Blocked unrecognized command: {command}")
+            logger.error(
+                "Blocked unrecognized requirement command",
+                extra={
+                    "operation": "requirement_check",
+                    "event_name": "requirement_command_blocked",
+                    "outcome": "blocked",
+                    "error_type": "ValueError",
+                },
+            )
             return False
         result = _run_command(command)
 
@@ -153,7 +171,7 @@ def _run_command(
     """
     resolved = list(command)
     if not resolved or resolved[0] not in ALLOWED_REQUIREMENT_EXECUTABLES:
-        raise ValueError(f"Blocked unrecognized command: {resolved}")
+        raise ValueError("Blocked unrecognized command")
     return run_fn(resolved)
 
 

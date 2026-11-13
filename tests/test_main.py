@@ -1159,17 +1159,24 @@ def test_requirement_failure_does_not_log_process_output(monkeypatch, caplog):
     assert "exit_code=1" in caplog.text
 
 
-def test_check_single_requirement_blocked_command():
+def test_check_single_requirement_blocked_command(caplog):
     """_check_single_requirement blocks commands not in ALLOWED_REQUIREMENT_EXECUTABLES."""
+    caplog.set_level(logging.ERROR, logger="bannedfuncdetector.infrastructure.validators")
     result = _check_single_requirement(
         {
             "name": "test",
-            "command": ["curl", "http://example.com"],
+            "command": ["curl", "token=private-value"],
             "expected": "anything",
         }
     )
     assert result is False
     assert "curl" not in ALLOWED_REQUIREMENT_EXECUTABLES
+    event = next(record for record in caplog.records if record.event_name == "requirement_command_blocked")
+    assert event.operation == "requirement_check"
+    assert event.outcome == "blocked"
+    assert event.error_type == "ValueError"
+    assert "curl" not in caplog.text
+    assert "private-value" not in caplog.text
 
 
 def test_check_single_requirement_empty_command():
