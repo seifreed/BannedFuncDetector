@@ -953,6 +953,50 @@ class TestDirectoryResults:
         assert record.error_type == "OSError"
         assert "disk unreadable" in str(record.exc_info[1])
 
+    def test_collect_directory_results_does_not_repeat_logged_error(self, caplog):
+        from bannedfuncdetector.application.analysis_error import (
+            DirectoryExecutionError,
+            ExecutionFailure,
+        )
+        from bannedfuncdetector.application.internal.directory_results import (
+            collect_directory_results,
+        )
+        from bannedfuncdetector.domain.result import Err
+
+        failure = ExecutionFailure(
+            error=DirectoryExecutionError(
+                category="I/O error", context="sample.bin", message="unreadable"
+            ),
+            logged=True,
+        )
+        collect_directory_results(
+            iter([("sample.bin", Err(failure))]), False, lambda *_: None
+        )
+
+        assert "Analysis failed" not in caplog.text
+
+    def test_collect_directory_results_logs_unreported_error(self, caplog):
+        from bannedfuncdetector.application.analysis_error import (
+            DirectoryExecutionError,
+            ExecutionFailure,
+        )
+        from bannedfuncdetector.application.internal.directory_results import (
+            collect_directory_results,
+        )
+        from bannedfuncdetector.domain.result import Err
+
+        failure = ExecutionFailure(
+            error=DirectoryExecutionError(
+                category="I/O error", context="sample.bin", message="unreadable"
+            ),
+            logged=False,
+        )
+        collect_directory_results(
+            iter([("sample.bin", Err(failure))]), False, lambda *_: None
+        )
+
+        assert "Analysis failed for sample.bin" in caplog.text
+
 
 # ===========================================================================
 # 9. directory_runners.py — lines 93, 102, 120-121

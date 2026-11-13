@@ -129,7 +129,10 @@ def collect_directory_results(
             results.append(report)
             on_result(executable_file, report, verbose)
         elif isinstance(result, Err):
-            logger.error("Analysis failed for %s: %s", executable_file, result.error)
+            if not result.error.logged:
+                logger.error(
+                    "Analysis failed for %s: %s", executable_file, result.error
+                )
             if hasattr(result.error, "operational_notices"):
                 notices.extend(result.error.operational_notices)
     return results, tuple(notices)
