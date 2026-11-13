@@ -36,21 +36,21 @@ The pre-change baseline was **3.0/10**, assessed from source before structured f
 |---|---:|---:|---|
 | Architecture and decoupling | 5 | 8 | Standard `logging`, CLI bootstrap, and parent queue listener; no pluggable backend protocol. |
 | Functional coverage | 6 | 8 | Binary/directory outcomes include duration; some lower-level events still lack operation fields. |
-| Event quality | 3 | 7 | Exceptions and outcomes carry useful context; many legacy f-string events remain. |
+| Event quality | 3 | 8 | Exceptions and outcomes carry useful context and error type; legacy messages remain unstructured. |
 | Structure and consistency | 1 | 8 | JSON UTC schema and allowlisted event fields; most legacy message data remains in `message`. |
 | Context and correlation | 0 | 9 | CLI and library IDs cross worker payloads; custom executors must supply their own transport. |
 | Security and privacy | 2 | 8 | Credential/cookie/URL pattern redaction and control escaping also apply to retained host handlers; arbitrary sensitive values remain undetectable. |
-| Performance and resilience | 4 | 8 | Bounded worker queue and draining shutdown; saturation drops logs and parent output is synchronous. |
-| Configuration and portability | 2 | 7 | Environment-configurable level/format and stderr output; no file rotation or destination selection. |
-| Error handling | 4 | 8 | CLI suppresses duplicate ERROR records already emitted by binary flow; shared error decorators include type and stack trace, while other modules still vary. |
-| Testing and verification | 3 | 10 | 100% line coverage plus real process log propagation tests; cross-platform CI results remain external evidence. |
+| Performance and resilience | 4 | 9 | Bounded worker queue and draining shutdown; saturation drops records safely and parent output is synchronous. |
+| Configuration and portability | 2 | 8 | Environment-configurable level/format applies to workers and parent; stderr remains the only built-in destination. |
+| Error handling | 4 | 9 | Duplicate directory errors are suppressed; handled directory exceptions retain type and stack trace, while legacy paths still vary. |
+| Testing and verification | 3 | 9 | 100% line coverage plus real process and sink-failure tests; cross-platform CI results remain unverified. |
 
-The current **provisional score is 8.1/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
+The current **provisional score is 8.4/10**, the arithmetic mean of the ten current dimension ratings. It is not the final score.
 
 ## Remaining work
 
-This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom executor behavior, evaluating destination/retention needs for actual deployments, and confirming CI on each supported OS. Regex redaction remains heuristic; the bounded queue may drop records under pressure.
+This is an interim implementation, not a 10/10 claim. Remaining work includes reviewing all legacy log events and exception paths, validating custom executor behavior, evaluating destination/retention needs for actual deployments, and confirming CI on each supported OS. Regex redaction remains heuristic; the bounded queue intentionally drops records under pressure to keep analysis non-blocking.
 
 ## Verification evidence
 
-The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `3bd14b3`, the full suite passed with 1,257 tests and 100% line coverage; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON fields, redaction, control-character escaping, exception stack traces, request IDs, duplicate-error suppression, operation completion, and real process log forwarding. Re-run all checks after subsequent changes and inspect remote CI results before making a final score claim.
+The source tree has a 100% line-coverage gate in `pyproject.toml`. At revision `9f0d155`, the full suite passed with 100% line coverage; Ruff, mypy, Bandit, and package build passed. Logging tests cover JSON fields, redaction, control-character escaping, exception stack traces, request IDs, duplicate-error suppression, operation completion, real process log forwarding, saturated queues, and failed stream destinations. GitHub Actions has not completed for the latest pushes; inspect supported-platform CI results before making a final score claim.
