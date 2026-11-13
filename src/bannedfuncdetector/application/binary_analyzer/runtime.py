@@ -79,17 +79,40 @@ def _extract_functions(
     """Extract discovered functions and convert them into domain entities."""
     try:
         if verbose:
-            logger.info("Getting function list...")
+            logger.info(
+                "Discovering binary functions",
+                extra={
+                    "operation": "function_discovery",
+                    "event_name": "function_discovery_started",
+                    "outcome": "in_progress",
+                },
+            )
 
         functions = r2.cmdj("aflj")
         if not functions:
             error_msg = "No functions found in the binary."
             if verbose:
-                logger.warning(error_msg)
+                logger.warning(
+                    "No functions found in the binary",
+                    extra={
+                        "operation": "function_discovery",
+                        "event_name": "function_discovery_completed",
+                        "outcome": "empty",
+                        "function_count": 0,
+                    },
+                )
             return err(error_msg)
 
         if verbose:
-            logger.info(f"Found {len(functions)} functions.")
+            logger.info(
+                "Binary function discovery completed",
+                extra={
+                    "operation": "function_discovery",
+                    "event_name": "function_discovery_completed",
+                    "outcome": "success",
+                    "function_count": len(functions),
+                },
+            )
 
         raw_functions = cast(list[dict[str, Any]], functions)
         function_list = [function_descriptor_from_dto(func) for func in raw_functions]

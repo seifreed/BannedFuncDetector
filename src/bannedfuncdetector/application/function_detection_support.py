@@ -77,7 +77,15 @@ def log_selected_decompiler(
         decompiler_orchestrator is None
         or decompiler_orchestrator.check_decompiler_available(decompiler_type)
     ):
-        logger.info(f"Using decompiler: {decompiler_type}")
+        logger.info(
+            "Using selected decompiler",
+            extra={
+                "operation": "decompiler_selection",
+                "event_name": "decompiler_selected",
+                "decompiler_type": decompiler_type,
+                "outcome": "success",
+            },
+        )
 
 
 def process_parallel_results(

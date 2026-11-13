@@ -30,7 +30,14 @@ def validate_requirements(
 
     with operation_context("requirements_check"):
         started = time.perf_counter()
-        logger.info("Checking system requirements...")
+        logger.info(
+            "Checking system requirements",
+            extra={
+                "operation": "requirements_check",
+                "event_name": "requirements_check_started",
+                "outcome": "in_progress",
+            },
+        )
         if not check_requirements(False):
             logger.error(
                 "Not all system requirements are met.",

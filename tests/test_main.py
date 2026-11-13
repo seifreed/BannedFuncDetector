@@ -783,6 +783,13 @@ def test_json_formatter_preserves_analysis_summary_counts():
     record.worker_count = 3
     record.execution_mode = "parallel"
     record.file_type = "elf"
+    record.function_count = 7
+    record.completed_functions = 5
+    record.success_count = 4
+    record.error_count = 1
+    record.detected_count = 2
+    record.decompiler_type = "r2ghidra"
+    record.percent_complete = 71.4
 
     event = json.loads(_JsonLogFormatter().format(record))
 
@@ -792,6 +799,13 @@ def test_json_formatter_preserves_analysis_summary_counts():
     assert event["worker_count"] == 3
     assert event["execution_mode"] == "parallel"
     assert event["file_type"] == "elf"
+    assert event["function_count"] == 7
+    assert event["completed_functions"] == 5
+    assert event["success_count"] == 4
+    assert event["error_count"] == 1
+    assert event["detected_count"] == 2
+    assert event["decompiler_type"] == "r2ghidra"
+    assert event["percent_complete"] == 71.4
 
 
 def test_logging_formatting_failures_do_not_escape(monkeypatch, capsys):

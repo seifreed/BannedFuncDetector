@@ -43,6 +43,62 @@ def test_clean_decompiled_output_strips_ansi_color():
     assert "strcpy" in find_banned_calls_in_text(cleaned, {"strcpy"})
 
 
+def test_unsafe_function_name_warning_is_structured_and_omits_input(caplog):
+    malicious_name = "private-name\naccess_token=hidden"
+    with caplog.at_level(logging.WARNING, logger=decompiler_support.__name__):
+        result = decompiler_support.try_decompile_with_command(
+            FakeR2(), "pdg", malicious_name
+        )
+
+    record = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None) == "unsafe_function_name_rejected"
+    )
+    assert result is None
+    assert record.outcome == "blocked"
+    assert malicious_name not in record.getMessage()
+    assert "hidden" not in record.getMessage()
+
+
+def test_decompilation_progress_events_have_structured_counts(caplog):
+    with caplog.at_level(logging.INFO, logger=decompiler_orchestrator.__name__):
+        decompiler_orchestrator._log_progress(
+            current=0,
+            total=2,
+            func_name="sample_function",
+            success_count=1,
+            error_count=0,
+            log_interval=1,
+            decompiler_type="r2ghidra",
+            verbose=True,
+        )
+        decompiler_orchestrator._log_final_summary(
+            total_functions=2,
+            success_count=2,
+            error_count=0,
+            detected_count=1,
+            verbose=True,
+        )
+
+    progress = next(
+        record for record in caplog.records if record.event_name == "decompilation_progress"
+    )
+    summary = next(
+        record for record in caplog.records if record.event_name == "decompilation_summary"
+    )
+    assert progress.completed_functions == 1
+    assert progress.total_functions == 2
+    assert progress.success_count == 1
+    assert progress.error_count == 0
+    assert progress.percent_complete == 50.0
+    assert summary.total_functions == 2
+    assert summary.success_count == 2
+    assert summary.error_count == 0
+    assert summary.detected_count == 1
+    assert summary.outcome == "success"
+
+
 def make_function(
     name: str = "f", offset: int = 1, size: int = 100
 ) -> FunctionDescriptor:

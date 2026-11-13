@@ -124,7 +124,14 @@ def try_decompile_with_command(
 ) -> str | None:
     """Try to decompile with a specific command and handle errors."""
     if not is_safe_r2_name(function_name):
-        logger.warning("Refusing to seek unsafe function name: %r", function_name)
+        logger.warning(
+            "Rejected unsafe function name during decompilation",
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "unsafe_function_name_rejected",
+                "outcome": "blocked",
+            },
+        )
         return None
     try:
         r2.cmd(f"s {function_name}")
@@ -149,7 +156,14 @@ def try_decompile_with_command(
 def get_function_info(r2: IR2Client, function_name: str) -> dict[str, Any] | None:
     """Get function information from radare2."""
     if not is_safe_r2_name(function_name):
-        logger.warning("Refusing to query unsafe function name: %r", function_name)
+        logger.warning(
+            "Rejected unsafe function name during metadata lookup",
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "unsafe_function_name_rejected",
+                "outcome": "blocked",
+            },
+        )
         return None
     try:
         function_info = r2.cmdj(f"afij @ {function_name}")
@@ -237,7 +251,14 @@ def _get_function_offset(
             return offset
 
     if not is_safe_r2_name(function_name):
-        logger.warning("Refusing to seek unsafe function name: %r", function_name)
+        logger.warning(
+            "Rejected unsafe function name during offset lookup",
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "unsafe_function_name_rejected",
+                "outcome": "blocked",
+            },
+        )
         return None
     r2.cmd(f"s {function_name}")
     entry = _current_seek_entry(r2.cmdj("sj"))

@@ -135,11 +135,37 @@ def _log_progress(
     if is_interval:
         percent = (current + 1) / total * 100
         logger.info(
-            f"Progress: {current + 1}/{total} functions ({percent:.1f}%) - "
-            f"Decompiled: {success_count}, Errors: {error_count}"
+            "Decompilation progress: %d/%d functions (%.1f%%); %d successful, %d errors",
+            current + 1,
+            total,
+            percent,
+            success_count,
+            error_count,
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "decompilation_progress",
+                "completed_functions": current + 1,
+                "total_functions": total,
+                "percent_complete": round(percent, 1),
+                "success_count": success_count,
+                "error_count": error_count,
+                "decompiler_type": decompiler_type,
+            },
         )
     if is_detailed_interval:
-        logger.info(f"Decompiling {func_name} with {decompiler_type}...")
+        logger.info(
+            "Decompiling function %d of %d with %s",
+            current + 1,
+            total,
+            decompiler_type,
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "decompilation_function_started",
+                "completed_functions": current + 1,
+                "total_functions": total,
+                "decompiler_type": decompiler_type,
+            },
+        )
 
 
 def _log_final_summary(
@@ -152,11 +178,22 @@ def _log_final_summary(
     """Log the final summary of the decompilation analysis."""
     if not verbose:
         return
-    logger.info("Decompilation analysis completed:")
-    logger.info(f"   - Total functions analyzed: {total_functions}")
-    logger.info(f"   - Successful decompilations: {success_count}")
-    logger.info(f"   - Errors: {error_count}")
-    logger.info(f"   - Unsafe functions detected: {detected_count}")
+    logger.info(
+        "Decompilation completed: %d functions, %d successful, %d errors, %d findings",
+        total_functions,
+        success_count,
+        error_count,
+        detected_count,
+        extra={
+            "operation": "function_decompilation",
+            "event_name": "decompilation_summary",
+            "outcome": "partial" if error_count else "success",
+            "total_functions": total_functions,
+            "success_count": success_count,
+            "error_count": error_count,
+            "detected_count": detected_count,
+        },
+    )
 
 
 def _handle_decompilation_error(
@@ -310,7 +347,16 @@ def _log_decompilation_progress(
     """Log the start of decompilation progress."""
     if verbose:
         logger.info(
-            f"Decompiling {len(functions)} functions with {decompiler_type_str}..."
+            "Starting decompilation of %d functions with %s",
+            len(functions),
+            decompiler_type_str,
+            extra={
+                "operation": "function_decompilation",
+                "event_name": "decompilation_started",
+                "outcome": "in_progress",
+                "total_functions": len(functions),
+                "decompiler_type": decompiler_type_str,
+            },
         )
 
 
@@ -353,7 +399,15 @@ def decompile_with_selected_decompiler(
         _apply_decai_config_from(config, r2)
     if not functions:
         if verbose:
-            logger.warning("No functions found to decompile")
+            logger.warning(
+                "No functions found to decompile",
+                extra={
+                    "operation": "function_decompilation",
+                    "event_name": "decompilation_skipped",
+                    "outcome": "empty",
+                    "total_functions": 0,
+                },
+            )
         return []
 
     _log_decompilation_progress(functions, decompiler_type_str, verbose)
