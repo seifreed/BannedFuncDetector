@@ -988,7 +988,9 @@ class TestLogError:
         record = next(r for r in caplog.records if r.event_name == "operation_error")
         assert record.event_name == "operation_error"
         assert record.error_type == "RuntimeError"
-        assert record.exc_info is not None
+        assert record.exc_info is None
+        assert record.stack_trace
+        assert "bad state" not in record.stack_trace
         assert "bad state" not in record.getMessage()
 
     def test_runtime_error_not_logged_when_flag_disabled(self, caplog):

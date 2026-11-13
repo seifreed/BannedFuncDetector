@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextvars
+import traceback
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -75,6 +76,17 @@ def safe_exception_fields(exc: BaseException) -> dict[str, str | int]:
     return fields
 
 
+def safe_stack_trace(exc: BaseException) -> str:
+    """Return traceback locations without source lines or exception text."""
+    if exc.__traceback__ is None:
+        return ""
+    frames = []
+    for frame in traceback.extract_tb(exc.__traceback__):
+        filename = frame.filename.replace("\\", "/").rsplit("/", 1)[-1]
+        frames.append(f"{filename}:{frame.lineno} in {frame.name}")
+    return "\n".join(frames)
+
+
 __all__ = [
     "current_operation",
     "current_request_id",
@@ -84,4 +96,5 @@ __all__ = [
     "new_request_id",
     "operation_context",
     "safe_exception_fields",
+    "safe_stack_trace",
 ]

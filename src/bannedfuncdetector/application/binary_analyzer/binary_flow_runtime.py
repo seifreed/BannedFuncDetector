@@ -14,6 +14,7 @@ from bannedfuncdetector.domain.protocols import IConfigRepository, IR2Client
 from bannedfuncdetector.domain.result import Err, Ok, Result, err, ok
 from bannedfuncdetector.domain.types import classify_error
 from bannedfuncdetector.application.types import BinaryAnalysisResultType
+from bannedfuncdetector.application.observability import safe_stack_trace
 
 from ..analysis_outcome import BinaryAnalysisOutcome, OperationalNotice
 from .reporting import _create_analysis_report, _save_analysis_results
@@ -43,12 +44,12 @@ def _analysis_error(
         "error_type": type(exc).__name__,
         "error_category": category,
         "error_phase": phase,
+        "stack_trace": safe_stack_trace(exc),
     }
     if isinstance(exc, OSError) and exc.errno is not None:
         extra["error_code"] = exc.errno
     logger.error(
         "Binary analysis failed",
-        exc_info=(type(exc), exc, exc.__traceback__),
         extra=extra,
     )
     return err(ExecutionFailure(error=error, logged=True))

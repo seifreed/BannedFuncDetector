@@ -13,6 +13,7 @@ import logging
 from typing import TypeVar, Callable, ParamSpec, overload
 
 from bannedfuncdetector.domain.error_types import ErrorCategory
+from bannedfuncdetector.application.observability import safe_stack_trace
 from bannedfuncdetector.domain.result import Result, err
 
 # Configure module logger
@@ -70,10 +71,10 @@ def _log_error(
             "%s in %s",
             category,
             func_name,
-            exc_info=(type(exception), exception, exception.__traceback__),
             extra={
                 "event_name": "operation_error",
                 "error_type": type(exception).__name__,
+                "stack_trace": safe_stack_trace(exception),
             },
         )
 
@@ -286,10 +287,10 @@ def handle_errors_sync(
                         "Operation failed in %s (%s)",
                         func.__name__,
                         operation_name,
-                        exc_info=(type(e), e, e.__traceback__),
                         extra={
                             "event_name": "operation_error",
                             "error_type": type(e).__name__,
+                            "stack_trace": safe_stack_trace(e),
                         },
                     )
                 if reraise:

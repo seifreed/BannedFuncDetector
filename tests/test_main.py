@@ -712,6 +712,24 @@ def test_safe_exception_fields_keep_type_and_numeric_code_only():
     assert "private-value" not in str(fields)
 
 
+def test_safe_stack_trace_omits_exception_text_and_handles_missing_traceback():
+    from bannedfuncdetector.application.observability import safe_stack_trace
+    from bannedfuncdetector.infrastructure.logging_config import _safe_exception_text
+
+    exc = RuntimeError("token=private-value")
+    assert safe_stack_trace(exc) == ""
+    assert _safe_exception_text((type(exc), exc, None)) == ""
+
+    try:
+        raise exc
+    except RuntimeError as caught:
+        stack_trace = safe_stack_trace(caught)
+
+    assert "test_main.py" in stack_trace
+    assert " in test_safe_stack_trace_omits_exception_text_and_handles_missing_traceback" in stack_trace
+    assert "token=private-value" not in stack_trace
+
+
 def test_configure_logging_supports_stdout_destination(monkeypatch, capsys):
     from bannedfuncdetector.cli_bootstrap import configure_logging
 

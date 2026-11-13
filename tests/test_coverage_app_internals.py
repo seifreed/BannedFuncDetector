@@ -966,14 +966,20 @@ class TestDirectoryResults:
                 exc, context="sample.bin"
             )
 
-        record = next(record for record in caplog.records if record.exc_info)
+        record = next(
+            record for record in caplog.records
+            if getattr(record, "event_name", None) == "analysis_error"
+        )
         assert record.error_type == "PermissionError"
         assert record.operation == "directory_analysis"
         assert record.event_name == "analysis_error"
         assert record.error_category == "I/O error"
         assert record.error_code == errno.EACCES
         assert "disk unreadable" not in record.getMessage()
-        assert "disk unreadable" in str(record.exc_info[1])
+        assert record.exc_info is None
+        assert record.stack_trace
+        assert "disk unreadable" not in record.stack_trace
+        assert "test_coverage_app_internals.py" in record.stack_trace
 
     def test_collect_directory_results_does_not_repeat_logged_error(self, caplog):
         from bannedfuncdetector.application.analysis_error import (

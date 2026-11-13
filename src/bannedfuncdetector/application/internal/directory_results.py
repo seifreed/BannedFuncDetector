@@ -14,6 +14,7 @@ from bannedfuncdetector.application.analysis_error import (
     ExecutionFailure,
 )
 from bannedfuncdetector.domain.types import classify_error
+from bannedfuncdetector.application.observability import safe_stack_trace
 from bannedfuncdetector.application.analysis_outcome import (
     BinaryAnalysisOutcome,
     DirectoryAnalysisOutcome,
@@ -55,12 +56,12 @@ def error_result_from_exception(
         "event_name": "analysis_error",
         "error_type": type(exc).__name__,
         "error_category": error.category,
+        "stack_trace": safe_stack_trace(exc),
     }
     if isinstance(exc, OSError) and exc.errno is not None:
         extra["error_code"] = exc.errno
     logger.error(
         "Directory analysis failed",
-        exc_info=(type(exc), exc, exc.__traceback__),
         extra=extra,
     )
     return err(ExecutionFailure(error=error, logged=True))
