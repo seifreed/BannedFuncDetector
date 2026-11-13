@@ -24,26 +24,42 @@ def validate_directory(directory: str) -> Result[Path, ExecutionFailure]:
         path = Path(directory)
         if not path.exists():
             error_msg = f"The directory {directory} does not exist."
-            logger.error(error_msg)
+            logger.error(
+                "Directory does not exist",
+                extra={
+                    "event_name": "directory_validation_failed",
+                    "outcome": "error",
+                    "error_category": "Input error",
+                },
+            )
             return err(
                 ExecutionFailure(
                     error=DirectoryExecutionError(
                         category="Input error",
                         context=directory,
                         message=error_msg,
-                    )
+                    ),
+                    logged=True,
                 )
             )
         if not path.is_dir():
             error_msg = f"The path {directory} is not a directory."
-            logger.error(error_msg)
+            logger.error(
+                "Path is not a directory",
+                extra={
+                    "event_name": "directory_validation_failed",
+                    "outcome": "error",
+                    "error_category": "Input error",
+                },
+            )
             return err(
                 ExecutionFailure(
                     error=DirectoryExecutionError(
                         category="Input error",
                         context=directory,
                         message=error_msg,
-                    )
+                    ),
+                    logged=True,
                 )
             )
         return ok(path)
@@ -61,12 +77,14 @@ def validate_directory(directory: str) -> Result[Path, ExecutionFailure]:
             extra={
                 "event_name": "directory_validation_failed",
                 "outcome": "error",
+                "error_category": "Input error",
                 **safe_exception_fields(exc),
             },
         )
         return err(
             ExecutionFailure(
-                error=directory_error_from_exception(exc, context=directory)
+                error=directory_error_from_exception(exc, context=directory),
+                logged=True,
             )
         )
 
@@ -83,14 +101,22 @@ def discover_executable_files(
 
         if not executable_files:
             error_msg = f"No executable files found in {directory}."
-            logger.warning(error_msg)
+            logger.error(
+                "No executable files found",
+                extra={
+                    "event_name": "executable_discovery_failed",
+                    "outcome": "error",
+                    "error_category": "Input error",
+                },
+            )
             return err(
                 ExecutionFailure(
                     error=DirectoryExecutionError(
                         category="Input error",
                         context=directory,
                         message=error_msg,
-                    )
+                    ),
+                    logged=True,
                 )
             )
 
@@ -114,12 +140,14 @@ def discover_executable_files(
             extra={
                 "event_name": "executable_discovery_failed",
                 "outcome": "error",
+                "error_category": "I/O error",
                 **safe_exception_fields(exc),
             },
         )
         return err(
             ExecutionFailure(
-                error=directory_error_from_exception(exc, context=directory)
+                error=directory_error_from_exception(exc, context=directory),
+                logged=True,
             )
         )
 

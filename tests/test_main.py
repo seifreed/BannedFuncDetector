@@ -355,6 +355,54 @@ def test_main_check_requirements_standalone(tmp_path):
         assert bannedfunc_module.main() == 0
 
 
+def test_main_does_not_repeat_an_already_logged_analysis_failure(
+    monkeypatch, tmp_path, caplog
+):
+    args = argparse.Namespace(
+        file="sample.bin",
+        directory=None,
+        verbose=False,
+        skip_requirements=True,
+        check_requirements=False,
+        skip_banned=False,
+        skip_analysis=False,
+        output=str(tmp_path),
+    )
+
+    monkeypatch.setattr(bannedfunc_module, "parse_arguments", lambda: args)
+    monkeypatch.setattr(bannedfunc_module, "configure_logging", lambda **_kwargs: None)
+    monkeypatch.setattr(bannedfunc_module, "check_python_version", lambda: None)
+    monkeypatch.setattr(
+        bannedfunc_module, "validate_requirements", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(bannedfunc_module, "create_application_wiring", object)
+
+    def fail_already_logged(_args, _wiring, *, logger, **_kwargs):
+        if _args.file:
+            logger.error(
+                "Binary input validation failed",
+                extra={"event_name": "analysis_error", "outcome": "error"},
+            )
+        return None
+
+    monkeypatch.setattr(bannedfunc_module, "dispatch_cli_analysis", fail_already_logged)
+
+    assert bannedfunc_module.main() == 1
+    assert sum(record.event_name == "analysis_error" for record in caplog.records) == 1
+    assert not any(
+        getattr(record, "event_name", None) == "analysis_target_missing"
+        for record in caplog.records
+    )
+
+    caplog.clear()
+    args.file = None
+    assert bannedfunc_module.main() == 1
+    assert sum(
+        getattr(record, "event_name", None) == "analysis_target_missing"
+        for record in caplog.records
+    ) == 1
+
+
 def test_configure_logging_verbose_toggles_debug_level():
     """verbose=True lowers the root level to DEBUG so the logger.debug
     diagnostics become visible; verbose=False keeps INFO."""

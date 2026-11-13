@@ -88,15 +88,7 @@ def resolve_analysis_setup(
         request,
     )
     if isinstance(params_result, Err):
-        return err(
-            ExecutionFailure(
-                error=BinaryExecutionError(
-                    category="Configuration error",
-                    context=binary_path,
-                    message=params_result.error,
-                )
-            )
-        )
+        return err(params_result.error)
     params = params_result.unwrap()
     setup_result = setup_binary_analysis(binary_path, params)
     if isinstance(setup_result, Err):

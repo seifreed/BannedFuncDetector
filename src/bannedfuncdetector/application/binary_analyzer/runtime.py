@@ -67,11 +67,9 @@ def _validate_binary_input(binary_path: str) -> None:
     """
     if not os.path.exists(binary_path):
         error_msg = f"The file {binary_path} does not exist."
-        logger.error(error_msg)
         raise BinaryNotFoundError(error_msg)
     if not os.path.isfile(binary_path):
         error_msg = f"The path {binary_path} is not a regular file."
-        logger.error(error_msg)
         raise BinaryNotFoundError(error_msg)
 
 

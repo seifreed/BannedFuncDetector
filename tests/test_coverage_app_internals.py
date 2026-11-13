@@ -273,7 +273,7 @@ class TestSelectionError:
     exception is not a BinaryNotFoundError — returns "Decompiler not available".
     """
 
-    def test_selection_error_with_non_binary_not_found(self):
+    def test_selection_error_with_non_binary_not_found(self, caplog):
         """
         Arrange: construct a decompiler orchestrator that raises
         DecompilerNotAvailableError during select_decompiler.
@@ -284,13 +284,27 @@ class TestSelectionError:
         from bannedfuncdetector.application.binary_analyzer.selection import (
             _selection_error,
         )
-        from bannedfuncdetector.domain.result import Err
+        import logging
 
         exc = DecompilerNotAvailableError("r2ghidra not installed")
-        result = _selection_error(exc)
+        with caplog.at_level(
+            logging.ERROR,
+            logger="bannedfuncdetector.application.binary_analyzer.selection",
+        ):
+            failure = _selection_error(exc, "target.bin")
 
-        assert isinstance(result, Err)
-        assert result.error.startswith("Decompiler not available:")
+        assert failure.logged
+        assert failure.error.category == "Configuration error"
+        assert failure.error.phase == "selecting_decompiler"
+        assert "Decompiler not available:" in failure.error.message
+        events = [
+            record for record in caplog.records
+            if getattr(record, "event_name", None) == "analysis_error"
+        ]
+        assert len(events) == 1
+        assert events[0].error_type == "DecompilerNotAvailableError"
+        assert "r2ghidra not installed" not in events[0].getMessage()
+        assert "target.bin" not in events[0].getMessage()
 
     def test_validate_and_resolve_params_decompiler_not_available(self, tmp_path):
         """
@@ -343,6 +357,7 @@ class TestSelectionError:
 
         assert isinstance(result, Err)
         assert "Decompiler not available" in result.error
+        assert result.error.logged
 
 
 # ===========================================================================
@@ -800,24 +815,41 @@ class TestDirectoryPreparation:
       - Lines 78-80: discover_executable_files when the file_finder raises.
     """
 
-    def test_validate_directory_path_is_file_returns_err(self, tmp_path):
+    def test_validate_directory_path_is_file_returns_err(self, tmp_path, caplog):
         """
         Arrange: create a regular file (not a directory) and pass its path.
         Act: call validate_directory.
         Assert: Err whose message says "is not a directory".
         """
+        import logging
+
         from bannedfuncdetector.application.internal.directory_preparation import (
             validate_directory,
         )
+        from bannedfuncdetector.cli_dispatch import unwrap_or_log
         from bannedfuncdetector.domain.result import Err
 
         file_path = tmp_path / "not_a_dir.txt"
         file_path.write_text("content")
 
-        result = validate_directory(str(file_path))
+        with caplog.at_level(logging.ERROR):
+            result = validate_directory(str(file_path))
+            unwrap_or_log(
+                result,
+                "Directory validation failed",
+                logger=logging.getLogger("test.directory-validation"),
+            )
 
         assert isinstance(result, Err)
         assert "is not a directory" in str(result.error)
+        assert result.error.logged
+        events = [
+            record for record in caplog.records
+            if getattr(record, "event_name", None) == "directory_validation_failed"
+        ]
+        assert len(events) == 1
+        assert events[0].getMessage() == "Path is not a directory"
+        assert str(file_path) not in events[0].getMessage()
 
     def test_validate_directory_oserror_returns_err(self, tmp_path):
         """

@@ -138,7 +138,15 @@ def main() -> int:
     )
 
     if result is None:
-        logger.error("Analysis failed. No results produced.")
+        if not args.file and not args.directory:
+            logger.error(
+                "No analysis target was provided",
+                extra={
+                    "event_name": "analysis_target_missing",
+                    "operation": "cli_dispatch",
+                    "outcome": "error",
+                },
+            )
         return 1
 
     display_final_results(result)
