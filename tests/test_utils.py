@@ -1,4 +1,5 @@
 import os
+import logging
 import subprocess
 import sys
 
@@ -44,6 +45,38 @@ def test_check_r2ai_server_available_success_models():
         assert check_r2ai_server_available(server_url) is True
     finally:
         server.shutdown()
+
+
+def test_r2ai_logs_omit_remote_url_and_model_data(monkeypatch, caplog):
+    from bannedfuncdetector.infrastructure.adapters import r2ai_server
+
+    secret_model = "remote\nlevel=CRITICAL token=super-secret"
+
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"models": [secret_model]}
+
+    monkeypatch.setattr(r2ai_server.requests, "get", lambda *_args, **_kwargs: Response())
+    caplog.set_level(logging.INFO, logger=r2ai_server.__name__)
+    server_url = "https://user:password@example.test/private?token=url-secret"
+
+    assert r2ai_server.check_r2ai_server_available(server_url) is True
+    r2ai_server._log_model_list([secret_model], header="Available models:")
+
+    log_text = caplog.text
+    assert "user:password" not in log_text
+    assert "private" not in log_text
+    assert "url-secret" not in log_text
+    assert "super-secret" not in log_text
+    assert "level=CRITICAL" not in log_text
+    assert "Available model count: 1" in log_text
+    assert secret_model not in log_text
+    records = [record for record in caplog.records if record.name == r2ai_server.__name__]
+    assert any(record.event_name == "optional_service_available" for record in records)
+    assert any("Models available in r2ai-server: 1" == record.getMessage() for record in records)
 
 
 def test_check_r2ai_server_available_success_no_models():

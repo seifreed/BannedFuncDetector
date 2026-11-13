@@ -83,7 +83,9 @@ def _run_r2ai_server_command(
         )
     except subprocess.TimeoutExpired:
         logger.error(
-            "r2ai-server command timed out after %ss: %s", timeout, resolved
+            "r2ai-server command timed out after %ss",
+            timeout,
+            extra={"event_name": "external_command_timeout"},
         )
         return subprocess.CompletedProcess(
             resolved, returncode=1, stdout="", stderr="timeout"
@@ -93,7 +95,13 @@ def _run_r2ai_server_command(
         # as a failed command (returncode 1) — exactly like the timeout case —
         # so callers route to the "not installed" / install-prompt path instead
         # of having the exception swallowed into an unrelated "error" branch.
-        logger.error("r2ai-server command could not be run: %s (%s)", resolved, exc)
+        logger.error(
+            "r2ai-server command could not be run",
+            extra={
+                "event_name": "external_command_failed",
+                "error_type": type(exc).__name__,
+            },
+        )
         return subprocess.CompletedProcess(
             resolved, returncode=1, stdout="", stderr=str(exc)
         )
@@ -108,12 +116,9 @@ def _get_models_from_cli() -> list[str]:
 
 
 def _log_model_list(models: list[str], header: str) -> None:
-    """Log a list of models with a header, truncating after 5 items."""
+    """Log the model count without logging untrusted model names."""
     logger.info(header)
-    for model in models[:5]:
-        logger.info("    %s", model)
-    if len(models) > 5:
-        logger.info("    ... and %d more", len(models) - 5)
+    logger.info("Available model count: %d", len(models))
 
 
 def _resolve_command(args: list[str]) -> list[str]:
@@ -167,13 +172,25 @@ def check_r2ai_server_available(
     """
     try:
         if _ping_server(server_url, timeout):
-            logger.info("r2ai-server detected at %s", server_url)
+            logger.info(
+                "r2ai-server detected",
+                extra={"event_name": "optional_service_available"},
+            )
             _log_available_models(server_url, timeout)
             return True
-        logger.warning("r2ai-server is not responding correctly at %s", server_url)
+        logger.warning(
+            "r2ai-server is not responding correctly",
+            extra={"event_name": "optional_service_unavailable"},
+        )
         return False
     except requests.RequestException as e:
-        logger.warning("Error connecting to r2ai-server: %s", str(e))
+        logger.warning(
+            "Error connecting to r2ai-server",
+            extra={
+                "event_name": "optional_service_connection_failed",
+                "error_type": type(e).__name__,
+            },
+        )
         return _handle_r2ai_server_not_running(server_url, auto_start, prompt_callback)
 
 
@@ -208,7 +225,13 @@ def get_r2ai_models(
                 models = []
             return models
     except (requests.RequestException, json.JSONDecodeError, ValueError, KeyError) as e:
-        logger.warning("Error getting models from r2ai-server: %s", str(e))
+        logger.warning(
+            "Error getting models from r2ai-server",
+            extra={
+                "event_name": "optional_service_models_failed",
+                "error_type": type(e).__name__,
+            },
+        )
 
     return []
 
@@ -224,19 +247,27 @@ def _log_available_models(server_url: str, timeout: int) -> None:
     try:
         models = get_r2ai_models(server_url, timeout)
         if models:
-            logger.info("Models available in r2ai-server:")
-            for model in models[:5]:
-                logger.info("    - %s", model)
-            if len(models) > 5:
-                logger.info("    ... and %d more", len(models) - 5)
+            logger.info("Models available in r2ai-server: %d", len(models))
         else:
             logger.warning("No available models found in r2ai-server")
     except requests.RequestException as e:
         # Network or HTTP errors
-        logger.warning("Error getting the list of models: %s", str(e))
+        logger.warning(
+            "Error getting the list of models",
+            extra={
+                "event_name": "optional_service_models_failed",
+                "error_type": type(e).__name__,
+            },
+        )
     except (json.JSONDecodeError, ValueError, KeyError) as e:
         # JSON parsing or data structure errors
-        logger.warning("Error parsing the list of models: %s", str(e))
+        logger.warning(
+            "Error parsing the list of models",
+            extra={
+                "event_name": "optional_service_models_invalid",
+                "error_type": type(e).__name__,
+            },
+        )
 
 
 def _handle_r2ai_server_not_running(
