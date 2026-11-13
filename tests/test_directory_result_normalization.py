@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import logging
 
+import pytest
+
 from bannedfuncdetector.application.analysis_error import (
     BinaryExecutionError,
     ExecutionFailure,
@@ -28,6 +30,7 @@ from bannedfuncdetector.application.analysis_outcome import (
 )
 from bannedfuncdetector.application.internal.directory_results import (
     normalize_directory_result,
+    persist_directory_summary,
 )
 from bannedfuncdetector.domain.result import Err, err, ok
 from bannedfuncdetector.presentation.reporting import display_final_results
@@ -91,3 +94,23 @@ def test_normalize_passes_through_ok() -> None:
     )
     # Ok values are returned unchanged.
     assert normalize_directory_result("/bin/x", ok(outcome)) == ok(outcome)
+
+
+@pytest.mark.parametrize("verbose, level", [(False, logging.DEBUG), (True, logging.INFO)])
+def test_persist_summary_emits_completion_event(tmp_path, caplog, verbose, level) -> None:
+    summary = DirectoryAnalysisOutcome(
+        summary=DirectoryAnalysisSummary(directory="/bin", analyzed_results=(), total_files=0)
+    )
+    with caplog.at_level(
+        logging.DEBUG,
+        logger="bannedfuncdetector.application.internal.directory_results",
+    ):
+        persist_directory_summary(str(tmp_path), summary, verbose)
+
+    record = next(
+        record for record in caplog.records if record.event_name == "directory_summary_saved"
+    )
+    assert record.levelno == level
+    assert record.operation == "directory_summary_write"
+    assert record.outcome == "success"
+    assert record.duration_ms >= 0

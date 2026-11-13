@@ -6,6 +6,7 @@ import concurrent.futures
 import json
 import logging
 import os
+import time
 from collections.abc import Callable, Iterator
 
 from bannedfuncdetector.application.analysis_error import (
@@ -143,10 +144,20 @@ def persist_directory_summary(
 ) -> None:
     """Persist the directory-analysis aggregate as JSON."""
     summary_file = os.path.join(output_dir, "summary.json")
+    started = time.perf_counter()
     with open(summary_file, "w", encoding="utf-8") as handle:
         json.dump(directory_outcome_to_dict(summary), handle, indent=4)
-    if verbose:
-        logger.info(f"Summary saved to {summary_file}")
+    logger.log(
+        logging.INFO if verbose else logging.DEBUG,
+        "Directory analysis summary saved to %s",
+        summary_file,
+        extra={
+            "operation": "directory_summary_write",
+            "event_name": "directory_summary_saved",
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            "outcome": "success",
+        },
+    )
 
 
 __all__ = [
