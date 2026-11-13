@@ -16,9 +16,19 @@ from __future__ import annotations
 
 import functools
 import logging
+import concurrent.futures
+import multiprocessing
 import pickle
 
 from bannedfuncdetector.factories import create_application_wiring
+
+
+def _spawn_process_executor(*, max_workers, initializer):
+    return concurrent.futures.ProcessPoolExecutor(
+        max_workers=max_workers,
+        initializer=initializer,
+        mp_context=multiprocessing.get_context("spawn"),
+    )
 
 
 def _logging_worker(job):
@@ -172,3 +182,39 @@ def test_process_log_listener_with_inline_executor(monkeypatch, caplog) -> None:
         record.name == "test.process_worker" and record.request_id == "inline-run"
         for record in caplog.records
     )
+
+
+def test_custom_process_executor_keeps_request_context_and_structured_logs(
+    monkeypatch, tmp_path
+) -> None:
+    import json
+
+    from bannedfuncdetector.application.internal.directory_runners import (
+        iter_parallel_directory_results,
+    )
+    from bannedfuncdetector.application.internal.execution_plans import (
+        DirectoryScanPlan,
+    )
+    import bannedfuncdetector.application.internal.directory_runners as runners
+
+    log_file = tmp_path / "custom-worker.jsonl"
+    monkeypatch.setenv("BFD_LOG_FORMAT", "json")
+    monkeypatch.setenv("BFD_LOG_DESTINATION", f"file:{log_file}")
+    monkeypatch.setenv("BFD_LOG_LEVEL", "WARNING")
+    monkeypatch.setattr(runners, "ensure_request_id", lambda: "custom-process-run")
+    plan = DirectoryScanPlan(
+        runtime=create_application_wiring(),
+        worker_entrypoint=_logging_worker,
+        parallel_executor_factory=_spawn_process_executor,
+    )
+
+    results = list(iter_parallel_directory_results(["custom.bin"], plan, 1))
+
+    assert len(results) == 1
+    events = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert len(events) == 2
+    assert {event["request_id"] for event in events} == {"custom-process-run"}
+    assert all(event["component"] == "test.process_worker" for event in events)
+    failure = next(event for event in events if event["message"] == "worker failed safely")
+    assert failure["error_type"] == "RuntimeError"
+    assert "worker diagnostic" in failure["stack_trace"]
