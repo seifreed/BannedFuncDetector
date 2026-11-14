@@ -5,7 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.2.0] - 2026-11-14
+
+### Added
+- Python 3.15 support, with the CI matrix exercising Python 3.13, 3.14, and
+  3.15 on Ubuntu, macOS, and Windows (except the documented pytest issue on
+  Windows/Python 3.14).
+- Configurable structured application logging in text or JSON, with standard
+  levels, environment labels, and stderr, stdout, or rotating-file destinations.
+- Request and operation correlation across CLI and library calls, nested
+  analysis, and worker threads/processes.
+- Structured lifecycle, outcome, duration, and error events for requirement and
+  configuration checks, binary and directory scans, decompilers, radare2 and
+  optional r2ai services, findings, and report writes.
+
+### Security
+- Redaction and minimization for credentials, cookies, URL data, paths, command
+  arguments, and exception details; control characters and log fields are
+  sanitized and bounded before output.
+- Restrict permissions on local log files and protect high-severity worker
+  events when the bounded logging queue is saturated.
+
+### Changed
+- Route process-worker log records through a bounded parent listener and make
+  rotating file writes safe across processes; report dropped low-severity
+  events and fall back to stderr for high-severity events.
+- Consolidate duplicate analysis and decompilation diagnostics into structured
+  boundary events with normalized outcomes and error metadata.
+- Expand logging and portability regression coverage; enforce 100% source-line
+  coverage on the Linux CI gate and pin Ruff for reproducible linting.
 
 ## [3.1.0] - 2026-06-30
 
